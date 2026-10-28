@@ -21,11 +21,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -207,7 +206,7 @@ fun DetailScreen(
                                     .background(Color(0xFF1E1E24), RoundedCornerShape(24.dp))
                             ) {
                                 Icon(
-                                    if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                    if (isBookmarked) Icons.Filled.Star else Icons.Outlined.Star,
                                     contentDescription = "Bookmark",
                                     tint = if (isBookmarked) Color(0xFFA78BFA) else Color.White
                                 )
@@ -266,7 +265,7 @@ fun DetailScreen(
                                 fontWeight = FontWeight.SemiBold
                             )
                             IconButton(onClick = { viewModel.toggleChapterOrder() }) {
-                                Icon(Icons.Default.SwapVert, "Sort", tint = Color(0xFFA1A1AA))
+                                Icon(Icons.Default.List, "Sort", tint = Color(0xFFA1A1AA))
                             }
                         }
                     }
