@@ -53,14 +53,23 @@ fun ComicDetailDto.toDomain(source: String): ComicDetail = ComicDetail(
     source = source
 )
 
-fun ChapterContentDto.toDomain(source: String, comicSlug: String, chapterSlug: String): ChapterContent =
-    ChapterContent(
+fun ChapterContentDto.toDomain(source: String, comicSlug: String, chapterSlug: String): ChapterContent {
+    // Prefer proxy paths when present (often faster / fewer hotlink blocks)
+    val urls = when {
+        proxy.isNotEmpty() -> proxy.map { path ->
+            if (path.startsWith("http")) path
+            else com.komikta.core.network.ApiConfig.BASE_URL.trimEnd('/') + "/" + path.trimStart('/')
+        }
+        else -> images
+    }
+    return ChapterContent(
         title = title,
         comicSlug = comicSlug,
         chapterSlug = chapterSlug,
-        imageUrls = images,
+        imageUrls = urls,
         proxyPaths = proxy,
         prevChapterSlug = prev,
         nextChapterSlug = next,
         source = source
     )
+}
