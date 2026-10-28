@@ -41,16 +41,15 @@ private val Poppins = FontFamily(
 )
 
 private val Type = Typography(
-    defaultFontFamily = Poppins,
-    headlineLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 26.sp, color = Text1),
-    headlineMedium = TextStyle(fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Text1),
-    titleLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = Text1),
-    titleMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = Text1),
-    bodyLarge = TextStyle(fontWeight = FontWeight.Normal, fontSize = 14.sp, color = Text1),
-    bodyMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 13.sp, color = Text1),
-    labelLarge = TextStyle(fontWeight = FontWeight.Medium, fontSize = 12.sp, color = Text2),
-    labelMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 11.sp, color = Text2),
-    labelSmall = TextStyle(fontWeight = FontWeight.Medium, fontSize = 10.sp, color = Text3)
+    headlineLarge = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.Bold, fontSize = 26.sp, color = Text1),
+    headlineMedium = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Text1),
+    titleLarge = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = Text1),
+    titleMedium = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = Text1),
+    bodyLarge = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.Normal, fontSize = 14.sp, color = Text1),
+    bodyMedium = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.Normal, fontSize = 13.sp, color = Text1),
+    labelLarge = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.Medium, fontSize = 12.sp, color = Text2),
+    labelMedium = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.Medium, fontSize = 11.sp, color = Text2),
+    labelSmall = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.Medium, fontSize = 10.sp, color = Text3)
 )
 
 @Composable
