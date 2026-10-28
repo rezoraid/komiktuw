@@ -17,6 +17,7 @@ import timber.log.Timber
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,6 +25,28 @@ import javax.inject.Singleton
 class ComicRepositoryImpl @Inject constructor(
     private val api: KomiktaApi
 ) : ComicRepository {
+
+    private data class CacheEntry<T>(val value: T, val storedAt: Long = System.currentTimeMillis())
+    private val listCache = ConcurrentHashMap<String, CacheEntry<Result<List<Comic>>>>()
+    private val detailCache = ConcurrentHashMap<String, CacheEntry<Result<ComicDetail>>>()
+    private val chapterCache = ConcurrentHashMap<String, CacheEntry<Result<ChapterContent>>>()
+
+    private fun <T> cached(cache: ConcurrentHashMap<String, CacheEntry<T>>, key: String, ttlMs: Long): T? {
+        val entry = cache[key] ?: return null
+        if (System.currentTimeMillis() - entry.storedAt > ttlMs) {
+            cache.remove(key, entry)
+            return null
+        }
+        return entry.value
+    }
+
+    private fun <T> trimCache(cache: ConcurrentHashMap<String, CacheEntry<T>>, maxEntries: Int) {
+        if (cache.size > maxEntries) {
+            cache.entries.sortedBy { it.value.storedAt }
+                .take(cache.size - maxEntries)
+                .forEach { cache.remove(it.key, it.value) }
+        }
+    }
 
     override suspend fun getSources(): Result<List<Source>> = safeApiCall {
         val response = api.getSources()
@@ -37,31 +60,48 @@ class ComicRepositoryImpl @Inject constructor(
         if (items.isEmpty()) Result.Empty else Result.Success(items)
     }
 
-    override suspend fun getLatest(source: String, page: Int): Result<List<Comic>> = safeApiCall {
-        val response = api.getLatest(source, page)
-        mapListResponse(response, source)
-    }
+    override suspend fun getLatest(source: String, page: Int): Result<List<Comic>> =
+        cachedList("latest:$source:$page") {
+            val response = api.getLatest(source, page)
+            mapListResponse(response, source)
+        }
 
-    override suspend fun getPopular(source: String): Result<List<Comic>> = safeApiCall {
-        val response = api.getPopular(source)
-        mapListResponse(response, source)
-    }
+    override suspend fun getPopular(source: String): Result<List<Comic>> =
+        cachedList("popular:$source") {
+            val response = api.getPopular(source)
+            mapListResponse(response, source)
+        }
 
-    override suspend fun browse(params: BrowseParams): Result<List<Comic>> = safeApiCall {
-        val response = api.browse(
-            source = params.source,
-            page = params.page,
-            type = params.type,
-            status = params.status,
-            sort = params.sort,
-            genres = params.genres
-        )
-        mapListResponse(response, params.source)
-    }
+    override suspend fun browse(params: BrowseParams): Result<List<Comic>> =
+        cachedList("browse:${params.source}:${params.page}:${params.type}:${params.status}:${params.sort}:${params.genres}") {
+            val response = api.browse(
+                source = params.source,
+                page = params.page,
+                type = params.type,
+                status = params.status,
+                sort = params.sort,
+                genres = params.genres
+            )
+            mapListResponse(response, params.source)
+        }
 
-    override suspend fun search(params: SearchParams): Result<List<Comic>> = safeApiCall {
-        val response = api.search(params.source, params.query, params.page)
-        mapListResponse(response, params.source)
+    override suspend fun search(params: SearchParams): Result<List<Comic>> =
+        cachedList("search:${params.source}:${params.query.trim().lowercase()}:${params.page}") {
+            val response = api.search(params.source, params.query, params.page)
+            mapListResponse(response, params.source)
+        }
+
+    private suspend fun cachedList(
+        key: String,
+        request: suspend () -> Result<List<Comic>>
+    ): Result<List<Comic>> {
+        cached(listCache, key, 60_000L)?.let { return it }
+        val result = safeApiCall { request() }
+        if (result is Result.Success || result is Result.Empty) {
+            listCache[key] = CacheEntry(result)
+            trimCache(listCache, 100)
+        }
+        return result
     }
 
     override suspend fun getGenres(source: String): Result<List<String>> = safeApiCall {
@@ -76,8 +116,10 @@ class ComicRepositoryImpl @Inject constructor(
         if (items.isEmpty()) Result.Empty else Result.Success(items)
     }
 
-    override suspend fun getComicDetail(source: String, slug: String): Result<ComicDetail> =
-        safeApiCall {
+    override suspend fun getComicDetail(source: String, slug: String): Result<ComicDetail> {
+        val key = "$source:$slug"
+        cached(detailCache, key, 300_000L)?.let { return it }
+        val result = safeApiCall {
             val response = api.getComicDetail(source, slug)
             if (!response.ok || response.data == null) {
                 return@safeApiCall Result.Error(
@@ -87,20 +129,35 @@ class ComicRepositoryImpl @Inject constructor(
             }
             Result.Success(response.data.toDomain(source))
         }
+        if (result is Result.Success) {
+            detailCache[key] = CacheEntry(result)
+            trimCache(detailCache, 100)
+        }
+        return result
+    }
 
     override suspend fun getChapterContent(
         source: String,
         comicSlug: String,
         chapterSlug: String
-    ): Result<ChapterContent> = safeApiCall {
-        val response = api.getChapterContent(source, comicSlug, chapterSlug)
-        if (!response.ok || response.data == null) {
-            return@safeApiCall Result.Error(
-                message = response.error?.message ?: "Chapter not found",
-                code = response.error?.code
-            )
+    ): Result<ChapterContent> {
+        val key = "$source:$comicSlug:$chapterSlug"
+        cached(chapterCache, key, 600_000L)?.let { return it }
+        val result = safeApiCall {
+            val response = api.getChapterContent(source, comicSlug, chapterSlug)
+            if (!response.ok || response.data == null) {
+                return@safeApiCall Result.Error(
+                    message = response.error?.message ?: "Chapter not found",
+                    code = response.error?.code
+                )
+            }
+            Result.Success(response.data.toDomain(source, comicSlug, chapterSlug))
         }
-        Result.Success(response.data.toDomain(source, comicSlug, chapterSlug))
+        if (result is Result.Success) {
+            chapterCache[key] = CacheEntry(result)
+            trimCache(chapterCache, 40)
+        }
+        return result
     }
 
     private fun mapListResponse(

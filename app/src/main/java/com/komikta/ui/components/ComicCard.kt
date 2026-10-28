@@ -46,7 +46,7 @@ fun ComicCard(
                 .fillMaxWidth()
                 .aspectRatio(0.68f)
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF1E1E24))
+                .background(Color(0xFF1A1A1A))
         ) {
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -59,7 +59,7 @@ fun ComicCard(
                 loading = { ShimmerBox(Modifier.fillMaxSize()) },
                 error = {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("?", color = Color(0xFF52525B), fontSize = 24.sp)
+                        Text("?", color = Color(0xFF666666), fontSize = 24.sp)
                     }
                 }
             )
@@ -97,7 +97,7 @@ fun ComicCard(
         Spacer(Modifier.height(6.dp))
         Text(
             text = comic.title,
-            color = Color(0xFFF4F4F5),
+            color = Color(0xFFFFFFFF),
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 2,
@@ -111,7 +111,7 @@ fun ComicCard(
                     comic.rating?.let { "★ $it" },
                     comic.status
                 ).joinToString(" · "),
-                color = Color(0xFF71717A),
+                color = Color(0xFF999999),
                 fontSize = 10.sp,
                 maxLines = 1,
                 modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)

@@ -1,94 +1,12 @@
-# Komikta — Android Comic Reader
+# Komikta Android
 
-Aplikasi Android native untuk membaca manhwa, manga, dan manhua.  
-Dibangun dengan pendekatan **Backend First**.
+## UI dan performa
+- Tema monokrom hitam-putih dengan font Poppins.
+- Halaman Explore memuat satu halaman awal terlebih dahulu; halaman berikutnya dimuat saat mendekati akhir daftar.
+- Grid Explore memakai placeholder shimmer dengan ukuran kartu yang sama seperti konten, agar tata letak stabil selama loading.
+- Daftar Compose memakai stable keys untuk mengurangi perubahan item yang tidak perlu.
+- Cache memori repository: daftar 60 detik, detail 5 menit, chapter 10 menit; jumlah entry dibatasi agar penggunaan memori tetap terkendali.
+- Coil memakai memory cache dan disk cache untuk mempercepat gambar saat dibuka kembali.
 
-## Teknologi
-
-- Kotlin + Jetpack Compose (UI nanti)
-- Architecture: MVVM + Clean-ish layers
-- Networking: Ktor Client + Kotlinx Serialization
-- DI: Hilt
-- Local: Room (history & bookmark) + DataStore
-- Image: Coil
-- Min SDK: 26 | Target SDK: 35
-
-## Struktur Proyek
-
-```
-app/src/main/java/com/komikta/
-├── core/
-│   ├── network/          # ApiConfig
-│   ├── database/         # Room Database
-│   └── common/           # Result, utilities
-├── data/
-│   ├── remote/           # DTOs, API, Mappers
-│   ├── local/            # Entities, DAOs
-│   └── repository/       # Repository implementations
-├── domain/
-│   ├── model/            # Domain models
-│   ├── repository/       # Repository interfaces
-│   └── usecase/          # Use cases
-├── feature/              # Feature modules (UI later)
-│   ├── home/
-│   ├── search/
-│   ├── detail/
-│   ├── reader/
-│   ├── bookmark/
-│   └── history/
-└── di/                   # Hilt modules
-```
-
-## API
-
-Base URL: `https://web-production-b2a1d.up.railway.app`
-
-Sources: `lumos`, `manta`, `shinigami`
-
-Endpoint yang sudah diintegrasikan:
-- GET `/api/sources`
-- GET `/api/{source}/latest?page=`
-- GET `/api/{source}/popular`
-- GET `/api/{source}/browse?...`
-- GET `/api/{source}/search?q=`
-- GET `/api/{source}/genres`
-- GET `/api/{source}/comic/{slug}`
-- GET `/api/{source}/chapter/{comicSlug}/{chapterSlug}`
-
-## Cara Build APK via GitHub Actions (Cloud)
-
-1. Buat repository baru di GitHub.
-2. Upload seluruh isi folder proyek ini.
-3. Pastikan file `gradlew` dan `gradle/wrapper` ada (atau generate dengan `gradle wrapper`).
-4. Buka tab **Actions** → pilih workflow **Build APK** → **Run workflow**.
-5. Setelah selesai, download artifact:
-   - `komikta-debug-apk`
-   - `komikta-release-apk` (unsigned)
-
-### Generate Gradle Wrapper (jika belum ada)
-
-```bash
-gradle wrapper --gradle-version 8.9
-```
-
-## Status Saat Ini
-
-| Tahap | Status |
-|-------|--------|
-| 1. Audit API | ✅ Selesai |
-| 2. Fondasi proyek | ✅ Selesai |
-| 3. Integrasi backend | ✅ Selesai |
-| 4. Database & cache lokal | ✅ Skeleton siap |
-| 5. Pengujian | ⏳ Manual / unit test berikutnya |
-| 6. UI/UX | ⏳ Menunggu instruksi |
-
-## Catatan
-
-- UI sengaja masih placeholder (`MainActivity` menampilkan teks "Komikta Backend Ready").
-- Tidak ada endpoint yang dikarang — semua berasal dari audit live API.
-- Bookmark & Reading History disimpan lokal (Room).
-- Image loading siap memakai Coil + proxy path dari API jika diperlukan.
-
----
-
-**Langkah selanjutnya**: Setelah Anda konfirmasi, saya akan menambahkan unit test untuk repository + API parsing, lalu menyiapkan state holder / ViewModel untuk UI.
+## Build
+Buka folder ini melalui Android Studio dan jalankan Gradle Sync, lalu Build APK. Arsip ini tidak menyertakan `gradle-wrapper.jar`; jika Android Studio tidak dapat menjalankan wrapper, gunakan Gradle wrapper yang dibuat Android Studio atau tambahkan file wrapper resmi yang sesuai dengan Gradle 8.9.

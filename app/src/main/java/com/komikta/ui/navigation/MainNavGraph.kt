@@ -34,11 +34,11 @@ fun MainNavGraph() {
     val showBottomBar = currentDestination?.route in bottomNavItems.map { it.route }
 
     Scaffold(
-        containerColor = Color(0xFF0D0D0F),
+        containerColor = Color(0xFF000000),
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar(
-                    containerColor = Color(0xFF16161A),
+                    containerColor = Color(0xFF080808),
                     contentColor = Color.White
                 ) {
                     bottomNavItems.forEach { item ->
@@ -60,11 +60,11 @@ fun MainNavGraph() {
                             },
                             label = { Text(item.title) },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Color(0xFF8B5CF6),
-                                selectedTextColor = Color(0xFF8B5CF6),
-                                unselectedIconColor = Color(0xFF71717A),
-                                unselectedTextColor = Color(0xFF71717A),
-                                indicatorColor = Color(0xFF8B5CF6).copy(alpha = 0.15f)
+                                selectedIconColor = Color(0xFFFFFFFF),
+                                selectedTextColor = Color(0xFFFFFFFF),
+                                unselectedIconColor = Color(0xFF999999),
+                                unselectedTextColor = Color(0xFF999999),
+                                indicatorColor = Color(0xFFFFFFFF).copy(alpha = 0.15f)
                             )
                         )
                     }

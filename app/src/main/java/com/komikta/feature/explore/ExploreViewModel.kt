@@ -11,9 +11,6 @@ import com.komikta.domain.usecase.BrowseComicsUseCase
 import com.komikta.domain.usecase.SearchComicsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -63,26 +60,16 @@ class ExploreViewModel @Inject constructor(
                 it.copy(isLoading = true, errorMessage = null, page = 1, canLoadMore = true)
             }
             val source = ApiConfig.DEFAULT_SOURCE
-            // Parallel fetch page 1..5
-            val pages = coroutineScope {
-                (1..5).map { page ->
-                    async {
-                        browseComics(BrowseParams(source = source, page = page))
-                    }
-                }.awaitAll()
-            }
-            val all = pages.flatMap { r ->
-                (r as? Result.Success)?.data.orEmpty()
-            }.distinctBy { it.slug }
-
-            val error = pages.filterIsInstance<Result.Error>().firstOrNull()?.message
+            val result = browseComics(BrowseParams(source = source, page = 1))
+            val firstPage = (result as? Result.Success)?.data.orEmpty().distinctBy { it.slug }
+            val error = (result as? Result.Error)?.message
             _uiState.update {
                 it.copy(
                     isLoading = false,
-                    comics = all,
-                    page = 5,
-                    canLoadMore = all.isNotEmpty(),
-                    errorMessage = if (all.isEmpty()) error else null
+                    comics = firstPage,
+                    page = 1,
+                    canLoadMore = firstPage.isNotEmpty(),
+                    errorMessage = if (firstPage.isEmpty()) error else null
                 )
             }
         }
@@ -95,20 +82,16 @@ class ExploreViewModel @Inject constructor(
             _uiState.update { it.copy(isLoadingMore = true) }
             val next = state.page + 1
             val source = ApiConfig.DEFAULT_SOURCE
-            // Load 3 more pages at once
-            val pages = coroutineScope {
-                (next until next + 3).map { page ->
-                    async { browseComics(BrowseParams(source = source, page = page)) }
-                }.awaitAll()
-            }
-            val more = pages.flatMap { r -> (r as? Result.Success)?.data.orEmpty() }
+            val result = browseComics(BrowseParams(source = source, page = next))
+            val more = (result as? Result.Success)?.data.orEmpty()
             _uiState.update {
                 val merged = (it.comics + more).distinctBy { c -> c.slug }
                 it.copy(
                     isLoadingMore = false,
                     comics = merged,
-                    page = next + 2,
-                    canLoadMore = more.isNotEmpty()
+                    page = next,
+                    canLoadMore = more.isNotEmpty(),
+                    errorMessage = if (merged.isEmpty()) (result as? Result.Error)?.message else null
                 )
             }
         }
@@ -118,15 +101,9 @@ class ExploreViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null, canLoadMore = false) }
             val source = ApiConfig.DEFAULT_SOURCE
-            val pages = coroutineScope {
-                (1..3).map { page ->
-                    async {
-                        searchComics(SearchParams(source = source, query = query, page = page))
-                    }
-                }.awaitAll()
-            }
-            val all = pages.flatMap { r -> (r as? Result.Success)?.data.orEmpty() }.distinctBy { it.slug }
-            val error = pages.filterIsInstance<Result.Error>().firstOrNull()?.message
+            val result = searchComics(SearchParams(source = source, query = query, page = 1))
+            val all = (result as? Result.Success)?.data.orEmpty().distinctBy { it.slug }
+            val error = (result as? Result.Error)?.message
             _uiState.update {
                 it.copy(
                     isLoading = false,

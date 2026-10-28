@@ -68,7 +68,7 @@ fun HomeScreen(
         }
         else -> {
             LazyColumn(
-                Modifier.fillMaxSize().background(Color(0xFF0D0D0F)),
+                Modifier.fillMaxSize().background(Color(0xFF000000)),
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
                 // Header
@@ -116,7 +116,7 @@ fun HomeScreen(
                             contentPadding = PaddingValues(horizontal = 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(continueReading) { item ->
+                            items(continueReading, key = { it.id }) { item ->
                                 Column(
                                     Modifier
                                         .width(140.dp)
@@ -141,7 +141,7 @@ fun HomeScreen(
                                     Text(
                                         item.lastChapterNumber ?: item.lastChapterSlug ?: "",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = Color(0xFF71717A),
+                                        color = Color(0xFF999999),
                                         maxLines = 1
                                     )
                                 }
@@ -161,7 +161,7 @@ fun HomeScreen(
                             contentPadding = PaddingValues(horizontal = 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(uiState.popularComics.drop(1).take(10)) { comic ->
+                            items(uiState.popularComics.drop(1).take(10), key = { "${it.source}:${it.slug}" }) { comic ->
                                 ComicCard(
                                     comic = comic,
                                     onClick = { onComicClick(comic.source, comic.slug) },
@@ -176,7 +176,7 @@ fun HomeScreen(
                 // Latest updates
                 item { SectionHeader("Latest updates", null) }
 
-                items(uiState.latestComics.take(20)) { comic ->
+                items(uiState.latestComics.take(20), key = { "${it.source}:${it.slug}" }) { comic ->
                     LatestItem(
                         comic = comic,
                         onClick = { onComicClick(comic.source, comic.slug) }
@@ -220,7 +220,7 @@ private fun FeaturedBanner(comic: Comic, onClick: () -> Unit) {
                 Text(
                     text = comic.type!!.uppercase(),
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF8B5CF6)
+                    color = Color(0xFFFFFFFF)
                 )
                 Spacer(Modifier.height(4.dp))
             }
@@ -259,7 +259,7 @@ private fun SectionHeader(title: String, action: String?) {
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         if (action != null) {
-            Text(action, style = MaterialTheme.typography.labelLarge, color = Color(0xFF8B5CF6))
+            Text(action, style = MaterialTheme.typography.labelLarge, color = Color(0xFFFFFFFF))
         }
     }
 }
@@ -274,12 +274,16 @@ private fun LatestItem(comic: Comic, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         AsyncImage(
-            model = comic.coverUrl,
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(comic.coverUrl)
+                .crossfade(false)
+                .build(),
             contentDescription = comic.title,
             contentScale = ContentScale.Crop,
             modifier = Modifier
-                .size(56.dp)
+                .size(width = 64.dp, height = 88.dp)
                 .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF171717))
         )
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
@@ -287,12 +291,12 @@ private fun LatestItem(comic: Comic, onClick: () -> Unit) {
                 if (!comic.type.isNullOrBlank()) {
                     Surface(
                         shape = RoundedCornerShape(4.dp),
-                        color = Color(0xFF8B5CF6).copy(0.2f)
+                        color = Color(0xFFFFFFFF).copy(0.2f)
                     ) {
                         Text(
                             text = comic.type!!,
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF8B5CF6),
+                            color = Color(0xFFFFFFFF),
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -313,7 +317,7 @@ private fun LatestItem(comic: Comic, onClick: () -> Unit) {
                     comic.status
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFF71717A)
+                color = Color(0xFF999999)
             )
         }
     }

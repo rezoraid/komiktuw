@@ -41,7 +41,7 @@ fun LibraryScreen(
     var tab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Bookmarks", "History")
 
-    Column(Modifier.fillMaxSize().background(Color(0xFF0A0A0C))) {
+    Column(Modifier.fillMaxSize().background(Color(0xFF000000))) {
         Text(
             "Library",
             style = MaterialTheme.typography.headlineMedium,
@@ -51,11 +51,11 @@ fun LibraryScreen(
         TabRow(
             selectedTabIndex = tab,
             containerColor = Color.Transparent,
-            contentColor = Color(0xFFA78BFA),
+            contentColor = Color(0xFFFFFFFF),
             indicator = { positions ->
                 TabRowDefaults.SecondaryIndicator(
                     Modifier.tabIndicatorOffset(positions[tab]),
-                    color = Color(0xFFA78BFA)
+                    color = Color(0xFFFFFFFF)
                 )
             }
         ) {
@@ -66,7 +66,7 @@ fun LibraryScreen(
                     text = {
                         Text(
                             title,
-                            color = if (tab == i) Color(0xFFA78BFA) else Color(0xFF71717A)
+                            color = if (tab == i) Color(0xFFFFFFFF) else Color(0xFF999999)
                         )
                     }
                 )
@@ -87,7 +87,7 @@ fun LibraryScreen(
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     if (tab == 0) "Belum ada bookmark" else "Belum ada history",
-                    color = Color(0xFF71717A)
+                    color = Color(0xFF999999)
                 )
             }
         } else {

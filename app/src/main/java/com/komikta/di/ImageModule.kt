@@ -53,7 +53,7 @@ object ImageModule {
             }
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
-            .crossfade(true)
+            .crossfade(false)
             .respectCacheHeaders(false)
             .apply {
                 if (BuildConfig.DEBUG) logger(DebugLogger())

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -41,7 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.komikta.ui.components.ComicCard
-import com.komikta.ui.components.HomeShimmerLoading
+import com.komikta.ui.components.ShimmerBox
 
 @Composable
 fun ExploreScreen(
@@ -64,25 +65,25 @@ fun ExploreScreen(
         if (shouldLoadMore) viewModel.loadMore()
     }
 
-    Column(Modifier.fillMaxSize().background(Color(0xFF0A0A0C))) {
+    Column(Modifier.fillMaxSize().background(Color(0xFF000000))) {
         OutlinedTextField(
             value = uiState.query,
             onValueChange = viewModel::onQueryChange,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            placeholder = { Text("Search manga, manhwa, manhua", color = Color(0xFF71717A)) },
-            leadingIcon = { Icon(Icons.Default.Search, null, tint = Color(0xFFA1A1AA)) },
+            placeholder = { Text("Search manga, manhwa, manhua", color = Color(0xFF999999)) },
+            leadingIcon = { Icon(Icons.Default.Search, null, tint = Color(0xFFBDBDBD)) },
             singleLine = true,
             shape = RoundedCornerShape(24.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Color.Transparent,
                 unfocusedBorderColor = Color.Transparent,
-                focusedContainerColor = Color(0xFF1A1A20),
-                unfocusedContainerColor = Color(0xFF1A1A20),
+                focusedContainerColor = Color(0xFF141414),
+                unfocusedContainerColor = Color(0xFF141414),
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
-                cursorColor = Color(0xFFA78BFA)
+                cursorColor = Color(0xFFFFFFFF)
             )
         )
 
@@ -98,9 +99,9 @@ fun ExploreScreen(
                     label = { Text(type) },
                     shape = RoundedCornerShape(20.dp),
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFFA78BFA),
+                        selectedContainerColor = Color(0xFFFFFFFF),
                         selectedLabelColor = Color.Black,
-                        containerColor = Color(0xFF1A1A20),
+                        containerColor = Color(0xFF141414),
                         labelColor = Color.White
                     ),
                     border = null
@@ -111,7 +112,7 @@ fun ExploreScreen(
         Spacer(Modifier.height(12.dp))
 
         when {
-            uiState.isLoading -> HomeShimmerLoading()
+            uiState.isLoading && uiState.comics.isEmpty() -> ExploreGridLoading()
             uiState.errorMessage != null && uiState.comics.isEmpty() -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(uiState.errorMessage ?: "Error", color = Color.White)
@@ -142,13 +143,35 @@ fun ExploreScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 CircularProgressIndicator(
-                                    color = Color(0xFFA78BFA),
+                                    color = Color(0xFFFFFFFF),
                                     strokeWidth = 2.dp
                                 )
                             }
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun ExploreGridLoading() {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        contentPadding = PaddingValues(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        items(12) {
+            Column {
+                ShimmerBox(Modifier.fillMaxWidth().aspectRatio(0.68f))
+                Spacer(Modifier.height(7.dp))
+                ShimmerBox(Modifier.fillMaxWidth(0.92f).height(12.dp))
+                Spacer(Modifier.height(5.dp))
+                ShimmerBox(Modifier.fillMaxWidth(0.58f).height(9.dp))
             }
         }
     }

@@ -134,7 +134,7 @@ fun ReaderScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    itemsIndexed(images) { index, url ->
+                    itemsIndexed(images, key = { index, url -> "$index:$url" }) { index, url ->
                         SubcomposeAsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
                                 .data(url)
@@ -148,7 +148,7 @@ fun ReaderScreen(
                                     Modifier
                                         .fillMaxWidth()
                                         .height(400.dp)
-                                        .background(Color(0xFF111111)),
+                                        .background(Color(0xFF000000)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     CircularProgressIndicator(
@@ -203,7 +203,7 @@ fun ReaderScreen(
                 Modifier
                     .padding(bottom = 28.dp)
                     .clip(RoundedCornerShape(28.dp))
-                    .background(Color(0xFF1A1A1F).copy(alpha = 0.92f))
+                    .background(Color(0xFF171717).copy(alpha = 0.92f))
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -216,7 +216,7 @@ fun ReaderScreen(
                     Icon(
                         Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                         "Prev",
-                        tint = if (uiState.content?.prevChapterSlug != null) Color.White else Color.Gray
+                        tint = if (uiState.content?.prevChapterSlug != null) Color.White else Color(0xFF777777)
                     )
                 }
 
@@ -230,7 +230,7 @@ fun ReaderScreen(
                     Icon(
                         Icons.Default.PlayArrow,
                         if (autoScroll) "Pause" else "Auto scroll",
-                        tint = if (autoScroll) Color(0xFF8B5CF6) else Color.White
+                        tint = if (autoScroll) Color(0xFFFFFFFF) else Color.White
                     )
                 }
 
@@ -242,7 +242,7 @@ fun ReaderScreen(
                     Icon(
                         Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         "Next",
-                        tint = if (uiState.content?.nextChapterSlug != null) Color.White else Color.Gray
+                        tint = if (uiState.content?.nextChapterSlug != null) Color.White else Color(0xFF777777)
                     )
                 }
             }
@@ -253,7 +253,7 @@ fun ReaderScreen(
             ModalBottomSheet(
                 onDismissRequest = { showSettings = false },
                 sheetState = rememberModalBottomSheetState(),
-                containerColor = Color(0xFF1A1A1F)
+                containerColor = Color(0xFF171717)
             ) {
                 Column(Modifier.padding(20.dp)) {
                     Text(
@@ -273,7 +273,7 @@ fun ReaderScreen(
                             Text(
                                 "Scroll otomatis seperti tangan",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFFA1A1AA)
+                                color = Color(0xFFBDBDBD)
                             )
                         }
                         Switch(

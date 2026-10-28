@@ -42,11 +42,11 @@ fun shimmerBrush(): Brush {
     )
     return Brush.linearGradient(
         colors = listOf(
-            Color(0xFF1A1A1F),
-            Color(0xFF2A2A32),
-            Color(0xFF3A3A45),
-            Color(0xFF2A2A32),
-            Color(0xFF1A1A1F)
+            Color(0xFF171717),
+            Color(0xFF242424),
+            Color(0xFF333333),
+            Color(0xFF242424),
+            Color(0xFF171717)
         ),
         start = Offset(translate - 250f, 0f),
         end = Offset(translate, 0f)

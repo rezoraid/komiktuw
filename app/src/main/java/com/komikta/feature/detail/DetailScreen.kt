@@ -67,7 +67,7 @@ fun DetailScreen(
     val detail = uiState.detail
 
     Scaffold(
-        containerColor = Color(0xFF0D0D0F),
+        containerColor = Color(0xFF000000),
         topBar = {
             TopAppBar(
                 title = {},
@@ -86,7 +86,7 @@ fun DetailScreen(
         }
     ) { padding ->
         when {
-            uiState.isLoading -> Box(Modifier.fillMaxSize().padding(padding)) { DetailShimmerLoading() }
+            uiState.isLoading && detail == null -> Box(Modifier.fillMaxSize().padding(padding)) { DetailShimmerLoading() }
             uiState.errorMessage != null -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -109,7 +109,7 @@ fun DetailScreen(
                             Box(
                                 Modifier.fillMaxSize().background(
                                     Brush.verticalGradient(
-                                        listOf(Color.Transparent, Color(0xFF0D0D0F))
+                                        listOf(Color.Transparent, Color(0xFF000000))
                                     )
                                 )
                             )
@@ -144,7 +144,7 @@ fun DetailScreen(
                                             Chip(detail.type!!)
                                         }
                                         if (!detail.status.isNullOrBlank()) {
-                                            Chip(detail.status!!, Color(0xFF22C55E))
+                                            Chip(detail.status!!, Color(0xFFFFFFFF))
                                         }
                                     }
                                     Spacer(Modifier.height(4.dp))
@@ -152,7 +152,7 @@ fun DetailScreen(
                                         Text(
                                             text = detail.author!!,
                                             style = MaterialTheme.typography.labelMedium,
-                                            color = Color(0xFFA1A1AA)
+                                            color = Color(0xFFBDBDBD)
                                         )
                                     }
                                 }
@@ -203,12 +203,12 @@ fun DetailScreen(
                                 onClick = { viewModel.toggleBookmark() },
                                 modifier = Modifier
                                     .size(48.dp)
-                                    .background(Color(0xFF1E1E24), RoundedCornerShape(24.dp))
+                                    .background(Color(0xFF1A1A1A), RoundedCornerShape(24.dp))
                             ) {
                                 Icon(
                                     if (isBookmarked) Icons.Filled.Star else Icons.Outlined.Star,
                                     contentDescription = "Bookmark",
-                                    tint = if (isBookmarked) Color(0xFFA78BFA) else Color.White
+                                    tint = if (isBookmarked) Color(0xFFFFFFFF) else Color.White
                                 )
                             }
                         }
@@ -225,7 +225,7 @@ fun DetailScreen(
                                 detail.genres.forEach { genre ->
                                     Surface(
                                         shape = RoundedCornerShape(20.dp),
-                                        color = Color(0xFF1E1E24)
+                                        color = Color(0xFF1A1A1A)
                                     ) {
                                         Text(
                                             text = genre,
@@ -244,7 +244,7 @@ fun DetailScreen(
                             Text(
                                 text = detail.synopsis!!,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFFD4D4D8),
+                                color = Color(0xFFFFFFFF),
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                         }
@@ -265,13 +265,13 @@ fun DetailScreen(
                                 fontWeight = FontWeight.SemiBold
                             )
                             IconButton(onClick = { viewModel.toggleChapterOrder() }) {
-                                Icon(Icons.Default.List, "Sort", tint = Color(0xFFA1A1AA))
+                                Icon(Icons.Default.List, "Sort", tint = Color(0xFFBDBDBD))
                             }
                         }
                     }
 
                     val orderedChapters = if (uiState.chaptersNewestFirst) detail.chapters else detail.chapters.reversed()
-                    items(orderedChapters) { chapter ->
+                    items(orderedChapters, key = { it.slug }) { chapter ->
                         ChapterRow(
                             chapter = chapter,
                             onClick = { onChapterClick(detail.source, detail.slug, chapter.slug) }
@@ -286,7 +286,7 @@ fun DetailScreen(
 }
 
 @Composable
-private fun Chip(text: String, color: Color = Color(0xFF8B5CF6)) {
+private fun Chip(text: String, color: Color = Color(0xFFFFFFFF)) {
     Surface(shape = RoundedCornerShape(6.dp), color = color.copy(alpha = 0.2f)) {
         Text(
             text = text,
@@ -301,7 +301,7 @@ private fun Chip(text: String, color: Color = Color(0xFF8B5CF6)) {
 private fun StatItem(value: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = Color(0xFFA1A1AA))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = Color(0xFFBDBDBD))
     }
 }
 
@@ -324,11 +324,11 @@ private fun ChapterRow(chapter: Chapter, onClick: () -> Unit) {
             Text(
                 text = chapter.timeAgo!!,
                 style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFF71717A)
+                color = Color(0xFF999999)
             )
         }
     }
-    HorizontalDivider(color = Color(0xFF1E1E24), thickness = 0.5.dp)
+    HorizontalDivider(color = Color(0xFF1A1A1A), thickness = 0.5.dp)
 }
 
 private fun formatViews(v: Double): String {

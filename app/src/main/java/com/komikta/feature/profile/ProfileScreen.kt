@@ -23,7 +23,7 @@ fun ProfileScreen() {
     Column(
         Modifier
             .fillMaxSize()
-            .background(Color(0xFF0A0A0C))
+            .background(Color(0xFF000000))
             .padding(20.dp)
     ) {
         Text("Profile", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
@@ -31,7 +31,7 @@ fun ProfileScreen() {
 
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = Color(0xFF121216),
+            color = Color(0xFF0A0A0A),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(Modifier.padding(16.dp)) {
@@ -47,7 +47,7 @@ fun ProfileScreen() {
         Text(
             "Settings & preferences akan ditambahkan di update berikutnya.",
             style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF71717A)
+            color = Color(0xFF999999)
         )
     }
 }
@@ -55,7 +55,7 @@ fun ProfileScreen() {
 @Composable
 private fun InfoRow(label: String, value: String) {
     Column {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = Color(0xFF71717A))
+        Text(label, style = MaterialTheme.typography.labelMedium, color = Color(0xFF999999))
         Spacer(Modifier.height(2.dp))
         Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
     }
