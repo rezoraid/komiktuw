@@ -37,12 +37,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -101,20 +101,18 @@ fun DetailScreen(
                     contentPadding = PaddingValues(bottom = 128.dp)
                 ) {
                     item {
-                        Box(Modifier.fillMaxWidth()) {
+                        Box(Modifier.fillMaxWidth().clipToBounds()) {
                             Box(Modifier.matchParentSize()) {
                                 AsyncImage(
                                     model = ImageRequest.Builder(LocalContext.current)
                                         .data(detail.coverUrl)
-                                        .size(Size(48, 64))
+                                        .size(Size(32, 44))
                                         .crossfade(true)
                                         .build(),
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .graphicsLayer { scaleX = 1.3f; scaleY = 1.3f }
-                                        .blur(28.dp)
+                                    filterQuality = FilterQuality.Medium,
+                                    modifier = Modifier.fillMaxSize()
                                 )
                                 Box(
                                     Modifier.fillMaxSize().background(
@@ -307,7 +305,7 @@ fun DetailScreen(
                     Surface(
                         onClick = { onChapterClick(detail.source, detail.slug, startChapter.slug) },
                         shape = RoundedCornerShape(24.dp),
-                        color = Color(0xF2161618),
+                        color = Color(0xFF161618),
                         border = BorderStroke(1.dp, PanelBorder),
                         modifier = Modifier
                             .align(Alignment.BottomCenter)

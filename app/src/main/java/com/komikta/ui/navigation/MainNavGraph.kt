@@ -35,6 +35,7 @@ fun MainNavGraph() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val isDetail = currentDestination?.route?.startsWith("detail") == true
     val showBottomBar = currentDestination?.route in bottomNavItems.map { it.route }
 
     Scaffold(
@@ -89,7 +90,7 @@ fun MainNavGraph() {
         NavHost(
             navController = navController,
             startDestination = BottomNavItem.Home.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = if (isDetail) Modifier else Modifier.padding(innerPadding)
         ) {
             composable(BottomNavItem.Home.route) {
                 HomeScreen(
