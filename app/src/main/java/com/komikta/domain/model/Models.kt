@@ -1,9 +1,5 @@
 package com.komikta.domain.model
 
-/**
- * Domain models — independent from network DTOs.
- */
-
 data class Source(
     val id: String,
     val name: String,
@@ -36,7 +32,7 @@ data class ComicDetail(
     val author: String? = null,
     val artist: String? = null,
     val year: String? = null,
-    val views: Int? = null,
+    val views: Double? = null,
     val rating: Double? = null,
     val genres: List<String> = emptyList(),
     val totalChapters: Int? = null,
@@ -68,7 +64,7 @@ data class BrowseParams(
     val type: String? = null,
     val status: String? = null,
     val sort: String? = null,
-    val genres: String? = null // comma-separated
+    val genres: String? = null
 )
 
 data class SearchParams(

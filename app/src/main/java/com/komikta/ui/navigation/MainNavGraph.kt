@@ -4,11 +4,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -29,22 +31,23 @@ fun MainNavGraph() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-
     val showBottomBar = currentDestination?.route in bottomNavItems.map { it.route }
 
     Scaffold(
+        containerColor = Color(0xFF0D0D0F),
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = Color(0xFF16161A),
+                    contentColor = Color.White
+                ) {
                     bottomNavItems.forEach { item ->
                         val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
                         NavigationBarItem(
                             selected = selected,
                             onClick = {
                                 navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                     launchSingleTop = true
                                     restoreState = true
                                 }
@@ -55,7 +58,14 @@ fun MainNavGraph() {
                                     contentDescription = item.title
                                 )
                             },
-                            label = { Text(item.title) }
+                            label = { Text(item.title) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = Color(0xFF8B5CF6),
+                                selectedTextColor = Color(0xFF8B5CF6),
+                                unselectedIconColor = Color(0xFF71717A),
+                                unselectedTextColor = Color(0xFF71717A),
+                                indicatorColor = Color(0xFF8B5CF6).copy(alpha = 0.15f)
+                            )
                         )
                     }
                 }
@@ -68,31 +78,16 @@ fun MainNavGraph() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(BottomNavItem.Home.route) {
-                HomeScreen(
-                    onComicClick = { source, slug ->
-                        navController.navigate("detail/$source/$slug")
-                    }
-                )
+                HomeScreen(onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") })
             }
             composable(BottomNavItem.Explore.route) {
-                ExploreScreen(
-                    onComicClick = { source, slug ->
-                        navController.navigate("detail/$source/$slug")
-                    }
-                )
+                ExploreScreen(onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") })
             }
             composable(BottomNavItem.Library.route) {
-                LibraryScreen(
-                    onComicClick = { source, slug ->
-                        navController.navigate("detail/$source/$slug")
-                    }
-                )
+                LibraryScreen(onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") })
             }
-            composable(BottomNavItem.Profile.route) {
-                ProfileScreen()
-            }
+            composable(BottomNavItem.Profile.route) { ProfileScreen() }
 
-            // Detail
             composable(
                 route = "detail/{source}/{slug}",
                 arguments = listOf(
@@ -108,7 +103,6 @@ fun MainNavGraph() {
                 )
             }
 
-            // Reader
             composable(
                 route = "reader/{source}/{comicSlug}/{chapterSlug}",
                 arguments = listOf(
@@ -117,9 +111,7 @@ fun MainNavGraph() {
                     navArgument("chapterSlug") { type = NavType.StringType }
                 )
             ) {
-                ReaderScreen(
-                    onBack = { navController.popBackStack() }
-                )
+                ReaderScreen(onBack = { navController.popBackStack() })
             }
         }
     }

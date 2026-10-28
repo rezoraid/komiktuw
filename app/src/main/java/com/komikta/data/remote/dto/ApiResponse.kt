@@ -78,9 +78,9 @@ data class ComicDetailDto(
     val author: String? = null,
     val artist: String? = null,
     val year: String? = null,
-    val views: Int? = null,
+    val views: Double? = null,          // API kadang kirim 13.3
     val rating: Double? = null,
-    val ratingCount: Int? = null,
+    val ratingCount: Double? = null,
     val genres: List<String> = emptyList(),
     val totalChapters: Int? = null,
     val chapters: List<ChapterSummaryDto> = emptyList()

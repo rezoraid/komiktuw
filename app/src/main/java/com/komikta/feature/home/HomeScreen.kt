@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -27,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.komikta.ui.components.ComicCard
+import com.komikta.ui.components.HomeShimmerLoading
 
 @Composable
 fun HomeScreen(
@@ -36,84 +36,87 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     when {
-        uiState.isLoading && uiState.latestComics.isEmpty() -> {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        }
+        uiState.isLoading && uiState.latestComics.isEmpty() -> HomeShimmerLoading()
         uiState.errorMessage != null && uiState.latestComics.isEmpty() -> {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(uiState.errorMessage ?: "Error")
-                    Spacer(Modifier.height(8.dp))
-                    TextButton(onClick = { viewModel.loadHome() }) {
-                        Text("Retry")
-                    }
+                    Text(uiState.errorMessage ?: "Something went wrong")
+                    Spacer(Modifier.height(12.dp))
+                    TextButton(onClick = { viewModel.loadHome() }) { Text("Retry") }
                 }
             }
         }
         else -> {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                contentPadding = PaddingValues(bottom = 24.dp)
             ) {
                 item {
                     Text(
                         text = "Komikta",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.headlineLarge,
+                        modifier = Modifier.padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 4.dp)
+                    )
+                    Text(
+                        text = "Discover stories",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 20.dp, bottom = 20.dp)
                     )
                 }
 
                 if (uiState.popularComics.isNotEmpty()) {
                     item {
-                        Text(
-                            text = "Popular",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        SectionTitle("Popular")
                     }
                     item {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(uiState.popularComics.take(10)) { comic ->
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(uiState.popularComics.take(12)) { comic ->
                                 ComicCard(
                                     comic = comic,
                                     onClick = { onComicClick(comic.source, comic.slug) },
-                                    modifier = Modifier.width(140.dp)
+                                    modifier = Modifier.width(130.dp)
                                 )
                             }
                         }
                     }
+                    item { Spacer(Modifier.height(24.dp)) }
                 }
 
-                item {
-                    Text(
-                        text = "Latest Update",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                item { SectionTitle("Latest Update") }
 
                 val rows = uiState.latestComics.chunked(2)
-                items(rows) { rowComics ->
+                items(rows) { row ->
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        rowComics.forEach { comic ->
+                        row.forEach { comic ->
                             ComicCard(
                                 comic = comic,
                                 onClick = { onComicClick(comic.source, comic.slug) },
                                 modifier = Modifier.weight(1f)
                             )
                         }
-                        if (rowComics.size == 1) {
-                            Spacer(Modifier.weight(1f))
-                        }
+                        if (row.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+    )
 }
