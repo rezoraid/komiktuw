@@ -8,6 +8,7 @@ import com.komikta.domain.model.Comic
 import com.komikta.domain.usecase.GetLatestComicsUseCase
 import com.komikta.domain.usecase.GetPopularComicsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,8 +42,12 @@ class HomeViewModel @Inject constructor(
 
             val source = ApiConfig.DEFAULT_SOURCE
 
-            val latestResult = getLatestComics(source, page = 1)
-            val popularResult = getPopularComics(source)
+            // Parallel load
+            val latestDeferred = async { getLatestComics(source, page = 1) }
+            val popularDeferred = async { getPopularComics(source) }
+
+            val latestResult = latestDeferred.await()
+            val popularResult = popularDeferred.await()
 
             val latest = (latestResult as? Result.Success)?.data.orEmpty()
             val popular = (popularResult as? Result.Success)?.data.orEmpty()
