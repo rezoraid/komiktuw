@@ -1,16 +1,20 @@
 package com.komikta.feature.library
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -20,6 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.komikta.domain.model.Comic
@@ -32,84 +38,70 @@ fun LibraryScreen(
 ) {
     val bookmarks by viewModel.bookmarks.collectAsState()
     val history by viewModel.history.collectAsState()
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var tab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Bookmarks", "History")
 
-    Column(Modifier.fillMaxSize()) {
-        TabRow(selectedTabIndex = selectedTab) {
-            tabs.forEachIndexed { index, title ->
+    Column(Modifier.fillMaxSize().background(Color(0xFF0A0A0C))) {
+        Text(
+            "Library",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 8.dp)
+        )
+        TabRow(
+            selectedTabIndex = tab,
+            containerColor = Color.Transparent,
+            contentColor = Color(0xFFA78BFA),
+            indicator = { positions ->
+                TabRowDefaults.SecondaryIndicator(
+                    Modifier.tabIndicatorOffset(positions[tab]),
+                    color = Color(0xFFA78BFA)
+                )
+            }
+        ) {
+            tabs.forEachIndexed { i, title ->
                 Tab(
-                    selected = selectedTab == index,
-                    onClick = { selectedTab = index },
-                    text = { Text(title) }
+                    selected = tab == i,
+                    onClick = { tab = i },
+                    text = {
+                        Text(
+                            title,
+                            color = if (tab == i) Color(0xFFA78BFA) else Color(0xFF71717A)
+                        )
+                    }
                 )
             }
         }
 
-        when (selectedTab) {
-            0 -> {
-                if (bookmarks.isEmpty()) {
-                    EmptyState("No bookmarks yet")
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(bookmarks) { item ->
-                            ComicCard(
-                                comic = Comic(
-                                    title = item.comicTitle,
-                                    slug = item.comicSlug,
-                                    coverUrl = item.coverUrl,
-                                    type = item.type,
-                                    status = item.status,
-                                    source = item.source
-                                ),
-                                onClick = { onComicClick(item.source, item.comicSlug) }
-                            )
-                        }
-                    }
-                }
+        val list = if (tab == 0) {
+            bookmarks.map {
+                Comic(it.comicTitle, it.comicSlug, it.coverUrl, it.type, it.status, source = it.source)
             }
-            1 -> {
-                if (history.isEmpty()) {
-                    EmptyState("No reading history yet")
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(history) { item ->
-                            ComicCard(
-                                comic = Comic(
-                                    title = item.comicTitle,
-                                    slug = item.comicSlug,
-                                    coverUrl = item.coverUrl,
-                                    source = item.source
-                                ),
-                                onClick = { onComicClick(item.source, item.comicSlug) }
-                            )
-                        }
-                    }
+        } else {
+            history.map {
+                Comic(it.comicTitle, it.comicSlug, it.coverUrl, source = it.source)
+            }
+        }
+
+        if (list.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    if (tab == 0) "Belum ada bookmark" else "Belum ada history",
+                    color = Color(0xFF71717A)
+                )
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                contentPadding = PaddingValues(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(list) { comic ->
+                    ComicCard(comic = comic, onClick = { onComicClick(comic.source, comic.slug) })
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun EmptyState(message: String) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,8 +22,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.komikta.domain.model.Comic
@@ -35,66 +38,84 @@ fun ComicCard(
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(0.68f)
-                .clip(RoundedCornerShape(14.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFF1E1E24))
         ) {
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(comic.coverUrl)
-                    .crossfade(300)
+                    .crossfade(250)
                     .build(),
                 contentDescription = comic.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
-                loading = {
-                    ShimmerBox(Modifier.fillMaxSize())
-                },
+                loading = { ShimmerBox(Modifier.fillMaxSize()) },
                 error = {
-                    Box(
-                        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("No Cover", style = MaterialTheme.typography.labelSmall)
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("?", color = Color(0xFF52525B), fontSize = 24.sp)
                     }
                 }
             )
-            // Gradient overlay at bottom for status
+            // Type badge top-left
+            if (!comic.type.isNullOrBlank()) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(6.dp),
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color.Black.copy(0.65f)
+                ) {
+                    Text(
+                        text = comic.type!!,
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+            // Bottom gradient
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .height(40.dp)
+                    .height(36.dp)
                     .align(Alignment.BottomCenter)
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
+                            listOf(Color.Transparent, Color.Black.copy(0.75f))
                         )
                     )
             )
-            if (!comic.status.isNullOrBlank()) {
-                Text(
-                    text = comic.status.orEmpty(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(8.dp)
-                )
-            }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
         Text(
             text = comic.title,
-            style = MaterialTheme.typography.bodyMedium,
+            color = Color(0xFFF4F4F5),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
+            lineHeight = 15.sp,
             modifier = Modifier.padding(horizontal = 2.dp)
         )
+        if (!comic.status.isNullOrBlank() || comic.rating != null) {
+            Text(
+                text = listOfNotNull(
+                    comic.rating?.let { "★ $it" },
+                    comic.status
+                ).joinToString(" · "),
+                color = Color(0xFF71717A),
+                fontSize = 10.sp,
+                maxLines = 1,
+                modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
+            )
+        }
     }
 }

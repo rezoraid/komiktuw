@@ -4,6 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.komikta.core.common.Result
+import com.komikta.data.local.dao.ReadingHistoryDao
+import com.komikta.data.local.entity.ReadingHistoryEntity
 import com.komikta.domain.model.ChapterContent
 import com.komikta.domain.usecase.GetChapterContentUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,6 +27,7 @@ data class ReaderUiState(
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
     private val getChapterContent: GetChapterContentUseCase,
+    private val historyDao: ReadingHistoryDao,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -35,9 +38,7 @@ class ReaderViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ReaderUiState(source = source, comicSlug = comicSlug))
     val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
 
-    init {
-        loadChapter()
-    }
+    init { loadChapter() }
 
     fun loadChapter(newChapterSlug: String? = null) {
         if (newChapterSlug != null) chapterSlug = newChapterSlug
@@ -48,8 +49,11 @@ class ReaderViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             when (val result = getChapterContent(source, comicSlug, chapterSlug)) {
-                is Result.Success -> _uiState.update {
-                    it.copy(isLoading = false, content = result.data, source = source, comicSlug = comicSlug)
+                is Result.Success -> {
+                    _uiState.update {
+                        it.copy(isLoading = false, content = result.data, source = source, comicSlug = comicSlug)
+                    }
+                    saveHistory(result.data)
                 }
                 is Result.Error -> _uiState.update {
                     it.copy(isLoading = false, errorMessage = result.message)
@@ -57,6 +61,22 @@ class ReaderViewModel @Inject constructor(
                 else -> _uiState.update { it.copy(isLoading = false) }
             }
         }
+    }
+
+    private suspend fun saveHistory(content: ChapterContent) {
+        val id = "${source}_$comicSlug"
+        historyDao.upsert(
+            ReadingHistoryEntity(
+                id = id,
+                source = source,
+                comicSlug = comicSlug,
+                comicTitle = content.title ?: comicSlug,
+                coverUrl = null,
+                lastChapterSlug = chapterSlug,
+                lastChapterNumber = content.title,
+                lastReadAt = System.currentTimeMillis()
+            )
+        )
     }
 
     fun goPrev() {

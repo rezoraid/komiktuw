@@ -9,47 +9,40 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Modern dark palette
-private val Background = Color(0xFF0D0D0F)
-private val Surface = Color(0xFF16161A)
-private val SurfaceVariant = Color(0xFF1E1E24)
-private val Primary = Color(0xFF8B5CF6)       // soft violet
-private val OnPrimary = Color.White
-private val Secondary = Color(0xFF22D3EE)     // cyan accent
-private val TextPrimary = Color(0xFFF4F4F5)
-private val TextSecondary = Color(0xFFA1A1AA)
-private val Divider = Color(0xFF27272A)
+private val Bg = Color(0xFF0A0A0C)
+private val Surface = Color(0xFF121216)
+private val Surface2 = Color(0xFF1A1A20)
+private val Primary = Color(0xFFA78BFA)
+private val Text1 = Color(0xFFFAFAFA)
+private val Text2 = Color(0xFFA1A1AA)
+private val Text3 = Color(0xFF71717A)
 
-private val DarkColorScheme = darkColorScheme(
+private val Scheme = darkColorScheme(
     primary = Primary,
-    onPrimary = OnPrimary,
-    secondary = Secondary,
-    background = Background,
-    onBackground = TextPrimary,
+    onPrimary = Color.Black,
+    secondary = Color(0xFF22D3EE),
+    background = Bg,
+    onBackground = Text1,
     surface = Surface,
-    onSurface = TextPrimary,
-    surfaceVariant = SurfaceVariant,
-    onSurfaceVariant = TextSecondary,
-    outline = Divider
+    onSurface = Text1,
+    surfaceVariant = Surface2,
+    onSurfaceVariant = Text2,
+    outline = Color(0xFF27272A)
 )
 
-private val AppTypography = Typography(
-    headlineLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 28.sp, color = TextPrimary),
-    headlineMedium = TextStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp, color = TextPrimary),
-    titleLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 18.sp, color = TextPrimary),
-    titleMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = TextPrimary),
-    bodyLarge = TextStyle(fontWeight = FontWeight.Normal, fontSize = 15.sp, color = TextPrimary),
-    bodyMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 14.sp, color = TextPrimary),
-    labelLarge = TextStyle(fontWeight = FontWeight.Medium, fontSize = 13.sp, color = TextSecondary),
-    labelMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 12.sp, color = TextSecondary),
-    labelSmall = TextStyle(fontWeight = FontWeight.Medium, fontSize = 11.sp, color = TextSecondary)
+private val Type = Typography(
+    headlineLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 26.sp, color = Text1),
+    headlineMedium = TextStyle(fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Text1),
+    titleLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = Text1),
+    titleMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = Text1),
+    bodyLarge = TextStyle(fontWeight = FontWeight.Normal, fontSize = 14.sp, color = Text1),
+    bodyMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 13.sp, color = Text1),
+    labelLarge = TextStyle(fontWeight = FontWeight.Medium, fontSize = 12.sp, color = Text2),
+    labelMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 11.sp, color = Text2),
+    labelSmall = TextStyle(fontWeight = FontWeight.Medium, fontSize = 10.sp, color = Text3)
 )
 
 @Composable
 fun KomiktaTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = DarkColorScheme,
-        typography = AppTypography,
-        content = content
-    )
+    MaterialTheme(colorScheme = Scheme, typography = Type, content = content)
 }

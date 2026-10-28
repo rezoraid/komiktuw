@@ -54,6 +54,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val continueReading by viewModel.continueReading.collectAsState()
 
     when {
         uiState.isLoading && uiState.latestComics.isEmpty() -> HomeShimmerLoading()
@@ -104,6 +105,49 @@ fun HomeScreen(
                             onClick = { onComicClick(featured.source, featured.slug) }
                         )
                         Spacer(Modifier.height(20.dp))
+                    }
+                }
+
+                // Continue reading
+                if (continueReading.isNotEmpty()) {
+                    item { SectionHeader("Continue reading", "History") }
+                    item {
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(continueReading) { item ->
+                                Column(
+                                    Modifier
+                                        .width(140.dp)
+                                        .clickable { onComicClick(item.source, item.comicSlug) }
+                                ) {
+                                    AsyncImage(
+                                        model = item.coverUrl,
+                                        contentDescription = item.comicTitle,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(90.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                    )
+                                    Spacer(Modifier.height(6.dp))
+                                    Text(
+                                        item.comicTitle,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        item.lastChapterNumber ?: item.lastChapterSlug ?: "",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color(0xFF71717A),
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(16.dp))
                     }
                 }
 

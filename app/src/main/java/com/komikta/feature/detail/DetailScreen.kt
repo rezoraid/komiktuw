@@ -22,7 +22,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,6 +64,7 @@ fun DetailScreen(
     viewModel: DetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val isBookmarked by viewModel.isBookmarked.collectAsState()
     val detail = uiState.detail
 
     Scaffold(
@@ -175,22 +179,39 @@ fun DetailScreen(
                     item {
                         val firstChapter = detail.chapters.lastOrNull() // usually oldest first or reverse
                         val startChapter = detail.chapters.firstOrNull()
-                        Button(
-                            onClick = {
-                                startChapter?.let {
-                                    onChapterClick(detail.source, detail.slug, it.slug)
-                                }
-                            },
-                            modifier = Modifier
+                        Row(
+                            Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                                .height(48.dp),
-                            shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.PlayArrow, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Start Reading", fontWeight = FontWeight.SemiBold)
+                            Button(
+                                onClick = {
+                                    startChapter?.let {
+                                        onChapterClick(detail.source, detail.slug, it.slug)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
+                            ) {
+                                Icon(Icons.Default.PlayArrow, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Start Reading", fontWeight = FontWeight.SemiBold)
+                            }
+                            IconButton(
+                                onClick = { viewModel.toggleBookmark() },
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(Color(0xFF1E1E24), RoundedCornerShape(24.dp))
+                            ) {
+                                Icon(
+                                    if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                    contentDescription = "Bookmark",
+                                    tint = if (isBookmarked) Color(0xFFA78BFA) else Color.White
+                                )
+                            }
                         }
                     }
 
@@ -232,15 +253,26 @@ fun DetailScreen(
 
                     // Chapters header
                     item {
-                        Text(
-                            text = "Chapters · ${detail.chapters.size}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
-                        )
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Chapters · ${detail.chapters.size}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            IconButton(onClick = { viewModel.toggleChapterOrder() }) {
+                                Icon(Icons.Default.SwapVert, "Sort", tint = Color(0xFFA1A1AA))
+                            }
+                        }
                     }
 
-                    items(detail.chapters) { chapter ->
+                    val orderedChapters = if (uiState.chaptersNewestFirst) detail.chapters else detail.chapters.reversed()
+                    items(orderedChapters) { chapter ->
                         ChapterRow(
                             chapter = chapter,
                             onClick = { onChapterClick(detail.source, detail.slug, chapter.slug) }
