@@ -1,6 +1,8 @@
 package com.komikta.ui.navigation
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -11,6 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -37,36 +41,46 @@ fun MainNavGraph() {
         containerColor = Color(0xFF000000),
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar(
-                    containerColor = Color(0xFF080808),
-                    contentColor = Color.White
-                ) {
-                    bottomNavItems.forEach { item ->
-                        val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = {
-                                Icon(
-                                    imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                    contentDescription = item.title
+                Column {
+                    HorizontalDivider(thickness = 1.dp, color = Color(0xFF2E2E30))
+                    NavigationBar(
+                        containerColor = Color(0xFF232325),
+                        contentColor = Color.White,
+                        tonalElevation = 0.dp
+                    ) {
+                        bottomNavItems.forEach { item ->
+                            val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
+                            NavigationBarItem(
+                                selected = selected,
+                                onClick = {
+                                    navController.navigate(item.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                icon = {
+                                    Icon(
+                                        imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                                        contentDescription = item.title
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        item.title,
+                                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                                    )
+                                },
+                                alwaysShowLabel = true,
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = Color.White,
+                                    selectedTextColor = Color.White,
+                                    unselectedIconColor = Color(0xFF9C98A2),
+                                    unselectedTextColor = Color(0xFF9C98A2),
+                                    indicatorColor = Color(0xFF3A3A3C)
                                 )
-                            },
-                            label = { Text(item.title) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Color(0xFFFFFFFF),
-                                selectedTextColor = Color(0xFFFFFFFF),
-                                unselectedIconColor = Color(0xFF999999),
-                                unselectedTextColor = Color(0xFF999999),
-                                indicatorColor = Color(0xFFFFFFFF).copy(alpha = 0.15f)
                             )
-                        )
+                        }
                     }
                 }
             }

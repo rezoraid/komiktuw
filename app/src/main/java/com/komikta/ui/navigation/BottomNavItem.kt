@@ -1,14 +1,5 @@
 package com.komikta.ui.navigation
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class BottomNavItem(
@@ -20,29 +11,29 @@ sealed class BottomNavItem(
     data object Home : BottomNavItem(
         route = "home",
         title = "Home",
-        selectedIcon = Icons.Filled.Home,
-        unselectedIcon = Icons.Outlined.Home
+        selectedIcon = NavIcons.home(true),
+        unselectedIcon = NavIcons.home(false)
     )
 
     data object Explore : BottomNavItem(
         route = "explore",
         title = "Explore",
-        selectedIcon = Icons.Filled.Search,
-        unselectedIcon = Icons.Outlined.Search
+        selectedIcon = NavIcons.explore(true),
+        unselectedIcon = NavIcons.explore(false)
     )
 
     data object Library : BottomNavItem(
         route = "library",
         title = "Library",
-        selectedIcon = Icons.Filled.Star,
-        unselectedIcon = Icons.Outlined.Star
+        selectedIcon = NavIcons.library(true),
+        unselectedIcon = NavIcons.library(false)
     )
 
     data object Profile : BottomNavItem(
         route = "profile",
         title = "Profile",
-        selectedIcon = Icons.Filled.Person,
-        unselectedIcon = Icons.Outlined.Person
+        selectedIcon = NavIcons.profile(true),
+        unselectedIcon = NavIcons.profile(false)
     )
 }
 
