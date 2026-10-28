@@ -78,7 +78,16 @@ fun MainNavGraph() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(BottomNavItem.Home.route) {
-                HomeScreen(onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") })
+                HomeScreen(
+                    onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") },
+                    onSearchClick = {
+                        navController.navigate(BottomNavItem.Explore.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
             }
             composable(BottomNavItem.Explore.route) {
                 ExploreScreen(onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") })

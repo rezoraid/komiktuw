@@ -17,27 +17,30 @@ import javax.inject.Inject
 data class ReaderUiState(
     val isLoading: Boolean = true,
     val content: ChapterContent? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val source: String = "",
+    val comicSlug: String = ""
 )
 
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
     private val getChapterContent: GetChapterContentUseCase,
-    savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val source: String = savedStateHandle["source"] ?: "lumos"
-    private val comicSlug: String = savedStateHandle["comicSlug"] ?: ""
-    private val chapterSlug: String = savedStateHandle["chapterSlug"] ?: ""
+    private var source: String = savedStateHandle["source"] ?: "lumos"
+    private var comicSlug: String = savedStateHandle["comicSlug"] ?: ""
+    private var chapterSlug: String = savedStateHandle["chapterSlug"] ?: ""
 
-    private val _uiState = MutableStateFlow(ReaderUiState())
+    private val _uiState = MutableStateFlow(ReaderUiState(source = source, comicSlug = comicSlug))
     val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
 
     init {
         loadChapter()
     }
 
-    fun loadChapter() {
+    fun loadChapter(newChapterSlug: String? = null) {
+        if (newChapterSlug != null) chapterSlug = newChapterSlug
         if (comicSlug.isBlank() || chapterSlug.isBlank()) {
             _uiState.update { it.copy(isLoading = false, errorMessage = "Invalid chapter") }
             return
@@ -46,7 +49,7 @@ class ReaderViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             when (val result = getChapterContent(source, comicSlug, chapterSlug)) {
                 is Result.Success -> _uiState.update {
-                    it.copy(isLoading = false, content = result.data)
+                    it.copy(isLoading = false, content = result.data, source = source, comicSlug = comicSlug)
                 }
                 is Result.Error -> _uiState.update {
                     it.copy(isLoading = false, errorMessage = result.message)
@@ -54,5 +57,13 @@ class ReaderViewModel @Inject constructor(
                 else -> _uiState.update { it.copy(isLoading = false) }
             }
         }
+    }
+
+    fun goPrev() {
+        _uiState.value.content?.prevChapterSlug?.let { loadChapter(it) }
+    }
+
+    fun goNext() {
+        _uiState.value.content?.nextChapterSlug?.let { loadChapter(it) }
     }
 }
