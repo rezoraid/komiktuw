@@ -4,11 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -31,6 +27,7 @@ import com.komikta.ui.components.ComicCard
 
 @Composable
 fun LibraryScreen(
+    onComicClick: (source: String, slug: String) -> Unit = { _, _ -> },
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val bookmarks by viewModel.bookmarks.collectAsState()
@@ -70,7 +67,8 @@ fun LibraryScreen(
                                     type = item.type,
                                     status = item.status,
                                     source = item.source
-                                )
+                                ),
+                                onClick = { onComicClick(item.source, item.comicSlug) }
                             )
                         }
                     }
@@ -94,7 +92,8 @@ fun LibraryScreen(
                                     slug = item.comicSlug,
                                     coverUrl = item.coverUrl,
                                     source = item.source
-                                )
+                                ),
+                                onClick = { onComicClick(item.source, item.comicSlug) }
                             )
                         }
                     }

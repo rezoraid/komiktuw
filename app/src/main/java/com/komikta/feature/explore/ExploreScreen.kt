@@ -4,10 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -16,7 +14,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +27,7 @@ import com.komikta.ui.components.ComicCard
 
 @Composable
 fun ExploreScreen(
+    onComicClick: (source: String, slug: String) -> Unit = { _, _ -> },
     viewModel: ExploreViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -71,7 +69,10 @@ fun ExploreScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(uiState.comics) { comic ->
-                        ComicCard(comic = comic)
+                        ComicCard(
+                            comic = comic,
+                            onClick = { onComicClick(comic.source, comic.slug) }
+                        )
                     }
                 }
             }

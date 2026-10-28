@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,9 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +30,7 @@ import com.komikta.ui.components.ComicCard
 
 @Composable
 fun HomeScreen(
+    onComicClick: (source: String, slug: String) -> Unit = { _, _ -> },
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -80,6 +79,7 @@ fun HomeScreen(
                             items(uiState.popularComics.take(10)) { comic ->
                                 ComicCard(
                                     comic = comic,
+                                    onClick = { onComicClick(comic.source, comic.slug) },
                                     modifier = Modifier.width(140.dp)
                                 )
                             }
@@ -95,20 +95,19 @@ fun HomeScreen(
                     )
                 }
 
-                // Simple 2-column using chunked rows (avoids nested scroll issues)
                 val rows = uiState.latestComics.chunked(2)
                 items(rows) { rowComics ->
-                    androidx.compose.foundation.layout.Row(
+                    Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         rowComics.forEach { comic ->
                             ComicCard(
                                 comic = comic,
+                                onClick = { onComicClick(comic.source, comic.slug) },
                                 modifier = Modifier.weight(1f)
                             )
                         }
-                        // Fill empty space if odd number
                         if (rowComics.size == 1) {
                             Spacer(Modifier.weight(1f))
                         }
