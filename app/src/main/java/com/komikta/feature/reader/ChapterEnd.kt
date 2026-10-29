@@ -44,8 +44,9 @@ fun ChapterEnd(
     fallbackTitle: String?,
     nextSlug: String?,
     next: Chapter?,
-    onNext: () -> Unit,
-    modifier: Modifier = Modifier
+    onNext: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false
 ) {
     val currentNumber = cleanNumber(current?.number)
     val finished = currentNumber?.let { "Chapter $it selesai" } ?: fallbackTitle?.takeIf { it.isNotBlank() }?.let { "$it selesai" } ?: "Chapter selesai"
@@ -54,7 +55,7 @@ fun ChapterEnd(
             .fillMaxWidth()
             .background(Brush.verticalGradient(listOf(Color.Black, Color(0xFF080808))))
             .padding(horizontal = 20.dp)
-            .padding(top = 56.dp, bottom = 120.dp),
+            .padding(top = if (compact) 48.dp else 56.dp, bottom = if (compact) 48.dp else 120.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(AppIcons.checkCircle, null, tint = Color.White, modifier = Modifier.size(44.dp))
@@ -79,7 +80,7 @@ fun ChapterEnd(
                     .clip(CardShape)
                     .background(Brush.verticalGradient(listOf(Color(0xFF141414), Color(0xFF0C0C0C))))
                     .border(1.dp, Line, CardShape)
-                    .clickable(onClick = onNext)
+                    .then(if (onNext != null) Modifier.clickable(onClick = onNext) else Modifier)
                     .padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -98,9 +99,11 @@ fun ChapterEnd(
                         Text(title, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Normal), color = Color(0xFFB5B5B5), maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                Spacer(Modifier.size(12.dp))
-                Box(Modifier.size(40.dp).clip(CircleShape).border(1.dp, Line, CircleShape), contentAlignment = Alignment.Center) {
-                    Icon(AppIcons.arrowRight, "Next", tint = Color.White, modifier = Modifier.size(20.dp))
+                if (onNext != null) {
+                    Spacer(Modifier.size(12.dp))
+                    Box(Modifier.size(40.dp).clip(CircleShape).border(1.dp, Line, CircleShape), contentAlignment = Alignment.Center) {
+                        Icon(AppIcons.arrowRight, "Next", tint = Color.White, modifier = Modifier.size(20.dp))
+                    }
                 }
             }
         }

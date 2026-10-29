@@ -24,7 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,7 +48,6 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -64,7 +63,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.SubcomposeAsyncImage
+import coil.compose.AsyncImage
 import coil.imageLoader
 import coil.size.Dimension
 import coil.size.Size
@@ -72,8 +71,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.aspectRatio
+import coil.request.CachePolicy
 import coil.request.ImageRequest
+import com.komikta.domain.model.ChapterContent
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 
 enum class ScrollMode { Smooth, Swipe }
@@ -105,24 +108,43 @@ fun ReaderScreen(
 
     val density = LocalDensity.current
 
-    val atEnd by remember {
-        derivedStateOf {
-            val info = listState.layoutInfo
-            val last = info.visibleItemsInfo.lastOrNull()
-            info.totalItemsCount > 0 && last != null && last.index == info.totalItemsCount - 1 &&
-                (info.viewportEndOffset - last.offset) >= last.size * 0.6f
+    val context = LocalContext.current
+    val screenWidthPx = with(density) { LocalConfiguration.current.screenWidthDp.dp.roundToPx() }
+    val readerItems = remember(uiState.loaded) { buildReaderItems(uiState.loaded) }
+    val ratios = remember { HashMap<String, Float>() }
+    val firstSlug = uiState.loaded.firstOrNull()?.chapterSlug
+
+    LaunchedEffect(firstSlug) { if (firstSlug != null) listState.scrollToItem(0) }
+
+    LaunchedEffect(readerItems) {
+        snapshotFlow { readerItems.getOrNull(listState.firstVisibleItemIndex)?.chapterSlug }
+            .filterNotNull()
+            .distinctUntilChanged()
+            .collect { viewModel.setCurrent(it) }
+    }
+
+    LaunchedEffect(readerItems) {
+        var done = -1
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }.collect { last ->
+            if (last < 0) return@collect
+            val end = (last + 4).coerceAtMost(readerItems.lastIndex)
+            for (i in maxOf(last + 1, done + 1)..end) {
+                (readerItems[i] as? ReaderItem.Page)?.let { context.imageLoader.enqueue(pageRequest(context, it.url, screenWidthPx)) }
+            }
+            done = maxOf(done, end)
         }
     }
-    val nextSlug = uiState.content?.nextChapterSlug
-    val chapterKey = uiState.content?.chapterSlug
 
-    LaunchedEffect(chapterKey) { if (chapterKey != null) listState.scrollToItem(0) }
+    LaunchedEffect(readerItems, autoNext) {
+        if (!autoNext) return@LaunchedEffect
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }.collect { last ->
+            if (last >= 0 && last >= readerItems.size - 6) viewModel.appendNext()
+        }
+    }
 
-    LaunchedEffect(atEnd, autoNext, nextSlug, chapterKey, uiState.isLoading) {
-        if (atEnd && autoNext && !nextSlug.isNullOrBlank() && !uiState.isLoading) {
-            autoScroll = false
-            delay(2500)
-            viewModel.goNext()
+    LaunchedEffect(uiState.upcoming?.chapterSlug) {
+        uiState.upcoming?.imageUrls?.take(3)?.forEach {
+            context.imageLoader.enqueue(pageRequest(context, it, screenWidthPx, diskOnly = true))
         }
     }
 
@@ -178,60 +200,38 @@ fun ReaderScreen(
                 }
             }
             uiState.content != null -> {
-                val images = uiState.content!!.imageUrls
-                val context = LocalContext.current
-                val screenWidthPx = with(LocalDensity.current) {
-                    LocalConfiguration.current.screenWidthDp.dp.roundToPx()
-                }
-                fun request(url: String) = ImageRequest.Builder(context)
-                    .data(url)
-                    .size(Size(screenWidthPx, Dimension.Undefined))
-                    .crossfade(false)
-                    .build()
-
-                LaunchedEffect(images) {
-                    snapshotFlow { listState.firstVisibleItemIndex }.collect { first ->
-                        val end = (first + 8).coerceAtMost(images.lastIndex)
-                        for (i in first..end) {
-                            context.imageLoader.enqueue(request(images[i]))
-                        }
-                    }
-                }
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    itemsIndexed(images, key = { index, url -> "$index:$url" }) { index, url ->
-                        SubcomposeAsyncImage(
-                            model = request(url),
-                            contentDescription = "Page ${index + 1}",
-                            contentScale = ContentScale.FillWidth,
-                            modifier = Modifier.fillMaxWidth(),
-                            loading = {
-                                Box(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .aspectRatio(0.7f)
-                                        .background(Color(0xFF000000)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(
-                                        color = Color.White.copy(0.5f),
-                                        strokeWidth = 2.dp,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
+                    items(readerItems, key = { it.key }, contentType = { it::class }) { item ->
+                        when (item) {
+                            is ReaderItem.Page -> PageImage(item.url, screenWidthPx, ratios)
+                            is ReaderItem.Divider -> {
+                                val info = uiState.chapterInfo
+                                val nextSlug = uiState.loaded.firstOrNull { it.chapterSlug == item.chapterSlug }?.nextChapterSlug
+                                ChapterEnd(
+                                    current = info[item.chapterSlug],
+                                    fallbackTitle = uiState.loaded.firstOrNull { it.chapterSlug == item.chapterSlug }?.title,
+                                    nextSlug = nextSlug,
+                                    next = nextSlug?.let { info[it] },
+                                    onNext = null,
+                                    compact = true
+                                )
                             }
-                        )
-                    }
-                    item(key = "chapter-end") {
-                        ChapterEnd(
-                            current = uiState.currentChapter,
-                            fallbackTitle = uiState.content?.title,
-                            nextSlug = nextSlug,
-                            next = uiState.nextChapter,
-                            onNext = { viewModel.goNext() }
-                        )
+                            is ReaderItem.End -> {
+                                val info = uiState.chapterInfo
+                                val chapter = uiState.loaded.firstOrNull { it.chapterSlug == item.chapterSlug }
+                                val nextSlug = chapter?.nextChapterSlug
+                                ChapterEnd(
+                                    current = info[item.chapterSlug],
+                                    fallbackTitle = chapter?.title,
+                                    nextSlug = nextSlug,
+                                    next = nextSlug?.let { info[it] },
+                                    onNext = { if (autoNext) viewModel.appendNext() else viewModel.goNext() }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -403,6 +403,78 @@ fun ReaderScreen(
                     Spacer(Modifier.height(24.dp))
                 }
             }
+        }
+    }
+}
+
+sealed interface ReaderItem {
+    val key: String
+    val chapterSlug: String
+    data class Page(override val chapterSlug: String, val index: Int, val url: String) : ReaderItem {
+        override val key get() = "$chapterSlug:$index:$url"
+    }
+    data class Divider(override val chapterSlug: String) : ReaderItem {
+        override val key get() = "divider:$chapterSlug"
+    }
+    data class End(override val chapterSlug: String) : ReaderItem {
+        override val key get() = "end:$chapterSlug"
+    }
+}
+
+private fun buildReaderItems(chapters: List<ChapterContent>): List<ReaderItem> = buildList {
+    chapters.forEachIndexed { i, c ->
+        c.imageUrls.forEachIndexed { idx, url -> add(ReaderItem.Page(c.chapterSlug, idx, url)) }
+        add(if (i < chapters.lastIndex) ReaderItem.Divider(c.chapterSlug) else ReaderItem.End(c.chapterSlug))
+    }
+}
+
+private fun pageRequest(context: android.content.Context, url: String, widthPx: Int, diskOnly: Boolean = false) =
+    ImageRequest.Builder(context)
+        .data(url)
+        .size(Size(widthPx, Dimension.Undefined))
+        .crossfade(false)
+        .apply { if (diskOnly) memoryCachePolicy(CachePolicy.DISABLED) }
+        .build()
+
+@Composable
+private fun PageImage(url: String, widthPx: Int, ratios: HashMap<String, Float>) {
+    val context = LocalContext.current
+    var retry by remember(url) { mutableStateOf(0) }
+    var failed by remember(url) { mutableStateOf(false) }
+    var ratio by remember(url) { mutableStateOf(ratios[url]) }
+    val request = remember(url, widthPx, retry) { pageRequest(context, url, widthPx) }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .aspectRatio(ratio ?: 0.7f)
+            .background(Color.Black),
+        contentAlignment = Alignment.Center
+    ) {
+        AsyncImage(
+            model = request,
+            contentDescription = null,
+            contentScale = ContentScale.FillWidth,
+            modifier = Modifier.fillMaxSize(),
+            onSuccess = { s ->
+                val d = s.painter.intrinsicSize
+                if (d.width > 0f && d.height > 0f) {
+                    val r = d.width / d.height
+                    ratios[url] = r
+                    ratio = r
+                }
+                failed = false
+            },
+            onError = { failed = true }
+        )
+        if (failed) {
+            Text(
+                "Gagal memuat. Ketuk untuk ulangi",
+                style = MaterialTheme.typography.labelMedium,
+                color = Color(0xFF8A8A8A),
+                modifier = Modifier.clickable { failed = false; retry++ }.padding(16.dp)
+            )
+        } else if (ratio == null) {
+            CircularProgressIndicator(color = Color.White.copy(0.5f), strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
         }
     }
 }

@@ -14,6 +14,7 @@ import com.komikta.domain.model.ChapterContent
 import com.komikta.domain.usecase.GetChapterContentUseCase
 import com.komikta.domain.usecase.GetComicDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,11 +25,12 @@ import javax.inject.Inject
 data class ReaderUiState(
     val isLoading: Boolean = true,
     val content: ChapterContent? = null,
+    val loaded: List<ChapterContent> = emptyList(),
+    val upcoming: ChapterContent? = null,
+    val chapterInfo: Map<String, Chapter> = emptyMap(),
     val errorMessage: String? = null,
     val source: String = "",
-    val comicSlug: String = "",
-    val currentChapter: Chapter? = null,
-    val nextChapter: Chapter? = null
+    val comicSlug: String = ""
 )
 
 @HiltViewModel
@@ -41,9 +43,11 @@ class ReaderViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private var source: String = savedStateHandle["source"] ?: "lumos"
-    private var comicSlug: String = savedStateHandle["comicSlug"] ?: ""
+    private val source: String = savedStateHandle["source"] ?: "lumos"
+    private val comicSlug: String = savedStateHandle["comicSlug"] ?: ""
     private var chapterSlug: String = savedStateHandle["chapterSlug"] ?: ""
+    private var prefetchJob: Job? = null
+    private var appending = false
 
     private val _uiState = MutableStateFlow(ReaderUiState(source = source, comicSlug = comicSlug))
     val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
@@ -52,7 +56,10 @@ class ReaderViewModel @Inject constructor(
 
     fun setAutoNext(value: Boolean) = prefs.setAutoNext(value)
 
-    init { loadChapter() }
+    init {
+        loadChapter()
+        loadChapterInfo()
+    }
 
     fun loadChapter(newChapterSlug: String? = null) {
         if (newChapterSlug != null) chapterSlug = newChapterSlug
@@ -60,45 +67,72 @@ class ReaderViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = false, errorMessage = "Invalid chapter") }
             return
         }
+        val ready = _uiState.value.upcoming?.takeIf { it.chapterSlug == chapterSlug }
+        if (ready != null) { open(ready); return }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null, currentChapter = null, nextChapter = null) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             when (val result = getChapterContent(source, comicSlug, chapterSlug)) {
-                is Result.Success -> {
-                    _uiState.update {
-                        it.copy(isLoading = false, content = result.data, source = source, comicSlug = comicSlug)
-                    }
-                    saveHistory(result.data)
-                    loadChapterInfo(result.data)
-                }
-                is Result.Error -> _uiState.update {
-                    it.copy(isLoading = false, errorMessage = result.message)
-                }
+                is Result.Success -> open(result.data)
+                is Result.Error -> _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
                 else -> _uiState.update { it.copy(isLoading = false) }
             }
         }
     }
 
-    private suspend fun loadChapterInfo(content: ChapterContent) {
-        val detail = getComicDetail(source, comicSlug).getOrNull() ?: return
-        if (content.chapterSlug != chapterSlug) return
-        val next = content.nextChapterSlug
-        _uiState.update { st ->
-            st.copy(
-                currentChapter = detail.chapters.firstOrNull { it.slug == chapterSlug },
-                nextChapter = next?.let { n -> detail.chapters.firstOrNull { it.slug == n } }
-            )
+    private fun open(content: ChapterContent) {
+        chapterSlug = content.chapterSlug
+        _uiState.update {
+            it.copy(isLoading = false, errorMessage = null, content = content, loaded = listOf(content), upcoming = null)
+        }
+        viewModelScope.launch { saveHistory(content) }
+        prefetchNext(content)
+    }
+
+    private fun prefetchNext(from: ChapterContent) {
+        prefetchJob?.cancel()
+        val next = from.nextChapterSlug?.takeIf { it.isNotBlank() } ?: return
+        prefetchJob = viewModelScope.launch {
+            val data = getChapterContent(source, comicSlug, next).getOrNull() ?: return@launch
+            _uiState.update { st -> if (st.loaded.lastOrNull()?.chapterSlug == from.chapterSlug) st.copy(upcoming = data) else st }
+        }
+    }
+
+    fun appendNext() {
+        if (appending) return
+        val st = _uiState.value
+        val last = st.loaded.lastOrNull() ?: return
+        val next = last.nextChapterSlug?.takeIf { it.isNotBlank() } ?: return
+        if (st.loaded.any { it.chapterSlug == next }) return
+        appending = true
+        viewModelScope.launch {
+            val data = st.upcoming?.takeIf { it.chapterSlug == next } ?: getChapterContent(source, comicSlug, next).getOrNull()
+            appending = false
+            if (data == null) return@launch
+            _uiState.update { s -> if (s.loaded.lastOrNull()?.chapterSlug == last.chapterSlug) s.copy(loaded = s.loaded + data, upcoming = null) else s }
+            prefetchNext(data)
+        }
+    }
+
+    fun setCurrent(slug: String) {
+        val st = _uiState.value
+        if (st.content?.chapterSlug == slug) return
+        val target = st.loaded.firstOrNull { it.chapterSlug == slug } ?: return
+        chapterSlug = slug
+        _uiState.update { it.copy(content = target) }
+        viewModelScope.launch { saveHistory(target) }
+    }
+
+    private fun loadChapterInfo() {
+        if (comicSlug.isBlank()) return
+        viewModelScope.launch {
+            val detail = getComicDetail(source, comicSlug).getOrNull() ?: return@launch
+            _uiState.update { it.copy(chapterInfo = detail.chapters.associateBy { c -> c.slug }) }
         }
     }
 
     private suspend fun saveHistory(content: ChapterContent) {
-        readChapterDao.markRead(
-            ReadChapterEntity(
-                comicId = "${source}_$comicSlug",
-                chapterSlug = chapterSlug,
-                readAt = System.currentTimeMillis()
-            )
-        )
         val id = "${source}_$comicSlug"
+        readChapterDao.markRead(ReadChapterEntity(comicId = id, chapterSlug = content.chapterSlug, readAt = System.currentTimeMillis()))
         historyDao.upsert(
             ReadingHistoryEntity(
                 id = id,
@@ -106,7 +140,7 @@ class ReaderViewModel @Inject constructor(
                 comicSlug = comicSlug,
                 comicTitle = content.title ?: comicSlug,
                 coverUrl = null,
-                lastChapterSlug = chapterSlug,
+                lastChapterSlug = content.chapterSlug,
                 lastChapterNumber = content.title,
                 lastReadAt = System.currentTimeMillis()
             )
