@@ -49,7 +49,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.text.font.FontWeight
+import com.komikta.domain.model.Chapter
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -109,11 +116,13 @@ fun ReaderScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val autoNext by viewModel.autoNext.collectAsState()
+    val readSlugs by viewModel.readSlugs.collectAsState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
     var controlsVisible by remember { mutableStateOf(true) }
     var showSettings by remember { mutableStateOf(false) }
+    var showChapters by remember { mutableStateOf(false) }
     var autoScroll by remember { mutableStateOf(false) }
     var scrollSpeed by remember { mutableFloatStateOf(1f) }
     var scrollMode by remember { mutableStateOf(ScrollMode.Smooth) }
@@ -318,7 +327,7 @@ fun ReaderScreen(
             exit = fadeOut() + slideOutVertically { -it },
             modifier = Modifier.align(Alignment.TopCenter)
         ) {
-            val topShape = RoundedCornerShape(24.dp)
+            val topShape = RoundedCornerShape(12.dp)
             Row(
                 Modifier
                     .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Top))
@@ -344,13 +353,11 @@ fun ReaderScreen(
                         .weight(1f)
                         .padding(horizontal = 8.dp)
                 )
-                if (totalPages > 0) {
-                    Text(
-                        text = "$currentPage/$totalPages",
-                        color = Color(0xFFBDBDBD),
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(end = 12.dp)
-                    )
+                IconButton(
+                    onClick = { showChapters = true },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(Icons.Default.Menu, "Daftar chapter", tint = Color.White, modifier = Modifier.size(22.dp))
                 }
             }
         }
@@ -431,6 +438,20 @@ fun ReaderScreen(
                     }
                 }
             }
+        }
+
+        // Daftar chapter
+        if (showChapters) {
+            ChapterListSheet(
+                chapters = uiState.chapterInfo.values.toList(),
+                currentSlug = uiState.content?.chapterSlug,
+                readSlugs = readSlugs,
+                onSelect = { slug ->
+                    showChapters = false
+                    if (slug != uiState.content?.chapterSlug) viewModel.loadChapter(slug)
+                },
+                onDismiss = { showChapters = false }
+            )
         }
 
         // Settings sheet
@@ -608,5 +629,141 @@ private fun ScrollModeOption(
     ) {
         Text(title, color = if (selected) Color.Black else Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
         Text(subtitle, color = if (selected) Color(0xFF444444) else Color(0xFF999999), style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+private fun chapterLabel(c: Chapter): String =
+    c.title?.takeIf { it.isNotBlank() }
+        ?: c.number?.takeIf { it.isNotBlank() }?.let { "Chapter $it" }
+        ?: c.slug
+
+private fun chapterNumber(c: Chapter): Double? =
+    Regex("""\d+(\.\d+)?""").find(c.number ?: c.title ?: "")?.value?.toDoubleOrNull()
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChapterListSheet(
+    chapters: List<Chapter>,
+    currentSlug: String?,
+    readSlugs: Set<String>,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    // Urut dari chapter terbaru ke terlama (kalau nomor chapter terbaca)
+    val sorted = remember(chapters) {
+        if (chapters.isNotEmpty() && chapters.all { chapterNumber(it) != null }) {
+            chapters.sortedByDescending { chapterNumber(it) }
+        } else chapters
+    }
+    val filtered = remember(sorted, query) {
+        val q = query.trim()
+        if (q.isEmpty()) sorted else sorted.filter { chapterLabel(it).contains(q, ignoreCase = true) }
+    }
+    val startIndex = remember(sorted, currentSlug) {
+        (sorted.indexOfFirst { it.slug == currentSlug } - 2).coerceAtLeast(0)
+    }
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = Color(0xFF1C1C1E),
+        contentColor = Color.White
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.85f)
+                .padding(horizontal = 16.dp)
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Chapters",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .border(1.dp, Color(0xFF48484A), CircleShape)
+                ) {
+                    Icon(Icons.Default.Close, "Tutup", tint = Color.White, modifier = Modifier.size(22.dp))
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            TextField(
+                value = query,
+                onValueChange = { query = it },
+                singleLine = true,
+                placeholder = { Text("Cari chapter...", color = Color(0xFF8E8E93)) },
+                shape = RoundedCornerShape(26.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color(0xFF2C2C2E),
+                    unfocusedContainerColor = Color(0xFF2C2C2E),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    cursorColor = Color.White,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            if (sorted.isEmpty()) {
+                Box(Modifier.fillMaxWidth().padding(top = 32.dp), contentAlignment = Alignment.TopCenter) {
+                    Text("Memuat daftar chapter...", color = Color(0xFF8E8E93))
+                }
+            } else if (filtered.isEmpty()) {
+                Box(Modifier.fillMaxWidth().padding(top = 32.dp), contentAlignment = Alignment.TopCenter) {
+                    Text("Chapter tidak ditemukan", color = Color(0xFF8E8E93))
+                }
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    items(filtered, key = { it.slug }) { chapter ->
+                        val isCurrent = chapter.slug == currentSlug
+                        val isRead = chapter.slug in readSlugs
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(if (isCurrent) Color(0xFF2C2C2E) else Color.Transparent)
+                                .clickable { onSelect(chapter.slug) }
+                                .padding(horizontal = 14.dp, vertical = 16.dp)
+                        ) {
+                            Text(
+                                text = chapterLabel(chapter),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
+                                color = when {
+                                    isCurrent -> Color.White
+                                    isRead -> Color(0xFF8E8E93)
+                                    else -> Color.White
+                                },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    item { Spacer(Modifier.height(24.dp)) }
+                }
+            }
+        }
     }
 }

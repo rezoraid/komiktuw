@@ -29,6 +29,13 @@ object AppIcons {
         }
     }
 
+    val chevronsDown: ImageVector by lazy {
+        navIcon("ChevronsDown", false, strokeWidth = 2.2f) {
+            moveTo(6.5f, 6.5f); lineTo(12f, 12f); lineTo(17.5f, 6.5f)
+            moveTo(6.5f, 12.5f); lineTo(12f, 18f); lineTo(17.5f, 12.5f)
+        }
+    }
+
     fun bookmark(filled: Boolean): ImageVector = if (filled) bookmarkFilled else bookmarkOutline
 
     private val bookmarkOutline: ImageVector by lazy { buildBookmark(false) }

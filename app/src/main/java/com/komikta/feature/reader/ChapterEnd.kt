@@ -1,5 +1,16 @@
 package com.komikta.feature.reader
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,9 +42,14 @@ import androidx.compose.ui.unit.dp
 import com.komikta.domain.model.Chapter
 import com.komikta.ui.components.AppIcons
 
-private val Line = Color(0xFF262626)
+private val CardTop = Color(0xFF0E0E12)
+private val CardBottom = Color(0xFF09090C)
+private val PillBg = Color(0xFF1A1B21)
+private val PillText = Color(0xFFB9BCC8)
+private val SubText = Color(0xFFA7AAB8)
+private val LineColor = Color(0xFF4B4D57)
 private val Muted = Color(0xFF8A8A8A)
-private val CardShape = RoundedCornerShape(20.dp)
+private val CardShape = RoundedCornerShape(28.dp)
 
 private fun cleanNumber(raw: String?): String? =
     raw?.replace(Regex("(?i)^\\s*(chapter|ch\\.?)\\s*"), "")?.trim()?.takeIf { it.isNotEmpty() }
@@ -49,60 +65,160 @@ fun ChapterEnd(
     compact: Boolean = false
 ) {
     val currentNumber = cleanNumber(current?.number)
-    val finished = currentNumber?.let { "Chapter $it selesai" } ?: fallbackTitle?.takeIf { it.isNotBlank() }?.let { "$it selesai" } ?: "Chapter selesai"
-    Column(
+    val pillText = (currentNumber?.let { "Chapter $it selesai" }
+        ?: fallbackTitle?.takeIf { it.isNotBlank() }?.let { "$it selesai" }
+        ?: "Chapter selesai").uppercase()
+    val hasNext = !nextSlug.isNullOrBlank()
+
+    val nextNumber = cleanNumber(next?.number)
+    val nextTitle = next?.title?.trim()?.takeIf { it.isNotEmpty() && cleanNumber(it) != nextNumber }
+    val nextLabel = nextNumber?.let { "Chapter $it" } ?: nextTitle
+
+    val bob by rememberInfiniteTransition(label = "bob").animateFloat(
+        initialValue = 0f,
+        targetValue = 5f,
+        animationSpec = infiniteRepeatable(tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "bobY"
+    )
+
+    Box(
         modifier
             .fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(Color.Black, Color(0xFF080808))))
-            .padding(horizontal = 20.dp)
-            .padding(top = if (compact) 48.dp else 56.dp, bottom = if (compact) 48.dp else 120.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(Color.Black)
+            .padding(horizontal = 16.dp)
+            .padding(top = if (compact) 20.dp else 28.dp, bottom = if (compact) 20.dp else 120.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Icon(AppIcons.checkCircle, null, tint = Color.White, modifier = Modifier.size(44.dp))
-        Spacer(Modifier.height(14.dp))
-        Text(finished, style = MaterialTheme.typography.titleMedium, color = Color.White, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(16.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(0.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            listOf(0.25f, 0.45f, 0.7f).forEach { a ->
-                Icon(AppIcons.chevronDown, null, tint = Color.White.copy(alpha = a), modifier = Modifier.size(18.dp))
-            }
-        }
-        Spacer(Modifier.height(24.dp))
-        if (nextSlug.isNullOrBlank()) {
-            Text("Kamu sudah membaca chapter terbaru", style = MaterialTheme.typography.bodyMedium, color = Muted, textAlign = TextAlign.Center)
-        } else {
-            val number = cleanNumber(next?.number)
-            val title = next?.title?.trim()?.takeIf { it.isNotEmpty() && cleanNumber(it) != number }
-            Row(
-                Modifier
-                    .widthIn(max = 480.dp)
-                    .fillMaxWidth()
-                    .clip(CardShape)
-                    .background(Brush.verticalGradient(listOf(Color(0xFF141414), Color(0xFF0C0C0C))))
-                    .border(1.dp, Line, CardShape)
-                    .then(if (onNext != null) Modifier.clickable(onClick = onNext) else Modifier)
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("Chapter berikutnya", style = MaterialTheme.typography.labelMedium, color = Muted)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        number?.let { "Chapter $it" } ?: title ?: nextSlug,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+        Column(
+            Modifier
+                .widthIn(max = 520.dp)
+                .fillMaxWidth()
+                .clip(CardShape)
+                .background(Brush.verticalGradient(listOf(CardTop, CardBottom)))
+                .drawBehind {
+                    // lingkaran halus di pojok kiri atas
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.03f),
+                        radius = size.width * 0.28f,
+                        center = Offset(0f, 0f)
                     )
-                    if (number != null && title != null) {
-                        Spacer(Modifier.height(2.dp))
-                        Text(title, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Normal), color = Color(0xFFB5B5B5), maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    }
                 }
-                if (onNext != null) {
-                    Spacer(Modifier.size(12.dp))
-                    Box(Modifier.size(40.dp).clip(CircleShape).border(1.dp, Line, CircleShape), contentAlignment = Alignment.Center) {
-                        Icon(AppIcons.arrowRight, "Next", tint = Color.White, modifier = Modifier.size(20.dp))
+                .padding(horizontal = 24.dp)
+                .padding(top = 44.dp, bottom = if (hasNext) 36.dp else 44.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Ikon centang dengan halo
+            Box(
+                Modifier
+                    .size(78.dp)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.03f), Color.Transparent)
+                        ),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(AppIcons.checkCircle, null, tint = Color.White, modifier = Modifier.size(52.dp))
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // Pill "CHAPTER X SELESAI"
+            Text(
+                pillText,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(PillBg)
+                    .padding(horizontal = 18.dp, vertical = 9.dp),
+                style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 2.sp, fontSize = 12.sp),
+                color = PillText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            Text(
+                "Akhir Chapter",
+                style = MaterialTheme.typography.headlineLarge.copy(fontSize = 28.sp),
+                color = Color(0xFFF2F2F7),
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Kamu telah menyelesaikan chapter ini.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = SubText,
+                textAlign = TextAlign.Center
+            )
+
+            if (!hasNext) {
+                Spacer(Modifier.height(20.dp))
+                Text(
+                    "Kamu sudah membaca chapter terbaru",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Muted,
+                    textAlign = TextAlign.Center
+                )
+            } else {
+                Spacer(Modifier.height(36.dp))
+
+                Column(
+                    Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .then(if (onNext != null) Modifier.clickable(onClick = onNext) else Modifier)
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // garis — tombol chevron — garis
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f).height(1.dp).background(LineColor))
+                        Spacer(Modifier.width(16.dp))
+                        Box(
+                            Modifier.size(48.dp).clip(CircleShape).background(PillBg),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                AppIcons.chevronsDown,
+                                "Chapter berikutnya",
+                                tint = Color.White,
+                                modifier = Modifier.size(26.dp).offset(y = (bob - 2.5f).dp)
+                            )
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Box(Modifier.weight(1f).height(1.dp).background(LineColor))
+                    }
+
+                    Spacer(Modifier.height(18.dp))
+
+                    Text(
+                        "CHAPTER SELANJUTNYA",
+                        style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 2.5.sp, fontSize = 12.sp),
+                        color = PillText
+                    )
+
+                    if (nextLabel != null) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            nextLabel,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (nextNumber != null && nextTitle != null) {
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                nextTitle,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = SubText,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }

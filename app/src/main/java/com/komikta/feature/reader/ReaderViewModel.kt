@@ -16,6 +16,9 @@ import com.komikta.domain.usecase.GetComicDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -53,6 +56,10 @@ class ReaderViewModel @Inject constructor(
     val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
 
     val autoNext: StateFlow<Boolean> = prefs.autoNext
+
+    val readSlugs: StateFlow<Set<String>> = readChapterDao.observeRead("${source}_$comicSlug")
+        .map { it.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     fun setAutoNext(value: Boolean) = prefs.setAutoNext(value)
 
