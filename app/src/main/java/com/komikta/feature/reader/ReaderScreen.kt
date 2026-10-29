@@ -1,6 +1,11 @@
 package com.komikta.feature.reader
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -70,6 +75,8 @@ import coil.request.ImageRequest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+enum class ScrollMode { Smooth, Swipe }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderScreen(
@@ -83,7 +90,8 @@ fun ReaderScreen(
     var controlsVisible by remember { mutableStateOf(true) }
     var showSettings by remember { mutableStateOf(false) }
     var autoScroll by remember { mutableStateOf(false) }
-    var scrollSpeed by remember { mutableFloatStateOf(1.5f) } // pages-ish
+    var scrollSpeed by remember { mutableFloatStateOf(1f) }
+    var scrollMode by remember { mutableStateOf(ScrollMode.Smooth) }
 
     // Auto hide controls
     LaunchedEffect(controlsVisible) {
@@ -93,20 +101,31 @@ fun ReaderScreen(
         }
     }
 
-    // Auto scroll
-    LaunchedEffect(autoScroll, scrollSpeed) {
-        while (autoScroll) {
-            delay((80 / scrollSpeed).toLong().coerceAtLeast(16))
-            val info = listState.layoutInfo
-            val last = info.visibleItemsInfo.lastOrNull()
-            if (last != null && last.index >= info.totalItemsCount - 1) {
-                // reached end
-                autoScroll = false
-            } else {
-                listState.animateScrollToItem(
-                    index = (listState.firstVisibleItemIndex),
-                    scrollOffset = listState.firstVisibleItemScrollOffset + (4 * scrollSpeed).toInt()
+    val density = LocalDensity.current
+
+    LaunchedEffect(autoScroll, scrollMode, scrollSpeed) {
+        if (!autoScroll) return@LaunchedEffect
+        if (scrollMode == ScrollMode.Smooth) {
+            val pxPerSecond = with(density) { 70.dp.toPx() } * scrollSpeed
+            var last = 0L
+            while (autoScroll) {
+                val dt = withFrameNanos { now ->
+                    val d = if (last == 0L) 0L else now - last
+                    last = now
+                    d
+                }
+                listState.scrollBy(pxPerSecond * dt / 1_000_000_000f)
+                if (!listState.canScrollForward) autoScroll = false
+            }
+        } else {
+            while (autoScroll) {
+                delay((2200 / scrollSpeed).toLong().coerceAtLeast(500))
+                val distance = listState.layoutInfo.viewportSize.height * 0.7f
+                listState.animateScrollBy(
+                    distance,
+                    tween(durationMillis = 650, easing = FastOutSlowInEasing)
                 )
+                if (!listState.canScrollForward) autoScroll = false
             }
         }
     }
@@ -305,16 +324,56 @@ fun ReaderScreen(
                     }
 
                     Spacer(Modifier.height(16.dp))
+                    Text("Mode", color = Color.White)
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ScrollModeOption(
+                            title = "Halus",
+                            subtitle = "Mengalir pelan",
+                            selected = scrollMode == ScrollMode.Smooth,
+                            modifier = Modifier.weight(1f),
+                            onClick = { scrollMode = ScrollMode.Smooth }
+                        )
+                        ScrollModeOption(
+                            title = "Geser",
+                            subtitle = "Seperti tangan",
+                            selected = scrollMode == ScrollMode.Swipe,
+                            modifier = Modifier.weight(1f),
+                            onClick = { scrollMode = ScrollMode.Swipe }
+                        )
+                    }
+
+                    Spacer(Modifier.height(16.dp))
                     Text("Kecepatan: ${"%.1f".format(scrollSpeed)}x", color = Color.White)
                     Slider(
                         value = scrollSpeed,
                         onValueChange = { scrollSpeed = it },
-                        valueRange = 0.5f..3f,
-                        steps = 5
+                        valueRange = 0.5f..2.5f,
+                        steps = 3
                     )
                     Spacer(Modifier.height(24.dp))
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ScrollModeOption(
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) Color.White else Color(0xFF242424))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Text(title, color = if (selected) Color.Black else Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+        Text(subtitle, color = if (selected) Color(0xFF444444) else Color(0xFF999999), style = MaterialTheme.typography.labelSmall)
     }
 }

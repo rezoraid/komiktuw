@@ -162,25 +162,24 @@ fun ExploreScreen(
                     )
                 }
             }
-            uiState.selectedGenres.forEach { genre ->
+            val quick = (uiState.selectedGenres + uiState.genres.take(6)).toList()
+            quick.forEach { genre ->
+                val on = genre in uiState.selectedGenres
                 Surface(
-                    onClick = { viewModel.removeGenre(genre) },
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color(0xFF1E1E1E)
-                ) {
-                    Row(
-                        Modifier.padding(start = 14.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(genre, color = Color.White, fontSize = 14.sp)
-                        Icon(
-                            Icons.Default.Close,
-                            "Remove $genre",
-                            tint = Color(0xFFBDBDBD),
-                            modifier = Modifier.size(14.dp)
+                    onClick = {
+                        viewModel.applyGenres(
+                            if (on) uiState.selectedGenres - genre else uiState.selectedGenres + genre
                         )
-                    }
+                    },
+                    shape = RoundedCornerShape(20.dp),
+                    color = if (on) Color(0xFF3A3A3A) else Color(0xFF141414)
+                ) {
+                    Text(
+                        genre,
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                    )
                 }
             }
         }

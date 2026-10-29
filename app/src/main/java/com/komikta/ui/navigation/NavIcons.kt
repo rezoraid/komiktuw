@@ -41,7 +41,7 @@ internal fun PathBuilder.circle(cx: Float, cy: Float, r: Float) {
 }
 
 object NavIcons {
-    fun home(filled: Boolean): ImageVector = navIcon("Home", filled) {
+    fun home(filled: Boolean): ImageVector = navIcon("Home", filled, stroked = !filled) {
         moveTo(12f, 3.4f)
         lineTo(20.4f, 9.8f)
         lineTo(20.4f, 19.6f)
@@ -64,7 +64,7 @@ object NavIcons {
         close()
     }
 
-    fun library(filled: Boolean): ImageVector = navIcon("Library", filled) {
+    fun library(filled: Boolean): ImageVector = navIcon("Library", filled, stroked = !filled) {
         moveTo(3.4f, 4.2f)
         lineTo(7.6f, 4.2f)
         lineTo(7.6f, 19.8f)

@@ -32,6 +32,13 @@ data class ExploreUiState(
     val selectedGenres: Set<String> = emptySet()
 )
 
+private val CURATED_GENRES = listOf(
+    "Action", "Adaptation", "Adult", "Adventure", "Comedy", "Cooking", "Crime", "Drama",
+    "Ecchi", "Fantasy", "Harem", "Historical", "Horror", "Isekai", "Martial Arts", "Mature",
+    "Mystery", "Psychological", "Reincarnation", "Revenge", "Romance", "School Life", "Sci-fi",
+    "Seinen", "Shoujo", "Shounen", "Slice of Life", "Sports", "Supernatural", "Thriller", "Tragedy"
+)
+
 @HiltViewModel
 class ExploreViewModel @Inject constructor(
     private val searchComics: SearchComicsUseCase,
@@ -52,8 +59,12 @@ class ExploreViewModel @Inject constructor(
     private fun loadGenres() {
         viewModelScope.launch {
             val result = getGenres(ApiConfig.DEFAULT_SOURCE)
-            val items = (result as? Result.Success)?.data.orEmpty().sortedBy { it.lowercase() }
-            _uiState.update { it.copy(genres = items) }
+            val remote = (result as? Result.Success)?.data.orEmpty()
+            val byKey = remote.associateBy { it.trim().lowercase() }
+            val curated = CURATED_GENRES.map { name -> byKey[name.lowercase()] ?: name }
+                .takeIf { remote.isEmpty() || byKey.keys.any { k -> CURATED_GENRES.any { it.lowercase() == k } } }
+                ?: remote.take(30)
+            _uiState.update { it.copy(genres = curated) }
         }
     }
 

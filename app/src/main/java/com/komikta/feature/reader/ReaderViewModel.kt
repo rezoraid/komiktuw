@@ -4,7 +4,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.komikta.core.common.Result
+import com.komikta.data.local.dao.ReadChapterDao
 import com.komikta.data.local.dao.ReadingHistoryDao
+import com.komikta.data.local.entity.ReadChapterEntity
 import com.komikta.data.local.entity.ReadingHistoryEntity
 import com.komikta.domain.model.ChapterContent
 import com.komikta.domain.usecase.GetChapterContentUseCase
@@ -28,6 +30,7 @@ data class ReaderUiState(
 class ReaderViewModel @Inject constructor(
     private val getChapterContent: GetChapterContentUseCase,
     private val historyDao: ReadingHistoryDao,
+    private val readChapterDao: ReadChapterDao,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -64,6 +67,13 @@ class ReaderViewModel @Inject constructor(
     }
 
     private suspend fun saveHistory(content: ChapterContent) {
+        readChapterDao.markRead(
+            ReadChapterEntity(
+                comicId = "${source}_$comicSlug",
+                chapterSlug = chapterSlug,
+                readAt = System.currentTimeMillis()
+            )
+        )
         val id = "${source}_$comicSlug"
         historyDao.upsert(
             ReadingHistoryEntity(

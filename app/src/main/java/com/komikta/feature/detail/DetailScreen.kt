@@ -30,6 +30,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.alpha
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -74,6 +75,7 @@ fun DetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isBookmarked by viewModel.isBookmarked.collectAsState()
+    val readChapters by viewModel.readChapters.collectAsState()
     val detail = uiState.detail
     var query by remember { mutableStateOf("") }
     var synopsisExpanded by remember { mutableStateOf(false) }
@@ -296,6 +298,7 @@ fun DetailScreen(
                         ChapterRow(
                             chapter = chapter,
                             coverUrl = detail.coverUrl,
+                            isRead = chapter.slug in readChapters,
                             onClick = { onChapterClick(detail.source, detail.slug, chapter.slug) }
                         )
                     }
@@ -403,10 +406,11 @@ private fun MetaRow(icon: ImageVector, text: String) {
 }
 
 @Composable
-private fun ChapterRow(chapter: Chapter, coverUrl: String?, onClick: () -> Unit) {
+private fun ChapterRow(chapter: Chapter, coverUrl: String?, isRead: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
+            .alpha(if (isRead) 0.4f else 1f)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically

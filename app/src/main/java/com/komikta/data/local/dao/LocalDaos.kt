@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.komikta.data.local.entity.BookmarkEntity
+import com.komikta.data.local.entity.ReadChapterEntity
 import com.komikta.data.local.entity.ReadingHistoryEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -42,4 +43,13 @@ interface BookmarkDao {
 
     @Query("DELETE FROM bookmarks WHERE id = :id")
     suspend fun delete(id: String)
+}
+
+@Dao
+interface ReadChapterDao {
+    @Query("SELECT chapterSlug FROM read_chapters WHERE comicId = :comicId")
+    fun observeRead(comicId: String): Flow<List<String>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun markRead(entity: ReadChapterEntity)
 }

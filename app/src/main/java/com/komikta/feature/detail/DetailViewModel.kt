@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.komikta.core.common.Result
 import com.komikta.data.local.dao.BookmarkDao
+import com.komikta.data.local.dao.ReadChapterDao
 import com.komikta.data.local.entity.BookmarkEntity
 import com.komikta.domain.model.ComicDetail
 import com.komikta.domain.usecase.GetComicDetailUseCase
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -29,6 +31,7 @@ data class DetailUiState(
 class DetailViewModel @Inject constructor(
     private val getComicDetail: GetComicDetailUseCase,
     private val bookmarkDao: BookmarkDao,
+    readChapterDao: ReadChapterDao,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -41,6 +44,10 @@ class DetailViewModel @Inject constructor(
 
     val isBookmarked: StateFlow<Boolean> = bookmarkDao.isBookmarked(bookmarkId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val readChapters: StateFlow<Set<String>> = readChapterDao.observeRead(bookmarkId)
+        .map { it.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     init { loadDetail() }
 

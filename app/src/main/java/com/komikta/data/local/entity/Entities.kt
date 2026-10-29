@@ -16,6 +16,13 @@ data class ReadingHistoryEntity(
     val progressPage: Int = 0
 )
 
+@Entity(tableName = "read_chapters", primaryKeys = ["comicId", "chapterSlug"])
+data class ReadChapterEntity(
+    val comicId: String,
+    val chapterSlug: String,
+    val readAt: Long
+)
+
 @Entity(tableName = "bookmarks")
 data class BookmarkEntity(
     @PrimaryKey val id: String, // source_slug
