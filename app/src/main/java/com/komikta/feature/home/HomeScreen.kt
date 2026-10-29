@@ -1,5 +1,6 @@
 package com.komikta.feature.home
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,12 +38,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.komikta.R
 import com.komikta.domain.model.Comic
 import com.komikta.ui.components.ComicCard
 import com.komikta.ui.components.CoverImage
@@ -80,6 +83,13 @@ fun HomeScreen(
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Image(
+                            painter = painterResource(R.drawable.ic_logo),
+                            contentDescription = "Komikta",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.size(36.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
                         Text(
                             text = "Komikta",
                             style = MaterialTheme.typography.headlineMedium,

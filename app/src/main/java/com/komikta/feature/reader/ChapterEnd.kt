@@ -109,3 +109,47 @@ fun ChapterEnd(
         }
     }
 }
+
+@Composable
+fun ChapterNav(
+    hasPrev: Boolean,
+    hasNext: Boolean,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onDetail: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .background(Color.Black)
+            .padding(horizontal = 12.dp)
+            .padding(top = 32.dp, bottom = 120.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val prevColor = if (hasPrev) Color.White else Color(0xFF4A4A4A)
+        Row(
+            Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .then(if (hasPrev) Modifier.clickable(onClick = onPrev) else Modifier)
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(AppIcons.chevronLeft, null, tint = prevColor, modifier = Modifier.size(20.dp))
+            Text("Previous", style = MaterialTheme.typography.titleMedium, color = prevColor)
+        }
+        Row(
+            Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClick = if (hasNext) onNext else onDetail)
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(if (hasNext) "Next" else "Back to detail", style = MaterialTheme.typography.titleMedium, color = Color.White)
+            if (hasNext) Icon(AppIcons.chevronRight, null, tint = Color.White, modifier = Modifier.size(20.dp))
+        }
+    }
+}

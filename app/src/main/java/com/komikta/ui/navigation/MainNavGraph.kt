@@ -10,6 +10,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,7 +28,9 @@ import com.komikta.feature.detail.DetailScreen
 import com.komikta.feature.explore.ExploreScreen
 import com.komikta.feature.home.HomeScreen
 import com.komikta.feature.library.LibraryScreen
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.komikta.feature.profile.ProfileScreen
+import com.komikta.feature.profile.SettingsViewModel
 import com.komikta.feature.reader.ReaderScreen
 
 @Composable
@@ -37,11 +40,26 @@ fun MainNavGraph() {
     val currentDestination = navBackStackEntry?.destination
     val isDetail = currentDestination?.route?.startsWith("detail") == true
     val showBottomBar = currentDestination?.route in bottomNavItems.map { it.route }
+    val settings: SettingsViewModel = hiltViewModel()
+    val floatingNav by settings.floatingNav.collectAsState()
+    val goTo: (String) -> Unit = { route ->
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
     Scaffold(
         containerColor = Color(0xFF000000),
         bottomBar = {
-            if (showBottomBar) {
+            if (showBottomBar && floatingNav) {
+                FloatingNavBar(
+                    items = bottomNavItems,
+                    currentRoute = currentDestination?.hierarchy?.firstOrNull { d -> bottomNavItems.any { it.route == d.route } }?.route,
+                    onSelect = goTo
+                )
+            } else if (showBottomBar) {
                 Column {
                     HorizontalDivider(thickness = 1.dp, color = Color(0xFF2E2E30))
                     NavigationBar(

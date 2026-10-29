@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -57,6 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -220,16 +222,26 @@ fun ReaderScreen(
                                 )
                             }
                             is ReaderItem.End -> {
-                                val info = uiState.chapterInfo
                                 val chapter = uiState.loaded.firstOrNull { it.chapterSlug == item.chapterSlug }
                                 val nextSlug = chapter?.nextChapterSlug
-                                ChapterEnd(
-                                    current = info[item.chapterSlug],
-                                    fallbackTitle = chapter?.title,
-                                    nextSlug = nextSlug,
-                                    next = nextSlug?.let { info[it] },
-                                    onNext = { if (autoNext) viewModel.appendNext() else viewModel.goNext() }
-                                )
+                                if (autoNext) {
+                                    val info = uiState.chapterInfo
+                                    ChapterEnd(
+                                        current = info[item.chapterSlug],
+                                        fallbackTitle = chapter?.title,
+                                        nextSlug = nextSlug,
+                                        next = nextSlug?.let { info[it] },
+                                        onNext = { viewModel.appendNext() }
+                                    )
+                                } else {
+                                    ChapterNav(
+                                        hasPrev = !chapter?.prevChapterSlug.isNullOrBlank(),
+                                        hasNext = !nextSlug.isNullOrBlank(),
+                                        onPrev = { viewModel.goPrev() },
+                                        onNext = { viewModel.goNext() },
+                                        onDetail = onBack
+                                    )
+                                }
                             }
                         }
                     }
@@ -272,51 +284,33 @@ fun ReaderScreen(
             exit = fadeOut() + slideOutVertically { it },
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
+            val glassShape = RoundedCornerShape(30.dp)
             Row(
                 Modifier
                     .padding(bottom = 28.dp)
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(Color(0xFF171717).copy(alpha = 0.92f))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    .clip(glassShape)
+                    .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.18f), Color.White.copy(alpha = 0.08f))))
+                    .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.3f), Color.White.copy(alpha = 0.08f))), glassShape)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Prev chapter
-                IconButton(
-                    onClick = { viewModel.goPrev() },
-                    enabled = !uiState.content?.prevChapterSlug.isNullOrBlank()
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                        "Prev",
-                        tint = if (uiState.content?.prevChapterSlug != null) Color.White else Color(0xFF777777)
-                    )
+                val hasPrev = !uiState.content?.prevChapterSlug.isNullOrBlank()
+                val hasNext = !uiState.content?.nextChapterSlug.isNullOrBlank()
+                IconButton(onClick = { viewModel.goPrev() }, enabled = hasPrev) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Prev", tint = if (hasPrev) Color.White else Color.White.copy(alpha = 0.3f))
                 }
-
-                // Settings
                 IconButton(onClick = { showSettings = true }) {
                     Icon(Icons.Default.Settings, "Settings", tint = Color.White)
                 }
-
-                // Auto scroll play/pause
-                IconButton(onClick = { autoScroll = !autoScroll }) {
-                    Icon(
-                        Icons.Default.PlayArrow,
-                        if (autoScroll) "Pause" else "Auto scroll",
-                        tint = if (autoScroll) Color(0xFFFFFFFF) else Color.White
-                    )
-                }
-
-                // Next chapter
                 IconButton(
-                    onClick = { viewModel.goNext() },
-                    enabled = !uiState.content?.nextChapterSlug.isNullOrBlank()
+                    onClick = { autoScroll = !autoScroll },
+                    modifier = Modifier.clip(CircleShape).background(if (autoScroll) Color.White.copy(alpha = 0.2f) else Color.Transparent)
                 ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        "Next",
-                        tint = if (uiState.content?.nextChapterSlug != null) Color.White else Color(0xFF777777)
-                    )
+                    Icon(Icons.Default.PlayArrow, if (autoScroll) "Pause" else "Auto scroll", tint = Color.White)
+                }
+                IconButton(onClick = { viewModel.goNext() }, enabled = hasNext) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Next", tint = if (hasNext) Color.White else Color.White.copy(alpha = 0.3f))
                 }
             }
         }
