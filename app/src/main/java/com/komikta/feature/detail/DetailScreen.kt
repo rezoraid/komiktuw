@@ -56,6 +56,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Size
 import com.komikta.domain.model.Chapter
+import com.komikta.ui.components.CoverImage
 import com.komikta.ui.components.AppIcons
 import com.komikta.ui.components.DetailShimmerLoading
 import java.text.NumberFormat
@@ -109,7 +110,7 @@ fun DetailScreen(
                                     model = ImageRequest.Builder(LocalContext.current)
                                         .data(detail.coverUrl)
                                         .size(Size(32, 44))
-                                        .crossfade(true)
+                                        .crossfade(false)
                                         .build(),
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
@@ -130,10 +131,11 @@ fun DetailScreen(
                             Column(Modifier.fillMaxWidth()) {
                                 Spacer(Modifier.height(230.dp))
                                 Row(Modifier.padding(horizontal = 14.dp)) {
-                                    AsyncImage(
-                                        model = detail.coverUrl,
+                                    CoverImage(
+                                        url = detail.coverUrl,
                                         contentDescription = detail.title,
-                                        contentScale = ContentScale.Crop,
+                                        widthPx = 336,
+                                        heightPx = 450,
                                         modifier = Modifier
                                             .width(112.dp)
                                             .height(150.dp)
@@ -415,10 +417,11 @@ private fun ChapterRow(chapter: Chapter, coverUrl: String?, isRead: Boolean, onC
             .padding(horizontal = 14.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AsyncImage(
-            model = coverUrl,
+        CoverImage(
+            url = coverUrl,
             contentDescription = null,
-            contentScale = ContentScale.Crop,
+            widthPx = 336,
+            heightPx = 228,
             modifier = Modifier
                 .width(112.dp)
                 .height(76.dp)

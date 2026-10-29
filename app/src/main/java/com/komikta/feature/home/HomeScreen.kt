@@ -45,6 +45,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.komikta.domain.model.Comic
 import com.komikta.ui.components.ComicCard
+import com.komikta.ui.components.CoverImage
 import com.komikta.ui.components.HomeShimmerLoading
 
 @Composable
@@ -122,10 +123,11 @@ fun HomeScreen(
                                         .width(140.dp)
                                         .clickable { onComicClick(item.source, item.comicSlug) }
                                 ) {
-                                    AsyncImage(
-                                        model = item.coverUrl,
+                                    CoverImage(
+                                        url = item.coverUrl,
                                         contentDescription = item.comicTitle,
-                                        contentScale = ContentScale.Crop,
+                                        widthPx = 420,
+                                        heightPx = 270,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(90.dp)
@@ -197,10 +199,11 @@ private fun FeaturedBanner(comic: Comic, onClick: () -> Unit) {
             .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current).data(comic.coverUrl).build(),
+        CoverImage(
+            url = comic.coverUrl,
             contentDescription = null,
-            contentScale = ContentScale.Crop,
+            widthPx = 720,
+            heightPx = 360,
             modifier = Modifier.fillMaxSize()
         )
         Box(
@@ -273,13 +276,11 @@ private fun LatestItem(comic: Comic, onClick: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(comic.coverUrl)
-                .crossfade(false)
-                .build(),
+        CoverImage(
+            url = comic.coverUrl,
             contentDescription = comic.title,
-            contentScale = ContentScale.Crop,
+            widthPx = 192,
+            heightPx = 264,
             modifier = Modifier
                 .size(width = 64.dp, height = 88.dp)
                 .clip(RoundedCornerShape(8.dp))

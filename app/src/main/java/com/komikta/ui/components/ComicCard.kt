@@ -48,22 +48,11 @@ fun ComicCard(
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color(0xFF1A1A1A))
         ) {
-            SubcomposeAsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(comic.coverUrl)
-                    .crossfade(250)
-                    .build(),
+            CoverImage(
+                url = comic.coverUrl,
                 contentDescription = comic.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-                loading = { ShimmerBox(Modifier.fillMaxSize()) },
-                error = {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("?", color = Color(0xFF666666), fontSize = 24.sp)
-                    }
-                }
+                modifier = Modifier.fillMaxSize()
             )
-            // Type badge top-left
             if (!comic.type.isNullOrBlank()) {
                 Surface(
                     modifier = Modifier
@@ -81,18 +70,6 @@ fun ComicCard(
                     )
                 }
             }
-            // Bottom gradient
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(36.dp)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, Color.Black.copy(0.75f))
-                        )
-                    )
-            )
         }
         Spacer(Modifier.height(6.dp))
         Text(

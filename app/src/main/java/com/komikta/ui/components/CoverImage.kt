@@ -1,0 +1,40 @@
+package com.komikta.ui.components
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.ColorPainter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.size.Size
+
+private val Placeholder = ColorPainter(Color(0xFF171717))
+
+@Composable
+fun CoverImage(
+    url: String?,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    widthPx: Int = 360,
+    heightPx: Int = 530
+) {
+    val context = LocalContext.current
+    val request = remember(url, widthPx, heightPx) {
+        ImageRequest.Builder(context)
+            .data(url)
+            .size(Size(widthPx, heightPx))
+            .crossfade(false)
+            .build()
+    }
+    AsyncImage(
+        model = request,
+        contentDescription = contentDescription,
+        contentScale = ContentScale.Crop,
+        placeholder = Placeholder,
+        error = Placeholder,
+        modifier = modifier
+    )
+}

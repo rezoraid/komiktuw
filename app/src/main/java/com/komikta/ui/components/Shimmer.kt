@@ -22,7 +22,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.State
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -30,38 +33,56 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
+val LocalShimmerOffset = compositionLocalOf<State<Float>?> { null }
+
+private val ShimmerColors = listOf(
+    Color(0xFF171717),
+    Color(0xFF242424),
+    Color(0xFF333333),
+    Color(0xFF242424),
+    Color(0xFF171717)
+)
+
 @Composable
-fun shimmerBrush(): Brush {
+fun ShimmerHost(content: @Composable () -> Unit) {
     val transition = rememberInfiniteTransition(label = "shimmer")
-    val translate by transition.animateFloat(
+    val translate = transition.animateFloat(
         initialValue = 0f,
-        targetValue = 1000f,
+        targetValue = 1200f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
+            animation = tween(1100, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "shimmer"
     )
-    return Brush.linearGradient(
-        colors = listOf(
-            Color(0xFF171717),
-            Color(0xFF242424),
-            Color(0xFF333333),
-            Color(0xFF242424),
-            Color(0xFF171717)
-        ),
-        start = Offset(translate - 250f, 0f),
-        end = Offset(translate, 0f)
-    )
+    CompositionLocalProvider(LocalShimmerOffset provides translate, content = content)
 }
 
 @Composable
 fun ShimmerBox(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.clip(RoundedCornerShape(12.dp)).background(shimmerBrush()))
+    val offset = LocalShimmerOffset.current
+    Box(
+        modifier
+            .clip(RoundedCornerShape(12.dp))
+            .drawBehind {
+                if (offset == null) {
+                    drawRect(Color(0xFF171717))
+                } else {
+                    val t = offset.value
+                    drawRect(
+                        Brush.linearGradient(
+                            colors = ShimmerColors,
+                            start = Offset(t - 300f, 0f),
+                            end = Offset(t, 0f)
+                        )
+                    )
+                }
+            }
+    )
 }
 
 @Composable
-fun HomeShimmerLoading() {
+fun HomeShimmerLoading() = ShimmerHost {
     Column(
         Modifier
             .fillMaxSize()
@@ -100,7 +121,7 @@ private fun HomeShimmerSection() {
 }
 
 @Composable
-fun DetailShimmerLoading() {
+fun DetailShimmerLoading() = ShimmerHost {
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row {
             ShimmerBox(Modifier.width(120.dp).height(170.dp))

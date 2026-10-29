@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.komikta.ui.components.ComicCard
 import com.komikta.ui.components.ShimmerBox
+import com.komikta.ui.components.ShimmerHost
 
 @Composable
 fun ExploreScreen(
@@ -210,7 +211,7 @@ fun ExploreScreen(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(filtered, key = { it.slug }) { comic ->
+                    items(filtered, key = { it.slug }, contentType = { "comic" }) { comic ->
                         ComicCard(
                             comic = comic,
                             onClick = { onComicClick(comic.source, comic.slug) }
@@ -251,7 +252,7 @@ fun ExploreScreen(
 
 
 @Composable
-private fun ExploreGridLoading() {
+private fun ExploreGridLoading() = ShimmerHost {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         contentPadding = PaddingValues(12.dp),
