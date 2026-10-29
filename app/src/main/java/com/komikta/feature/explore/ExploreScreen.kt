@@ -229,6 +229,18 @@ fun ExploreScreen(
             }
         }
     }
+
+    if (showFilter) {
+        GenreFilterSheet(
+            genres = uiState.genres,
+            selected = uiState.selectedGenres,
+            onApply = {
+                viewModel.applyGenres(it)
+                showFilter = false
+            },
+            onDismiss = { showFilter = false }
+        )
+    }
 }
 
 
@@ -250,18 +262,6 @@ private fun ExploreGridLoading() {
                 ShimmerBox(Modifier.fillMaxWidth(0.58f).height(9.dp))
             }
         }
-    }
-
-    if (showFilter) {
-        GenreFilterSheet(
-            genres = uiState.genres,
-            selected = uiState.selectedGenres,
-            onApply = {
-                viewModel.applyGenres(it)
-                showFilter = false
-            },
-            onDismiss = { showFilter = false }
-        )
     }
 }
 
