@@ -65,6 +65,9 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -115,10 +118,12 @@ fun ReaderScreen(
     var scrollSpeed by remember { mutableFloatStateOf(1f) }
     var scrollMode by remember { mutableStateOf(ScrollMode.Smooth) }
 
-    // Auto hide controls
-    LaunchedEffect(controlsVisible) {
+    var interactTick by remember { mutableIntStateOf(0) }
+
+    // Auto hide controls (timer di-reset tiap kali slider disentuh)
+    LaunchedEffect(controlsVisible, interactTick) {
         if (controlsVisible) {
-            delay(3000)
+            delay(3500)
             controlsVisible = false
         }
     }
@@ -157,6 +162,21 @@ fun ReaderScreen(
     val readerItems = remember(uiState.loaded) { buildReaderItems(uiState.loaded) }
     val ratios = remember { HashMap<String, Float>() }
     val firstSlug = uiState.loaded.firstOrNull()?.chapterSlug
+
+    // Progress halaman untuk chapter yang sedang dibaca
+    val currentSlug = uiState.content?.chapterSlug
+    val pageIndexes = remember(readerItems, currentSlug) {
+        readerItems.withIndex()
+            .filter { it.value is ReaderItem.Page && it.value.chapterSlug == currentSlug }
+            .map { it.index }
+    }
+    val firstPageIndex = pageIndexes.firstOrNull() ?: 0
+    val totalPages = pageIndexes.size
+    val currentPage by remember(firstPageIndex, totalPages) {
+        derivedStateOf {
+            (listState.firstVisibleItemIndex - firstPageIndex + 1).coerceIn(1, totalPages.coerceAtLeast(1))
+        }
+    }
 
     LaunchedEffect(firstSlug) { if (firstSlug != null) listState.scrollToItem(0) }
 
@@ -291,36 +311,51 @@ fun ReaderScreen(
             }
         }
 
-        // Top bar (floating)
+        // Top bar: pill kecil melayang (tidak lagi blok hitam selebar layar)
         AnimatedVisibility(
             visible = controlsVisible,
-            enter = fadeIn() + slideInVertically(),
-            exit = fadeOut() + slideOutVertically(),
+            enter = fadeIn() + slideInVertically { -it },
+            exit = fadeOut() + slideOutVertically { -it },
             modifier = Modifier.align(Alignment.TopCenter)
         ) {
+            val topShape = RoundedCornerShape(24.dp)
             Row(
                 Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xF2111111))
                     .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Top))
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .clip(topShape)
+                    .background(Color(0xE61C1C1E))
+                    .border(1.dp, Color(0xFF3A3A3C), topShape)
+                    .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White, modifier = Modifier.size(22.dp))
                 }
                 Text(
                     text = uiState.content?.title ?: "Reader",
                     color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp)
                 )
+                if (totalPages > 0) {
+                    Text(
+                        text = "$currentPage/$totalPages",
+                        color = Color(0xFFBDBDBD),
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(end = 12.dp)
+                    )
+                }
             }
         }
 
-        // Bottom floating controls
+        // Bottom floating controls: slider halaman + tombol navigasi
         AnimatedVisibility(
             visible = controlsVisible,
             enter = fadeIn() + slideInVertically { it },
@@ -328,33 +363,72 @@ fun ReaderScreen(
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             val navShape = RoundedCornerShape(30.dp)
-            Row(
+            val sliderShape = RoundedCornerShape(24.dp)
+            Column(
                 Modifier
                     .navigationBarsPadding()
-                    .padding(bottom = 28.dp)
-                    .clip(navShape)
-                    .background(Color(0xFF1C1C1E))
-                    .border(1.dp, Color(0xFF3A3A3C), navShape)
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(bottom = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                val hasPrev = !uiState.content?.prevChapterSlug.isNullOrBlank()
-                val hasNext = !uiState.content?.nextChapterSlug.isNullOrBlank()
-                IconButton(onClick = { viewModel.goPrev() }, enabled = hasPrev) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Prev", tint = if (hasPrev) Color.White else Color.White.copy(alpha = 0.3f))
+                if (totalPages > 1) {
+                    Row(
+                        Modifier
+                            .padding(horizontal = 16.dp)
+                            .fillMaxWidth()
+                            .clip(sliderShape)
+                            .background(Color(0xE61C1C1E))
+                            .border(1.dp, Color(0xFF3A3A3C), sliderShape)
+                            .padding(horizontal = 16.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("$currentPage", color = Color.White, style = MaterialTheme.typography.labelMedium)
+                        Slider(
+                            value = currentPage.toFloat(),
+                            onValueChange = { v ->
+                                interactTick++
+                                val page = v.toInt().coerceIn(1, totalPages)
+                                scope.launch { listState.scrollToItem(firstPageIndex + page - 1) }
+                            },
+                            valueRange = 1f..totalPages.toFloat(),
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color.White,
+                                activeTrackColor = Color.White,
+                                inactiveTrackColor = Color.White.copy(alpha = 0.25f)
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 8.dp)
+                        )
+                        Text("$totalPages", color = Color(0xFFBDBDBD), style = MaterialTheme.typography.labelMedium)
+                    }
                 }
-                IconButton(onClick = { showSettings = true }) {
-                    Icon(Icons.Default.Settings, "Settings", tint = Color.White)
-                }
-                IconButton(
-                    onClick = { autoScroll = !autoScroll },
-                    modifier = Modifier.clip(CircleShape).background(if (autoScroll) Color.White.copy(alpha = 0.2f) else Color.Transparent)
+                Row(
+                    Modifier
+                        .clip(navShape)
+                        .background(Color(0xE61C1C1E))
+                        .border(1.dp, Color(0xFF3A3A3C), navShape)
+                        .padding(horizontal = 10.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.PlayArrow, if (autoScroll) "Pause" else "Auto scroll", tint = Color.White)
-                }
-                IconButton(onClick = { viewModel.goNext() }, enabled = hasNext) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Next", tint = if (hasNext) Color.White else Color.White.copy(alpha = 0.3f))
+                    val hasPrev = !uiState.content?.prevChapterSlug.isNullOrBlank()
+                    val hasNext = !uiState.content?.nextChapterSlug.isNullOrBlank()
+                    IconButton(onClick = { viewModel.goPrev() }, enabled = hasPrev) {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Prev", tint = if (hasPrev) Color.White else Color.White.copy(alpha = 0.3f))
+                    }
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(Icons.Default.Settings, "Settings", tint = Color.White)
+                    }
+                    IconButton(
+                        onClick = { autoScroll = !autoScroll },
+                        modifier = Modifier.clip(CircleShape).background(if (autoScroll) Color.White.copy(alpha = 0.2f) else Color.Transparent)
+                    ) {
+                        Icon(Icons.Default.PlayArrow, if (autoScroll) "Pause" else "Auto scroll", tint = Color.White)
+                    }
+                    IconButton(onClick = { viewModel.goNext() }, enabled = hasNext) {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Next", tint = if (hasNext) Color.White else Color.White.copy(alpha = 0.3f))
+                    }
                 }
             }
         }
