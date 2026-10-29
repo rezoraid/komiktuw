@@ -104,4 +104,18 @@ object AppIcons {
             circle(12f, 12f, 3f)
         }
     }
+
+    val checkCircle: ImageVector by lazy {
+        navIcon("CheckCircle", false, strokeWidth = 1.6f) {
+            circle(12f, 12f, 9f)
+            moveTo(8f, 12.4f); lineTo(10.8f, 15.2f); lineTo(16.2f, 9.2f)
+        }
+    }
+
+    val arrowRight: ImageVector by lazy {
+        navIcon("ArrowRight", false, strokeWidth = 2f) {
+            moveTo(5f, 12f); lineTo(19f, 12f)
+            moveTo(13f, 6f); lineTo(19f, 12f); lineTo(13f, 18f)
+        }
+    }
 }

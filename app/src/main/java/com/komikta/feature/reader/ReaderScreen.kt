@@ -48,6 +48,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -84,6 +85,7 @@ fun ReaderScreen(
     viewModel: ReaderViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val autoNext by viewModel.autoNext.collectAsState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
@@ -102,6 +104,27 @@ fun ReaderScreen(
     }
 
     val density = LocalDensity.current
+
+    val atEnd by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()
+            info.totalItemsCount > 0 && last != null && last.index == info.totalItemsCount - 1 &&
+                (info.viewportEndOffset - last.offset) >= last.size * 0.6f
+        }
+    }
+    val nextSlug = uiState.content?.nextChapterSlug
+    val chapterKey = uiState.content?.chapterSlug
+
+    LaunchedEffect(chapterKey) { if (chapterKey != null) listState.scrollToItem(0) }
+
+    LaunchedEffect(atEnd, autoNext, nextSlug, chapterKey, uiState.isLoading) {
+        if (atEnd && autoNext && !nextSlug.isNullOrBlank() && !uiState.isLoading) {
+            autoScroll = false
+            delay(2500)
+            viewModel.goNext()
+        }
+    }
 
     LaunchedEffect(autoScroll, scrollMode, scrollSpeed) {
         if (!autoScroll) return@LaunchedEffect
@@ -199,6 +222,15 @@ fun ReaderScreen(
                                     )
                                 }
                             }
+                        )
+                    }
+                    item(key = "chapter-end") {
+                        ChapterEnd(
+                            current = uiState.currentChapter,
+                            fallbackTitle = uiState.content?.title,
+                            nextSlug = nextSlug,
+                            next = uiState.nextChapter,
+                            onNext = { viewModel.goNext() }
                         )
                     }
                 }
@@ -321,6 +353,23 @@ fun ReaderScreen(
                             checked = autoScroll,
                             onCheckedChange = { autoScroll = it }
                         )
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Auto Next Chapter", color = Color.White)
+                            Text(
+                                "Lanjut otomatis di akhir chapter",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFBDBDBD)
+                            )
+                        }
+                        Switch(checked = autoNext, onCheckedChange = { viewModel.setAutoNext(it) })
                     }
 
                     Spacer(Modifier.height(16.dp))
