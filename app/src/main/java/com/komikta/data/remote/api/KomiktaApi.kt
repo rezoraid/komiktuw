@@ -54,7 +54,7 @@ class KomiktaApi @Inject constructor(
             type?.let { parameter("type", it) }
             status?.let { parameter("status", it) }
             sort?.let { parameter("sort", it) }
-            genres?.let { parameter("genres", it) }
+            genres?.let { parameter("genre", it) }
         }.body()
     }
 

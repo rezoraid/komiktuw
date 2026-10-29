@@ -116,7 +116,10 @@ fun ExploreScreen(
                 val selected = selectedType == type
                 FilterChip(
                     selected = selected,
-                    onClick = { selectedType = type },
+                    onClick = {
+                        selectedType = type
+                        viewModel.setType(if (type == "All") null else type.lowercase())
+                    },
                     label = { Text(type) },
                     shape = RoundedCornerShape(20.dp),
                     colors = FilterChipDefaults.filterChipColors(
@@ -137,7 +140,8 @@ fun ExploreScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val active = uiState.selectedGenres.isNotEmpty()
+            val activeCount = uiState.selectedGenres.size + listOf(uiState.sort, uiState.status).count { it != null }
+            val active = activeCount > 0
             Surface(
                 onClick = { showFilter = true },
                 shape = RoundedCornerShape(20.dp),
@@ -155,7 +159,7 @@ fun ExploreScreen(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        if (active) "Filters (${uiState.selectedGenres.size})" else "Filters",
+                        if (active) "Filters ($activeCount)" else "Filters",
                         color = if (active) Color.Black else Color.White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
@@ -167,8 +171,10 @@ fun ExploreScreen(
                 val on = genre in uiState.selectedGenres
                 Surface(
                     onClick = {
-                        viewModel.applyGenres(
-                            if (on) uiState.selectedGenres - genre else uiState.selectedGenres + genre
+                        viewModel.applyFilters(
+                            if (on) uiState.selectedGenres - genre else uiState.selectedGenres + genre,
+                            uiState.sort,
+                            uiState.status
                         )
                     },
                     shape = RoundedCornerShape(20.dp),
@@ -194,8 +200,7 @@ fun ExploreScreen(
                 }
             }
             else -> {
-                val filtered = if (selectedType == "All") uiState.comics
-                else uiState.comics.filter { it.type?.contains(selectedType, true) == true }
+                val filtered = uiState.comics
 
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
@@ -233,8 +238,10 @@ fun ExploreScreen(
         GenreFilterSheet(
             genres = uiState.genres,
             selected = uiState.selectedGenres,
-            onApply = {
-                viewModel.applyGenres(it)
+            sort = uiState.sort,
+            status = uiState.status,
+            onApply = { genres, sort, status ->
+                viewModel.applyFilters(genres, sort, status)
                 showFilter = false
             },
             onDismiss = { showFilter = false }
@@ -269,10 +276,14 @@ private fun ExploreGridLoading() {
 private fun GenreFilterSheet(
     genres: List<String>,
     selected: Set<String>,
-    onApply: (Set<String>) -> Unit,
+    sort: String?,
+    status: String?,
+    onApply: (Set<String>, String?, String?) -> Unit,
     onDismiss: () -> Unit
 ) {
     var draft by remember { mutableStateOf(selected) }
+    var draftSort by remember { mutableStateOf(sort) }
+    var draftStatus by remember { mutableStateOf(status) }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -295,15 +306,26 @@ private fun GenreFilterSheet(
                     Icon(Icons.Default.Close, "Close", tint = Color.White)
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            Text("Pilih satu atau lebih genre", color = Color(0xFF999999), fontSize = 13.sp)
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(4.dp))
 
             Column(
                 Modifier
                     .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState())
             ) {
+                SheetLabel("Urutkan")
+                OptionRow(
+                    options = listOf("Terbaru" to "latest", "Populer" to "popular", "Rating" to "rating", "A-Z" to "az"),
+                    selected = draftSort,
+                    onSelect = { draftSort = if (draftSort == it) null else it }
+                )
+                SheetLabel("Status")
+                OptionRow(
+                    options = listOf("Ongoing" to "ongoing", "Completed" to "completed", "Hiatus" to "hiatus"),
+                    selected = draftStatus,
+                    onSelect = { draftStatus = if (draftStatus == it) null else it }
+                )
+                SheetLabel("Genre (pilih satu atau lebih)")
                 if (genres.isEmpty()) {
                     Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp)
@@ -342,7 +364,11 @@ private fun GenreFilterSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
-                    onClick = { draft = emptySet() },
+                    onClick = {
+                        draft = emptySet()
+                        draftSort = null
+                        draftStatus = null
+                    },
                     modifier = Modifier.weight(1f).height(48.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -351,7 +377,7 @@ private fun GenreFilterSheet(
                     )
                 ) { Text("Reset", fontWeight = FontWeight.SemiBold) }
                 Button(
-                    onClick = { onApply(draft) },
+                    onClick = { onApply(draft, draftSort, draftStatus) },
                     modifier = Modifier.weight(1f).height(48.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -360,10 +386,51 @@ private fun GenreFilterSheet(
                     )
                 ) {
                     Text(
-                        if (draft.isEmpty()) "Terapkan" else "Terapkan (${draft.size})",
+                        "Terapkan",
                         fontWeight = FontWeight.SemiBold
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SheetLabel(text: String) {
+    Text(
+        text,
+        color = Color(0xFF999999),
+        fontSize = 13.sp,
+        modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun OptionRow(
+    options: List<Pair<String, String>>,
+    selected: String?,
+    onSelect: (String) -> Unit
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        options.forEach { (label, value) ->
+            val on = selected == value
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(if (on) Color.White else Color(0xFF242424))
+                    .clickable { onSelect(value) }
+                    .padding(horizontal = 16.dp, vertical = 9.dp)
+            ) {
+                Text(
+                    label,
+                    color = if (on) Color.Black else Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal
+                )
             }
         }
     }

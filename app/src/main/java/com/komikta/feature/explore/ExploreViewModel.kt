@@ -29,7 +29,10 @@ data class ExploreUiState(
     val canLoadMore: Boolean = true,
     val errorMessage: String? = null,
     val genres: List<String> = emptyList(),
-    val selectedGenres: Set<String> = emptySet()
+    val selectedGenres: Set<String> = emptySet(),
+    val type: String? = null,
+    val sort: String? = null,
+    val status: String? = null
 )
 
 private val CURATED_GENRES = listOf(
@@ -68,19 +71,6 @@ class ExploreViewModel @Inject constructor(
         }
     }
 
-    fun applyGenres(genres: Set<String>) {
-        if (genres == _uiState.value.selectedGenres) return
-        _uiState.update { it.copy(selectedGenres = genres, query = "") }
-        loadInitial()
-    }
-
-    fun removeGenre(genre: String) {
-        applyGenres(_uiState.value.selectedGenres - genre)
-    }
-
-    private fun genreParam(): String? =
-        _uiState.value.selectedGenres.takeIf { it.isNotEmpty() }?.joinToString(",")
-
     fun onQueryChange(query: String) {
         _uiState.update { it.copy(query = query) }
         searchJob?.cancel()
@@ -90,23 +80,54 @@ class ExploreViewModel @Inject constructor(
         }
     }
 
-    /** Load several pages at once so Explore feels complete */
+    private data class PageBatch(val items: List<Comic>, val canLoadMore: Boolean, val error: String?)
+
+    private suspend fun fetchPage(page: Int, state: ExploreUiState): PageBatch {
+        val result = browseComics(
+            BrowseParams(
+                source = ApiConfig.DEFAULT_SOURCE,
+                page = page,
+                type = state.type,
+                status = state.status,
+                sort = state.sort,
+                genres = state.selectedGenres.takeIf { it.isNotEmpty() }?.joinToString(",") { it.lowercase() }
+            )
+        )
+        val data = (result as? Result.Success)?.data.orEmpty()
+        return PageBatch(data.distinctBy { it.slug }, data.isNotEmpty(), (result as? Result.Error)?.message)
+    }
+
+    private fun filtersChanged(old: ExploreUiState, new: ExploreUiState) =
+        old.selectedGenres != new.selectedGenres || old.type != new.type ||
+            old.sort != new.sort || old.status != new.status
+
+    fun applyFilters(genres: Set<String>, sort: String?, status: String?) {
+        val old = _uiState.value
+        val new = old.copy(selectedGenres = genres, sort = sort, status = status, query = "")
+        _uiState.value = new
+        if (filtersChanged(old, new)) loadInitial()
+    }
+
+    fun setType(type: String?) {
+        val old = _uiState.value
+        if (old.type == type) return
+        _uiState.value = old.copy(type = type, query = "")
+        loadInitial()
+    }
+
     private fun loadInitial() {
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(isLoading = true, errorMessage = null, page = 1, canLoadMore = true)
-            }
-            val source = ApiConfig.DEFAULT_SOURCE
-            val result = browseComics(BrowseParams(source = source, page = 1, genres = genreParam()))
-            val firstPage = (result as? Result.Success)?.data.orEmpty().distinctBy { it.slug }
-            val error = (result as? Result.Error)?.message
+            val snapshot = _uiState.value
+            _uiState.update { it.copy(isLoading = true, errorMessage = null, page = 1, canLoadMore = true, comics = emptyList()) }
+            val batch = fetchPage(1, snapshot)
+            if (filtersChanged(snapshot, _uiState.value)) return@launch
             _uiState.update {
                 it.copy(
                     isLoading = false,
-                    comics = firstPage,
+                    comics = batch.items,
                     page = 1,
-                    canLoadMore = firstPage.isNotEmpty(),
-                    errorMessage = if (firstPage.isEmpty()) error else null
+                    canLoadMore = batch.canLoadMore,
+                    errorMessage = if (batch.items.isEmpty()) (batch.error ?: "Tidak ada komik untuk filter ini") else null
                 )
             }
         }
@@ -118,17 +139,16 @@ class ExploreViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             val next = state.page + 1
-            val source = ApiConfig.DEFAULT_SOURCE
-            val result = browseComics(BrowseParams(source = source, page = next, genres = genreParam()))
-            val more = (result as? Result.Success)?.data.orEmpty()
+            val batch = fetchPage(next, state)
+            if (filtersChanged(state, _uiState.value)) return@launch
             _uiState.update {
-                val merged = (it.comics + more).distinctBy { c -> c.slug }
+                val merged = (it.comics + batch.items).distinctBy { c -> c.slug }
                 it.copy(
                     isLoadingMore = false,
                     comics = merged,
                     page = next,
-                    canLoadMore = more.isNotEmpty(),
-                    errorMessage = if (merged.isEmpty()) (result as? Result.Error)?.message else null
+                    canLoadMore = batch.canLoadMore && merged.size > it.comics.size,
+                    errorMessage = if (merged.isEmpty()) batch.error else null
                 )
             }
         }
