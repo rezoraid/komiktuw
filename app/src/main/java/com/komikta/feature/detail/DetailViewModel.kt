@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.komikta.core.common.Result
+import com.komikta.data.local.ReaderPrefs
 import com.komikta.data.local.dao.BookmarkDao
 import com.komikta.data.local.dao.ReadChapterDao
 import com.komikta.data.local.entity.BookmarkEntity
@@ -32,6 +33,7 @@ class DetailViewModel @Inject constructor(
     private val getComicDetail: GetComicDetailUseCase,
     private val bookmarkDao: BookmarkDao,
     readChapterDao: ReadChapterDao,
+    private val prefs: ReaderPrefs,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -39,7 +41,7 @@ class DetailViewModel @Inject constructor(
     private val slug: String = savedStateHandle["slug"] ?: ""
     private val bookmarkId = "${source}_$slug"
 
-    private val _uiState = MutableStateFlow(DetailUiState())
+    private val _uiState = MutableStateFlow(DetailUiState(chaptersNewestFirst = prefs.chaptersNewestFirst.value))
     val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
 
     val isBookmarked: StateFlow<Boolean> = bookmarkDao.isBookmarked(bookmarkId)
@@ -90,6 +92,8 @@ class DetailViewModel @Inject constructor(
     }
 
     fun toggleChapterOrder() {
-        _uiState.update { it.copy(chaptersNewestFirst = !it.chaptersNewestFirst) }
+        val newValue = !_uiState.value.chaptersNewestFirst
+        prefs.setChaptersNewestFirst(newValue)
+        _uiState.update { it.copy(chaptersNewestFirst = newValue) }
     }
 }

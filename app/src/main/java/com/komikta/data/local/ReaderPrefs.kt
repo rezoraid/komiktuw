@@ -15,6 +15,9 @@ class ReaderPrefs @Inject constructor(@ApplicationContext context: Context) {
     val autoNext: StateFlow<Boolean> = _autoNext.asStateFlow()
     private val _floatingNav = MutableStateFlow(sp.getBoolean("floating_nav", false))
     val floatingNav: StateFlow<Boolean> = _floatingNav.asStateFlow()
+    private val _chaptersNewestFirst = MutableStateFlow(sp.getBoolean("chapters_newest_first", true))
+    val chaptersNewestFirst: StateFlow<Boolean> = _chaptersNewestFirst.asStateFlow()
+    fun setChaptersNewestFirst(v: Boolean) { sp.edit().putBoolean("chapters_newest_first", v).apply(); _chaptersNewestFirst.value = v }
     fun setFloatingNav(v: Boolean) { sp.edit().putBoolean("floating_nav", v).apply(); _floatingNav.value = v }
     fun setAutoNext(v: Boolean) { sp.edit().putBoolean("auto_next", v).apply(); _autoNext.value = v }
 }

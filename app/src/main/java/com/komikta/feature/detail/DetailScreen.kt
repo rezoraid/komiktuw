@@ -299,7 +299,6 @@ fun DetailScreen(
                     items(visible, key = { it.slug }) { chapter ->
                         ChapterRow(
                             chapter = chapter,
-                            coverUrl = detail.coverUrl,
                             isRead = chapter.slug in readChapters,
                             onClick = { onChapterClick(detail.source, detail.slug, chapter.slug) }
                         )
@@ -408,27 +407,15 @@ private fun MetaRow(icon: ImageVector, text: String) {
 }
 
 @Composable
-private fun ChapterRow(chapter: Chapter, coverUrl: String?, isRead: Boolean, onClick: () -> Unit) {
+private fun ChapterRow(chapter: Chapter, isRead: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
             .alpha(if (isRead) 0.4f else 1f)
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 11.dp),
+            .padding(horizontal = 18.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        CoverImage(
-            url = coverUrl,
-            contentDescription = null,
-            widthPx = 336,
-            heightPx = 228,
-            modifier = Modifier
-                .width(112.dp)
-                .height(76.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Panel)
-        )
-        Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 text = chapterName(chapter),
