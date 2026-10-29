@@ -24,6 +24,16 @@ android {
         buildConfigField("String", "DEFAULT_SOURCE", "\"lumos\"")
     }
 
+    signingConfigs {
+        // Keystore tetap supaya signature sama di semua build (lokal/CI)
+        getByName("debug") {
+            storeFile = file("komikta-debug.jks")
+            storePassword = "komikta123"
+            keyAlias = "komikta"
+            keyPassword = "komikta123"
+        }
+    }
+
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
