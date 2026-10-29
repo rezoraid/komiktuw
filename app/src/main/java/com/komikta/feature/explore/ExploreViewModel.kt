@@ -8,6 +8,7 @@ import com.komikta.domain.model.BrowseParams
 import com.komikta.domain.model.Comic
 import com.komikta.domain.model.SearchParams
 import com.komikta.domain.usecase.BrowseComicsUseCase
+import com.komikta.domain.usecase.GetGenresUseCase
 import com.komikta.domain.usecase.SearchComicsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -26,13 +27,16 @@ data class ExploreUiState(
     val comics: List<Comic> = emptyList(),
     val page: Int = 1,
     val canLoadMore: Boolean = true,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val genres: List<String> = emptyList(),
+    val selectedGenres: Set<String> = emptySet()
 )
 
 @HiltViewModel
 class ExploreViewModel @Inject constructor(
     private val searchComics: SearchComicsUseCase,
-    private val browseComics: BrowseComicsUseCase
+    private val browseComics: BrowseComicsUseCase,
+    private val getGenres: GetGenresUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ExploreUiState())
@@ -41,8 +45,30 @@ class ExploreViewModel @Inject constructor(
     private var searchJob: Job? = null
 
     init {
+        loadGenres()
         loadInitial()
     }
+
+    private fun loadGenres() {
+        viewModelScope.launch {
+            val result = getGenres(ApiConfig.DEFAULT_SOURCE)
+            val items = (result as? Result.Success)?.data.orEmpty().sortedBy { it.lowercase() }
+            _uiState.update { it.copy(genres = items) }
+        }
+    }
+
+    fun applyGenres(genres: Set<String>) {
+        if (genres == _uiState.value.selectedGenres) return
+        _uiState.update { it.copy(selectedGenres = genres, query = "") }
+        loadInitial()
+    }
+
+    fun removeGenre(genre: String) {
+        applyGenres(_uiState.value.selectedGenres - genre)
+    }
+
+    private fun genreParam(): String? =
+        _uiState.value.selectedGenres.takeIf { it.isNotEmpty() }?.joinToString(",")
 
     fun onQueryChange(query: String) {
         _uiState.update { it.copy(query = query) }
@@ -60,7 +86,7 @@ class ExploreViewModel @Inject constructor(
                 it.copy(isLoading = true, errorMessage = null, page = 1, canLoadMore = true)
             }
             val source = ApiConfig.DEFAULT_SOURCE
-            val result = browseComics(BrowseParams(source = source, page = 1))
+            val result = browseComics(BrowseParams(source = source, page = 1, genres = genreParam()))
             val firstPage = (result as? Result.Success)?.data.orEmpty().distinctBy { it.slug }
             val error = (result as? Result.Error)?.message
             _uiState.update {
@@ -82,7 +108,7 @@ class ExploreViewModel @Inject constructor(
             _uiState.update { it.copy(isLoadingMore = true) }
             val next = state.page + 1
             val source = ApiConfig.DEFAULT_SOURCE
-            val result = browseComics(BrowseParams(source = source, page = next))
+            val result = browseComics(BrowseParams(source = source, page = next, genres = genreParam()))
             val more = (result as? Result.Success)?.data.orEmpty()
             _uiState.update {
                 val merged = (it.comics + more).distinctBy { c -> c.slug }

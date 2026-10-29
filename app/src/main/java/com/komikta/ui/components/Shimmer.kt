@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -61,28 +63,38 @@ fun ShimmerBox(modifier: Modifier = Modifier) {
 @Composable
 fun HomeShimmerLoading() {
     Column(
-        Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState(), enabled = false)
+            .padding(vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        ShimmerBox(Modifier.width(160.dp).height(28.dp))
-        ShimmerBox(Modifier.width(90.dp).height(18.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ShimmerBox(Modifier.width(160.dp).height(28.dp))
+            ShimmerBox(Modifier.fillMaxWidth().height(180.dp))
+        }
+        HomeShimmerSection()
+        HomeShimmerSection()
+    }
+}
+
+@Composable
+private fun HomeShimmerSection() {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        ShimmerBox(Modifier.padding(horizontal = 16.dp).width(110.dp).height(18.dp))
+        Row(
+            Modifier.padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             repeat(3) {
-                Column {
-                    ShimmerBox(Modifier.width(140.dp).aspectRatio(0.68f))
-                    Spacer(Modifier.height(8.dp))
-                    ShimmerBox(Modifier.width(120.dp).height(14.dp))
+                Column(Modifier.width(130.dp)) {
+                    ShimmerBox(Modifier.fillMaxWidth().aspectRatio(0.68f))
+                    Spacer(Modifier.height(6.dp))
+                    ShimmerBox(Modifier.fillMaxWidth(0.9f).height(12.dp))
+                    Spacer(Modifier.height(4.dp))
+                    ShimmerBox(Modifier.fillMaxWidth(0.55f).height(10.dp))
                 }
             }
-        }
-        ShimmerBox(Modifier.width(110.dp).height(18.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ShimmerBox(Modifier.weight(1f).aspectRatio(0.68f))
-            ShimmerBox(Modifier.weight(1f).aspectRatio(0.68f))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ShimmerBox(Modifier.weight(1f).aspectRatio(0.68f))
-            ShimmerBox(Modifier.weight(1f).aspectRatio(0.68f))
         }
     }
 }

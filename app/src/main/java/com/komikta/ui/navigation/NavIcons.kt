@@ -55,12 +55,12 @@ object NavIcons {
         close()
     }
 
-    fun explore(filled: Boolean): ImageVector = navIcon("Explore", filled) {
-        circle(12f, 12f, 9f)
-        moveTo(16f, 8.1f)
-        lineTo(13.3f, 13.3f)
-        lineTo(8f, 15.9f)
-        lineTo(10.7f, 10.7f)
+    fun explore(filled: Boolean): ImageVector = navIcon("Explore", filled, stroked = !filled) {
+        circle(12f, 12f, if (filled) 10f else 9f)
+        moveTo(16.4f, 7.6f)
+        lineTo(13.6f, 13.6f)
+        lineTo(7.6f, 16.4f)
+        lineTo(10.4f, 10.4f)
         close()
     }
 

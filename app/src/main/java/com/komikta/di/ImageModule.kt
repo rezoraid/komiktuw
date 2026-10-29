@@ -12,6 +12,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
@@ -27,6 +28,10 @@ object ImageModule {
         okHttpClient: OkHttpClient
     ): ImageLoader {
         val imageClient = okHttpClient.newBuilder()
+            .dispatcher(Dispatcher().apply {
+                maxRequests = 48
+                maxRequestsPerHost = 16
+            })
             .connectTimeout(12, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .addInterceptor { chain ->
@@ -42,18 +47,19 @@ object ImageModule {
             .okHttpClient(imageClient)
             .memoryCache {
                 MemoryCache.Builder(context)
-                    .maxSizePercent(0.25)
+                    .maxSizePercent(0.30)
                     .build()
             }
             .diskCache {
                 DiskCache.Builder()
                     .directory(context.cacheDir.resolve("image_cache"))
-                    .maxSizeBytes(150L * 1024 * 1024) // 150 MB
+                    .maxSizeBytes(300L * 1024 * 1024)
                     .build()
             }
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
             .crossfade(false)
+            .allowRgb565(true)
             .respectCacheHeaders(false)
             .apply {
                 if (BuildConfig.DEBUG) logger(DebugLogger())

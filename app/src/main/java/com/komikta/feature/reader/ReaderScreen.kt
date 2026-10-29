@@ -59,6 +59,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.SubcomposeAsyncImage
+import coil.imageLoader
+import coil.size.Dimension
+import coil.size.Size
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.aspectRatio
 import coil.request.ImageRequest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -130,16 +137,31 @@ fun ReaderScreen(
             }
             uiState.content != null -> {
                 val images = uiState.content!!.imageUrls
+                val context = LocalContext.current
+                val screenWidthPx = with(LocalDensity.current) {
+                    LocalConfiguration.current.screenWidthDp.dp.roundToPx()
+                }
+                fun request(url: String) = ImageRequest.Builder(context)
+                    .data(url)
+                    .size(Size(screenWidthPx, Dimension.Undefined))
+                    .crossfade(false)
+                    .build()
+
+                LaunchedEffect(images) {
+                    snapshotFlow { listState.firstVisibleItemIndex }.collect { first ->
+                        val end = (first + 8).coerceAtMost(images.lastIndex)
+                        for (i in first..end) {
+                            context.imageLoader.enqueue(request(images[i]))
+                        }
+                    }
+                }
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize()
                 ) {
                     itemsIndexed(images, key = { index, url -> "$index:$url" }) { index, url ->
                         SubcomposeAsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(url)
-                                .crossfade(false)
-                                .build(),
+                            model = request(url),
                             contentDescription = "Page ${index + 1}",
                             contentScale = ContentScale.FillWidth,
                             modifier = Modifier.fillMaxWidth(),
@@ -147,7 +169,7 @@ fun ReaderScreen(
                                 Box(
                                     Modifier
                                         .fillMaxWidth()
-                                        .height(400.dp)
+                                        .aspectRatio(0.7f)
                                         .background(Color(0xFF000000)),
                                     contentAlignment = Alignment.Center
                                 ) {

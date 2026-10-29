@@ -4,6 +4,24 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,11 +31,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -51,6 +71,7 @@ fun ExploreScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedType by remember { mutableStateOf("All") }
+    var showFilter by remember { mutableStateOf(false) }
     val types = listOf("All", "Manhwa", "Manhua", "Manga")
     val gridState = rememberLazyGridState()
 
@@ -106,6 +127,61 @@ fun ExploreScreen(
                     ),
                     border = null
                 )
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val active = uiState.selectedGenres.isNotEmpty()
+            Surface(
+                onClick = { showFilter = true },
+                shape = RoundedCornerShape(20.dp),
+                color = if (active) Color.White else Color(0xFF141414)
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Menu,
+                        null,
+                        tint = if (active) Color.Black else Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        if (active) "Filters (${uiState.selectedGenres.size})" else "Filters",
+                        color = if (active) Color.Black else Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+            uiState.selectedGenres.forEach { genre ->
+                Surface(
+                    onClick = { viewModel.removeGenre(genre) },
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color(0xFF1E1E1E)
+                ) {
+                    Row(
+                        Modifier.padding(start = 14.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(genre, color = Color.White, fontSize = 14.sp)
+                        Icon(
+                            Icons.Default.Close,
+                            "Remove $genre",
+                            tint = Color(0xFFBDBDBD),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
             }
         }
 
@@ -172,6 +248,123 @@ private fun ExploreGridLoading() {
                 ShimmerBox(Modifier.fillMaxWidth(0.92f).height(12.dp))
                 Spacer(Modifier.height(5.dp))
                 ShimmerBox(Modifier.fillMaxWidth(0.58f).height(9.dp))
+            }
+        }
+    }
+
+    if (showFilter) {
+        GenreFilterSheet(
+            genres = uiState.genres,
+            selected = uiState.selectedGenres,
+            onApply = {
+                viewModel.applyGenres(it)
+                showFilter = false
+            },
+            onDismiss = { showFilter = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun GenreFilterSheet(
+    genres: List<String>,
+    selected: Set<String>,
+    onApply: (Set<String>) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var draft by remember { mutableStateOf(selected) }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = Color(0xFF141414),
+        contentColor = Color.White
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp)
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Filter komik", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, "Close", tint = Color.White)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text("Pilih satu atau lebih genre", color = Color(0xFF999999), fontSize = 13.sp)
+            Spacer(Modifier.height(10.dp))
+
+            Column(
+                Modifier
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                if (genres.isEmpty()) {
+                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp)
+                    }
+                } else {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        genres.forEach { genre ->
+                            val isSelected = genre in draft
+                            Box(
+                                Modifier
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(if (isSelected) Color.White else Color(0xFF242424))
+                                    .clickable {
+                                        draft = if (isSelected) draft - genre else draft + genre
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 9.dp)
+                            ) {
+                                Text(
+                                    genre,
+                                    color = if (isSelected) Color.Black else Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = { draft = emptySet() },
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF242424),
+                        contentColor = Color.White
+                    )
+                ) { Text("Reset", fontWeight = FontWeight.SemiBold) }
+                Button(
+                    onClick = { onApply(draft) },
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = Color.Black
+                    )
+                ) {
+                    Text(
+                        if (draft.isEmpty()) "Terapkan" else "Terapkan (${draft.size})",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
     }
