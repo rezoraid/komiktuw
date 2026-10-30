@@ -25,18 +25,25 @@ android {
     }
 
     signingConfigs {
-        // Keystore tetap supaya signature sama di semua build (lokal/CI)
-        getByName("debug") {
-            storeFile = file("komikta-debug.jks")
-            storePassword = "komikta123"
-            keyAlias = "komikta"
-            keyPassword = "komikta123"
+        // Pakai komikta-debug.jks hanya jika file ada (lokal).
+        // Di CI, file sering tidak di-commit → fallback ke Android default debug keystore
+        // supaya :app:validateSigningDebug tidak gagal.
+        val localJks = file("komikta-debug.jks")
+        if (localJks.exists()) {
+            getByName("debug") {
+                storeFile = localJks
+                storePassword = "komikta123"
+                keyAlias = "komikta"
+                keyPassword = "komikta123"
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            if (file("komikta-debug.jks").exists()) {
+                signingConfig = signingConfigs.getByName("debug")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
