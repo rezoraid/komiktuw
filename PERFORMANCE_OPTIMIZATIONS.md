@@ -1,15 +1,12 @@
-# Komikta performance changes
+# Komikta performance
 
-## Changes made
-
-- Reduced reader image prefetch from 15 upcoming pages to 4 and from three concurrent workers to one. This limits background network/decode work competing with scroll rendering.
-- Removed the eager in-memory warm-up that queued up to six page image decodes while the reader was moving. The reader now relies on the lazy list and Coil cache for visible/near-visible pages, while keeping a small disk prefetch.
-- Removed the reader's per-image loading/fade animation state. Each page now updates only its own aspect ratio when image dimensions become available.
-- Replaced the shared observable ratio map with a regular remembered map, preventing every ratio update from invalidating all visible page composables.
-- Removed spring scaling/pressed-state animation from every comic card, reducing per-item animation work during Explore/Home scrolling.
-- Disabled cover crossfade animations to avoid animating every image as grid items enter the viewport.
-- Reduced global image HTTP concurrency from 24 requests (8 per host) to 12 (4 per host), leaving more CPU/network headroom for visible content.
-
-## Verification note
-
-The provided project ZIP does not contain `gradle/wrapper/gradle-wrapper.jar`, and no system Gradle executable is available in the environment. Therefore a Kotlin/Gradle build could not be run here. Open the project in Android Studio or restore the wrapper JAR and run `./gradlew :app:compileDebugKotlin` before producing the next APK.
+- Glassmorphism dan navigasi mengambang dihapus; bottom bar kini flat, solid, tanpa animasi dan tanpa ripple.
+- Transisi antar tab dimatikan, transisi ke detail/reader hanya fade 120-140 ms.
+- Baseline profile (`app/src/main/baseline-prof.txt`) dipasang oleh ProfileInstaller sehingga kode aplikasi, Compose, Coil, OkHttp dan Ktor dikompilasi AOT; ini mengurangi jank scroll dan startup lambat pada APK sideload.
+- Home menyimpan snapshot terakhir ke disk dan menampilkannya seketika saat aplikasi dibuka, lalu menyegarkan data di belakang layar.
+- Shimmer statis (tanpa animasi tak berhingga).
+- Kartu komik tanpa ikon vector, tanpa Surface, tanpa animasi; metadata ditampilkan sebagai teks.
+- Hero tanpa auto-slide dan hanya satu lapisan scrim.
+- Explore memakai BasicTextField dan chip sederhana (tanpa OutlinedTextField/FilterChip).
+- Detail: baris chapter tanpa graphicsLayer alpha dan tanpa ikon vector.
+- Reader: rasio halaman disimpan per item (tidak ada state map global yang menginvalidasi semua halaman), kontrol atas/bawah tanpa AnimatedVisibility.

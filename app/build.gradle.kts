@@ -45,8 +45,7 @@ android {
             )
         }
         debug {
-            // APK "debug" dibuat secepat release: tidak debuggable + R8 aktif.
-            // (build debuggable tanpa optimasi membuat Compose jauh lebih lambat)
+            signingConfig = signingConfigs.getByName("debug")
             isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true

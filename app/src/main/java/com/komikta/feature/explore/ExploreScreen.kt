@@ -1,6 +1,9 @@
 package com.komikta.feature.explore
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,7 +12,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,15 +44,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import kotlinx.coroutines.delay
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -104,27 +102,32 @@ fun ExploreScreen(
     }
 
     Column(Modifier.fillMaxSize().background(Color(0xFF000000))) {
-        OutlinedTextField(
-            value = uiState.query,
-            onValueChange = viewModel::onQueryChange,
-            modifier = Modifier
+        Row(
+            Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
-                .focusRequester(searchFocus),
-            placeholder = { Text("Search manga, manhwa, manhua", color = Color(0xFF999999)) },
-            leadingIcon = { Icon(Icons.Default.Search, null, tint = Color(0xFFBDBDBD)) },
-            singleLine = true,
-            shape = RoundedCornerShape(24.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-                focusedContainerColor = Color(0xFF141414),
-                unfocusedContainerColor = Color(0xFF141414),
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
-                cursorColor = Color(0xFFFFFFFF)
-            )
-        )
+                .height(48.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(FieldBg)
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Search, null, tint = Color(0xFFBDBDBD), modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(12.dp))
+            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                if (uiState.query.isEmpty()) {
+                    Text("Search manga, manhwa, manhua", color = Color(0xFF999999), fontSize = 15.sp, maxLines = 1)
+                }
+                BasicTextField(
+                    value = uiState.query,
+                    onValueChange = viewModel::onQueryChange,
+                    singleLine = true,
+                    textStyle = TextStyle(color = Color.White, fontSize = 15.sp),
+                    cursorBrush = SolidColor(Color.White),
+                    modifier = Modifier.fillMaxWidth().focusRequester(searchFocus)
+                )
+            }
+        }
 
         Row(
             Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
@@ -132,21 +135,13 @@ fun ExploreScreen(
         ) {
             types.forEach { type ->
                 val selected = selectedType == type
-                FilterChip(
+                Chip(
+                    text = type,
                     selected = selected,
                     onClick = {
                         selectedType = type
                         viewModel.setType(if (type == "All") null else type.lowercase())
-                    },
-                    label = { Text(type) },
-                    shape = RoundedCornerShape(20.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFFFFFFFF),
-                        selectedLabelColor = Color.Black,
-                        containerColor = Color(0xFF141414),
-                        labelColor = Color.White
-                    ),
-                    border = null
+                    }
                 )
             }
         }
@@ -160,51 +155,47 @@ fun ExploreScreen(
         ) {
             val activeCount = uiState.selectedGenres.size + listOf(uiState.sort, uiState.status).count { it != null }
             val active = activeCount > 0
-            Surface(
-                onClick = { showFilter = true },
-                shape = RoundedCornerShape(20.dp),
-                color = if (active) Color.White else Color(0xFF141414)
+            Row(
+                Modifier
+                    .clip(ChipShape)
+                    .background(if (active) Color.White else FieldBg)
+                    .clickable { showFilter = true }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Row(
-                    Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Menu,
-                        null,
-                        tint = if (active) Color.Black else Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        if (active) "Filters ($activeCount)" else "Filters",
-                        color = if (active) Color.Black else Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                Icon(
+                    Icons.Default.Menu,
+                    null,
+                    tint = if (active) Color.Black else Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    if (active) "Filters ($activeCount)" else "Filters",
+                    color = if (active) Color.Black else Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
             }
             val quick = (uiState.selectedGenres + uiState.genres.take(6)).toList()
             quick.forEach { genre ->
                 val on = genre in uiState.selectedGenres
-                Surface(
-                    onClick = {
-                        viewModel.applyFilters(
-                            if (on) uiState.selectedGenres - genre else uiState.selectedGenres + genre,
-                            uiState.sort,
-                            uiState.status
-                        )
-                    },
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (on) Color(0xFF3A3A3A) else Color(0xFF141414)
-                ) {
-                    Text(
-                        genre,
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                    )
-                }
+                Text(
+                    genre,
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    modifier = Modifier
+                        .clip(ChipShape)
+                        .background(if (on) Color(0xFF3A3A3A) else FieldBg)
+                        .clickable {
+                            viewModel.applyFilters(
+                                if (on) uiState.selectedGenres - genre else uiState.selectedGenres + genre,
+                                uiState.sort,
+                                uiState.status
+                            )
+                        }
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                )
             }
         }
 
@@ -267,6 +258,24 @@ fun ExploreScreen(
     }
 }
 
+
+private val FieldBg = Color(0xFF141414)
+private val ChipShape = RoundedCornerShape(20.dp)
+
+@Composable
+private fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
+    Text(
+        text,
+        color = if (selected) Color.Black else Color.White,
+        fontSize = 14.sp,
+        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+        modifier = Modifier
+            .clip(ChipShape)
+            .background(if (selected) Color.White else FieldBg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    )
+}
 
 @Composable
 private fun ExploreGridLoading() = ShimmerHost {

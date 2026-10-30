@@ -195,7 +195,7 @@ fun ReaderScreen(
     }
     val screenWidthPx = with(density) { LocalConfiguration.current.screenWidthDp.dp.roundToPx() }
     val readerItems = remember(uiState.loaded) { buildReaderItems(uiState.loaded) }
-    val ratios = remember { mutableStateMapOf<String, Float>() }
+    val ratios = remember { HashMap<String, Float>() }
     val firstSlug = uiState.loaded.firstOrNull()?.chapterSlug
 
     // Progress halaman untuk chapter yang sedang dibaca
@@ -385,12 +385,7 @@ fun ReaderScreen(
         }
 
         // Top bar: pill kecil melayang (tidak lagi blok hitam selebar layar)
-        AnimatedVisibility(
-            visible = controlsVisible,
-            enter = fadeIn() + slideInVertically { -it },
-            exit = fadeOut() + slideOutVertically { -it },
-            modifier = Modifier.align(Alignment.TopCenter)
-        ) {
+        if (controlsVisible) Box(Modifier.align(Alignment.TopCenter)) {
             val topShape = RoundedCornerShape(12.dp)
             Row(
                 Modifier
@@ -399,7 +394,7 @@ fun ReaderScreen(
                     .fillMaxWidth()
                     .height(48.dp)
                     .clip(topShape)
-                    .background(Color(0xE61C1C1E))
+                    .background(Color(0xFF1C1C1E))
                     .border(1.dp, Color(0xFF3A3A3C), topShape)
                     .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -427,12 +422,7 @@ fun ReaderScreen(
         }
 
         // Bottom floating controls: slider halaman + tombol navigasi
-        AnimatedVisibility(
-            visible = controlsVisible,
-            enter = fadeIn() + slideInVertically { it },
-            exit = fadeOut() + slideOutVertically { it },
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
+        if (controlsVisible) Box(Modifier.align(Alignment.BottomCenter)) {
             val navShape = RoundedCornerShape(30.dp)
             val sliderShape = RoundedCornerShape(24.dp)
             Column(
@@ -448,7 +438,7 @@ fun ReaderScreen(
                             .padding(horizontal = 16.dp)
                             .fillMaxWidth()
                             .clip(sliderShape)
-                            .background(Color(0xE61C1C1E))
+                            .background(Color(0xFF1C1C1E))
                             .border(1.dp, Color(0xFF3A3A3C), sliderShape)
                             .padding(horizontal = 16.dp, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -477,7 +467,7 @@ fun ReaderScreen(
                 Row(
                     Modifier
                         .clip(navShape)
-                        .background(Color(0xE61C1C1E))
+                        .background(Color(0xFF1C1C1E))
                         .border(1.dp, Color(0xFF3A3A3C), navShape)
                         .padding(horizontal = 10.dp, vertical = 2.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -695,6 +685,7 @@ private fun PageImage(url: String, widthPx: Int, ratios: MutableMap<String, Floa
         )
         return
     }
+    var ratio by remember(url) { mutableFloatStateOf(ratios[url] ?: 0.7f) }
     var retry by remember(url) { mutableIntStateOf(0) }
     var failed by remember(url) { mutableStateOf(false) }
     var slow by remember(url) { mutableStateOf(false) }
@@ -705,7 +696,7 @@ private fun PageImage(url: String, widthPx: Int, ratios: MutableMap<String, Floa
     Box(
         Modifier
             .fillMaxWidth()
-            .aspectRatio(ratios[url] ?: 0.7f)
+            .aspectRatio(ratio)
             .background(Color(0xFF0E0E0E)),
         contentAlignment = Alignment.Center
     ) {
@@ -721,8 +712,8 @@ private fun PageImage(url: String, widthPx: Int, ratios: MutableMap<String, Floa
                 val d = st.painter.intrinsicSize
                 if (d.width > 0f && d.height > 0f) {
                     val r = d.width / d.height
-                    val old = ratios[url]
-                    if (old == null || abs(old - r) > 0.003f) ratios[url] = r
+                    ratios[url] = r
+                    if (abs(ratio - r) > 0.003f) ratio = r
                 }
                 failed = false
                 shown = true

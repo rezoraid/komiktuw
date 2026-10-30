@@ -1,12 +1,8 @@
 package com.komikta.feature.home
 
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.indication
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,9 +24,6 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,7 +31,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -47,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -63,7 +54,6 @@ import com.komikta.domain.model.Comic
 import com.komikta.ui.components.AppIcons
 import com.komikta.ui.components.CoverImage
 import com.komikta.ui.components.HomeShimmerLoading
-import kotlinx.coroutines.delay
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -198,11 +188,15 @@ private fun HomeHeader(onSearch: () -> Unit) {
         ) {
             Image(
                 painter = painterResource(R.drawable.ic_logo),
-                contentDescription = "Logo Komikta",
+                contentDescription = "Komikta",
                 contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .width(142.dp)
-                    .height(48.dp)
+                modifier = Modifier.size(34.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "Komikta",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onSearch) {
@@ -225,16 +219,6 @@ private fun HeroCarousel(
     onRead: (Comic) -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { comics.size })
-
-    LaunchedEffect(comics.size) {
-        if (comics.size < 2) return@LaunchedEffect
-        while (true) {
-            delay(5000)
-            if (!pagerState.isScrollInProgress) {
-                pagerState.animateScrollToPage((pagerState.currentPage + 1) % comics.size)
-            }
-        }
-    }
 
     Box(Modifier.fillMaxWidth().height(236.dp)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
@@ -265,19 +249,13 @@ private fun HeroSlide(rank: Int, comic: Comic, onDetail: () -> Unit, onRead: () 
             heightPx = 440,
             modifier = Modifier.fillMaxSize()
         )
-        // gelap di kiri (teks) + gelap di bawah (menyatu dengan background)
         Box(
             Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(
-                    0f to Color.Black.copy(0.85f),
-                    0.6f to Color.Black.copy(0.4f),
-                    1f to Color.Transparent
+                Brush.verticalGradient(
+                    0f to Color.Black.copy(0.25f),
+                    0.45f to Color.Black.copy(0.45f),
+                    1f to Color.Black
                 )
-            )
-        )
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black)
             )
         )
         Column(
@@ -310,22 +288,14 @@ private fun HeroSlide(rank: Int, comic: Comic, onDetail: () -> Unit, onRead: () 
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 comic.rating?.let {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Star, null, tint = Gold, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(fmtRating(it), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White)
-                    }
+                    Text("★ ${fmtRating(it)}", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Gold)
                 }
                 latest?.let { ch ->
                     val text = listOfNotNull(chapterShort(ch), ch.timeAgo?.takeIf { it.isNotBlank() }).joinToString(" · ")
                     if (text.isNotEmpty()) Text(text, fontSize = 13.sp, color = Color(0xFFE0E0E5), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 }
                 comic.views?.let {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(AppIcons.eye, null, tint = Color(0xFFE0E0E5), modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(formatViewsShort(it), fontSize = 13.sp, color = Color(0xFFE0E0E5), maxLines = 1)
-                    }
+                    Text("${formatViewsShort(it)} views", fontSize = 13.sp, color = Color(0xFFE0E0E5), maxLines = 1)
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -339,15 +309,13 @@ private fun HeroSlide(rank: Int, comic: Comic, onDetail: () -> Unit, onRead: () 
                         .padding(horizontal = 18.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(6.dp))
                     Text("Baca", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
                 }
                 Box(
                     Modifier
                         .height(40.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.16f))
+                        .background(Color(0x40FFFFFF))
                         .clickable(onClick = onDetail)
                         .padding(horizontal = 20.dp),
                     contentAlignment = Alignment.Center
@@ -364,7 +332,7 @@ private fun PagerDots(pagerState: PagerState, count: Int, modifier: Modifier = M
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         repeat(count) { i ->
             val selected = pagerState.currentPage == i
-            val w by animateDpAsState(if (selected) 22.dp else 6.dp, label = "dot")
+            val w = if (selected) 22.dp else 6.dp
             Box(
                 Modifier
                     .padding(start = 5.dp)
@@ -423,12 +391,8 @@ private fun PosterRow(comics: List<Comic>, cardWidth: androidx.compose.ui.unit.D
 
 @Composable
 private fun ContinueCard(item: ReadingHistoryEntity, now: Long, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    Column(Modifier.width(126.dp).clickable(interactionSource = interaction, indication = null, onClick = onClick)) {
-        Box(
-            Modifier.fillMaxWidth().aspectRatio(0.75f).clip(CardShape).background(CoverBg)
-                .indication(interaction, LocalIndication.current)
-        ) {
+    Column(Modifier.width(126.dp).clickable(onClick = onClick)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(0.75f).clip(CardShape).background(CoverBg)) {
             CoverImage(
                 url = item.coverUrl,
                 contentDescription = item.comicTitle,
@@ -451,11 +415,7 @@ private fun ContinueCard(item: ReadingHistoryEntity, now: Long, onClick: () -> U
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(2.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.PlayArrow, null, tint = Color(0xFFD0D0D6), modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(2.dp))
-                    Text("Lanjutkan", fontSize = 12.sp, color = Color(0xFFD0D0D6))
-                }
+                Text("Lanjutkan", fontSize = 12.sp, color = Color(0xFFD0D0D6), maxLines = 1)
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -477,12 +437,8 @@ private fun PosterCard(comic: Comic, onClick: () -> Unit, modifier: Modifier = M
     val chapterPill = latest?.let { chapterShort(it) } ?: comic.chapterCount?.let { "Ch. $it" }
     val chapterChip = latest?.let { chapterLong(it) }
 
-    val interaction = remember { MutableInteractionSource() }
-    Column(modifier.clickable(interactionSource = interaction, indication = null, onClick = onClick)) {
-        Box(
-            Modifier.fillMaxWidth().aspectRatio(0.75f).clip(CardShape).background(CoverBg)
-                .indication(interaction, LocalIndication.current)
-        ) {
+    Column(modifier.clickable(onClick = onClick)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(0.75f).clip(CardShape).background(CoverBg)) {
             CoverImage(
                 url = comic.coverUrl,
                 contentDescription = comic.title,
@@ -506,19 +462,19 @@ private fun PosterCard(comic: Comic, onClick: () -> Unit, modifier: Modifier = M
                 )
             }
             comic.rating?.let {
-                Row(
-                    Modifier
+                Text(
+                    "★ ${fmtRating(it)}",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Gold,
+                    maxLines = 1,
+                    modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(6.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(Color.Black.copy(alpha = 0.62f))
-                        .padding(horizontal = 6.dp, vertical = 3.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.Star, null, tint = Gold, modifier = Modifier.size(11.dp))
-                    Spacer(Modifier.width(3.dp))
-                    Text(fmtRating(it), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                }
+                        .padding(horizontal = 6.dp, vertical = 3.dp)
+                )
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -531,9 +487,12 @@ private fun PosterCard(comic: Comic, onClick: () -> Unit, modifier: Modifier = M
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
-        comic.author?.let { MetaRow(AppIcons.person, it) }
-        comic.views?.let { MetaRow(AppIcons.eye, formatViewsFull(it)) }
-        comic.type?.takeIf { it.isNotBlank() }?.let { MetaRow(AppIcons.doc, it) }
+        comic.author?.takeIf { it.isNotBlank() }?.let { MetaText(it) }
+        val sub = listOfNotNull(
+            comic.views?.let { formatViewsFull(it) },
+            comic.type?.takeIf { it.isNotBlank() }
+        ).joinToString(" · ")
+        if (sub.isNotEmpty()) MetaText(sub)
         chapterChip?.let {
             Text(
                 it,
@@ -554,12 +513,15 @@ private fun PosterCard(comic: Comic, onClick: () -> Unit, modifier: Modifier = M
 }
 
 @Composable
-private fun MetaRow(icon: ImageVector, text: String) {
-    Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = Muted, modifier = Modifier.size(14.dp))
-        Spacer(Modifier.width(5.dp))
-        Text(text, fontSize = 12.sp, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
+private fun MetaText(text: String) {
+    Text(
+        text,
+        fontSize = 12.sp,
+        color = Muted,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.padding(top = 3.dp)
+    )
 }
 
 // ───────────────────────── Helpers ─────────────────────────

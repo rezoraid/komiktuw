@@ -1,30 +1,19 @@
 package com.komikta.ui.navigation
 
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -36,9 +25,7 @@ import com.komikta.feature.detail.DetailScreen
 import com.komikta.feature.explore.ExploreScreen
 import com.komikta.feature.home.HomeScreen
 import com.komikta.feature.library.LibraryScreen
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.komikta.feature.profile.ProfileScreen
-import com.komikta.feature.profile.SettingsViewModel
 import com.komikta.feature.reader.ReaderScreen
 
 @Composable
@@ -47,9 +34,7 @@ fun MainNavGraph() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val isDetail = currentDestination?.route?.startsWith("detail") == true
-    val showBottomBar = currentDestination?.route in bottomNavItems.map { it.route }
-    val settings: SettingsViewModel = hiltViewModel()
-    val floatingNav by settings.floatingNav.collectAsStateWithLifecycle()
+    val showBottomBar = currentDestination?.route in tabRoutes
     var focusSearch by remember { mutableStateOf(false) }
     val goTo: (String) -> Unit = { route ->
         navController.navigate(route) {
@@ -62,55 +47,12 @@ fun MainNavGraph() {
     Scaffold(
         containerColor = Color(0xFF000000),
         bottomBar = {
-            if (showBottomBar && floatingNav) {
-                FloatingNavBar(
+            if (showBottomBar) {
+                BottomBar(
                     items = bottomNavItems,
-                    currentRoute = currentDestination?.hierarchy?.firstOrNull { d -> bottomNavItems.any { it.route == d.route } }?.route,
+                    currentRoute = currentDestination?.route,
                     onSelect = goTo
                 )
-            } else if (showBottomBar) {
-                Column {
-                    HorizontalDivider(thickness = 1.dp, color = Color(0xFF2E2E30))
-                    NavigationBar(
-                        containerColor = Color(0xFF232325),
-                        contentColor = Color.White,
-                        tonalElevation = 0.dp
-                    ) {
-                        bottomNavItems.forEach { item ->
-                            val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
-                            NavigationBarItem(
-                                selected = selected,
-                                onClick = {
-                                    navController.navigate(item.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
-                                icon = {
-                                    Icon(
-                                        imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                        contentDescription = item.title
-                                    )
-                                },
-                                label = {
-                                    Text(
-                                        item.title,
-                                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
-                                    )
-                                },
-                                alwaysShowLabel = true,
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Color.White,
-                                    selectedTextColor = Color.White,
-                                    unselectedIconColor = Color(0xFF9C98A2),
-                                    unselectedTextColor = Color(0xFF9C98A2),
-                                    indicatorColor = Color(0xFF3A3A3C)
-                                )
-                            )
-                        }
-                    }
-                }
             }
         }
     ) { innerPadding ->
@@ -118,26 +60,10 @@ fun MainNavGraph() {
             navController = navController,
             startDestination = BottomNavItem.Home.route,
             modifier = if (isDetail) Modifier else Modifier.padding(innerPadding),
-            enterTransition = {
-                if (isDeepRoute(targetState.destination.route)) {
-                    fadeIn(tween(240)) + slideIntoContainer(
-                        AnimatedContentTransitionScope.SlideDirection.Start,
-                        tween(300, easing = FastOutSlowInEasing),
-                        initialOffset = { it / 8 }
-                    )
-                } else fadeIn(tween(220))
-            },
-            exitTransition = { fadeOut(tween(160)) },
-            popEnterTransition = { fadeIn(tween(220)) },
-            popExitTransition = {
-                if (isDeepRoute(initialState.destination.route)) {
-                    fadeOut(tween(180)) + slideOutOfContainer(
-                        AnimatedContentTransitionScope.SlideDirection.End,
-                        tween(260, easing = FastOutSlowInEasing),
-                        targetOffset = { it / 8 }
-                    )
-                } else fadeOut(tween(160))
-            }
+            enterTransition = { if (isDeepRoute(targetState.destination.route)) fadeIn(tween(140)) else EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { if (isDeepRoute(initialState.destination.route)) fadeOut(tween(120)) else ExitTransition.None }
         ) {
             composable(BottomNavItem.Home.route) {
                 HomeScreen(
@@ -195,6 +121,8 @@ fun MainNavGraph() {
         }
     }
 }
+
+private val tabRoutes = bottomNavItems.map { it.route }.toSet()
 
 private fun isDeepRoute(route: String?): Boolean =
     route?.startsWith("detail") == true || route?.startsWith("reader") == true

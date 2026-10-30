@@ -30,7 +30,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.draw.alpha
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -290,13 +289,6 @@ fun DetailScreen(
                                 container = Panel,
                                 onClick = { viewModel.toggleChapterOrder() }
                             )
-                            RoundIconButton(
-                                icon = AppIcons.download,
-                                description = "Download",
-                                size = 52.dp,
-                                container = Panel,
-                                onClick = {}
-                            )
                         }
                     }
 
@@ -415,7 +407,6 @@ private fun ChapterRow(chapter: Chapter, isRead: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .alpha(if (isRead) 0.4f else 1f)
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -426,15 +417,14 @@ private fun ChapterRow(chapter: Chapter, isRead: Boolean, onClick: () -> Unit) {
                 style = MaterialTheme.typography.titleLarge,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFFD8D8DC),
+                color = if (isRead) Color(0xFF6A6A6E) else Color(0xFFD8D8DC),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             if (!chapter.timeAgo.isNullOrBlank()) {
-                Text(chapter.timeAgo!!, style = MaterialTheme.typography.bodyLarge, color = Muted)
+                Text(chapter.timeAgo!!, style = MaterialTheme.typography.bodyLarge, color = if (isRead) Color(0xFF55555A) else Muted)
             }
         }
-        Icon(AppIcons.download, "Download", tint = Muted, modifier = Modifier.padding(horizontal = 12.dp).size(24.dp))
     }
 }
 
