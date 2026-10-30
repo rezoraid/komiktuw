@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.platform.LocalDensity
+import kotlin.math.roundToInt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -75,6 +78,7 @@ fun ChapterEnd(
     val nextTitle = next?.title?.trim()?.takeIf { it.isNotEmpty() && cleanNumber(it) != nextNumber }
     val nextLabel = nextNumber?.let { "Chapter $it" } ?: nextTitle
 
+    val density = LocalDensity.current.density
     val bob: Float by rememberInfiniteTransition(label = "bob").animateFloat(
         initialValue = 0f,
         targetValue = 5f,
@@ -184,7 +188,7 @@ fun ChapterEnd(
                                 AppIcons.chevronsDown,
                                 "Chapter berikutnya",
                                 tint = Color.White,
-                                modifier = Modifier.size(26.dp).offset(y = (bob - 2.5f).dp)
+                                modifier = Modifier.size(26.dp).offset { IntOffset(0, ((bob - 2.5f) * density).roundToInt()) }
                             )
                         }
                         Spacer(Modifier.width(16.dp))

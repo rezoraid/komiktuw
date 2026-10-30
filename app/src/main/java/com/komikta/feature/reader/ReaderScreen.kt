@@ -187,6 +187,9 @@ fun ReaderScreen(
         }
     }
 
+    // Satu state turunan: hanya memicu ulang saat index terakhir yang terlihat berubah (bukan tiap frame scroll)
+    val lastVisible by remember { derivedStateOf { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 } }
+
     LaunchedEffect(firstSlug) { if (firstSlug != null) listState.scrollToItem(0) }
 
     LaunchedEffect(readerItems) {
@@ -198,7 +201,7 @@ fun ReaderScreen(
 
     LaunchedEffect(readerItems) {
         var done = -1
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }.collect { last ->
+        snapshotFlow { lastVisible }.collect { last ->
             if (last < 0) return@collect
             val end = (last + 4).coerceAtMost(readerItems.lastIndex)
             for (i in maxOf(last + 1, done + 1)..end) {
@@ -210,7 +213,7 @@ fun ReaderScreen(
 
     LaunchedEffect(readerItems, autoNext) {
         if (!autoNext) return@LaunchedEffect
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }.collect { last ->
+        snapshotFlow { lastVisible }.collect { last ->
             if (last >= 0 && last >= readerItems.size - 6) viewModel.appendNext()
         }
     }

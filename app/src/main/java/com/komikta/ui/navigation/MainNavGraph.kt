@@ -113,6 +113,9 @@ fun MainNavGraph() {
             composable(BottomNavItem.Home.route) {
                 HomeScreen(
                     onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") },
+                    onReadClick = { s, comic, chapter -> navController.navigate("reader/$s/$comic/$chapter") },
+                    onContinueViewAll = { goTo(BottomNavItem.Library.route) },
+                    onUpdateViewAll = { goTo(BottomNavItem.Explore.route) },
                     onSearchClick = {
                         navController.navigate(BottomNavItem.Explore.route) {
                             popUpTo(navController.graph.findStartDestination().id) { saveState = true }

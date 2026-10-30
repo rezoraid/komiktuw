@@ -67,6 +67,24 @@ object AppIcons {
         }
     }
 
+    val bell: ImageVector by lazy {
+        navIcon("Bell", false, strokeWidth = 1.8f) {
+            moveTo(6f, 16.5f)
+            lineTo(6f, 11f)
+            curveTo(6f, 7.7f, 8.7f, 5f, 12f, 5f)
+            curveTo(15.3f, 5f, 18f, 7.7f, 18f, 11f)
+            lineTo(18f, 16.5f)
+            lineTo(19.5f, 18f)
+            lineTo(4.5f, 18f)
+            close()
+            moveTo(10f, 20.5f)
+            curveTo(10.4f, 21.3f, 11.1f, 21.7f, 12f, 21.7f)
+            curveTo(12.9f, 21.7f, 13.6f, 21.3f, 14f, 20.5f)
+            moveTo(12f, 5f)
+            lineTo(12f, 3.6f)
+        }
+    }
+
     val play: ImageVector by lazy {
         navIcon("Play", false) {
             moveTo(7.5f, 4.8f); lineTo(19f, 12f); lineTo(7.5f, 19.2f); close()

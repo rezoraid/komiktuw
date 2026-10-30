@@ -2,6 +2,7 @@ package com.komikta.data.remote.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 @Serializable
 data class ApiResponse<T>(
@@ -54,7 +55,10 @@ data class ComicListItemDto(
     val rating: Double? = null,
     val chapterCount: Int? = null,
     val chapters: List<ChapterSummaryDto> = emptyList(),
-    val genres: List<String> = emptyList()
+    val genres: List<String> = emptyList(),
+    // Opsional: dipakai kalau API mengirimnya di list. JsonElement supaya angka/teks sama-sama aman.
+    val author: String? = null,
+    val views: JsonElement? = null
 )
 
 @Serializable

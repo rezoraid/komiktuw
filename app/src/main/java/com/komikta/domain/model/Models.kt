@@ -18,7 +18,10 @@ data class Comic(
     val rating: Double? = null,
     val chapterCount: Int? = null,
     val genres: List<String> = emptyList(),
-    val source: String
+    val source: String,
+    val author: String? = null,
+    val views: Double? = null,
+    val chapters: List<Chapter> = emptyList()
 )
 
 data class ComicDetail(

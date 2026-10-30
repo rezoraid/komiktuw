@@ -90,10 +90,7 @@ fun HomeShimmerLoading() = ShimmerHost {
             .padding(vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            ShimmerBox(Modifier.width(160.dp).height(28.dp))
-            ShimmerBox(Modifier.fillMaxWidth().height(180.dp))
-        }
+        ShimmerBox(Modifier.fillMaxWidth().height(236.dp))
         HomeShimmerSection()
         HomeShimmerSection()
     }
@@ -104,12 +101,12 @@ private fun HomeShimmerSection() {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         ShimmerBox(Modifier.padding(horizontal = 16.dp).width(110.dp).height(18.dp))
         Row(
-            Modifier.padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Modifier.padding(horizontal = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             repeat(3) {
-                Column(Modifier.width(130.dp)) {
-                    ShimmerBox(Modifier.fillMaxWidth().aspectRatio(0.68f))
+                Column(Modifier.weight(1f)) {
+                    ShimmerBox(Modifier.fillMaxWidth().aspectRatio(0.75f))
                     Spacer(Modifier.height(6.dp))
                     ShimmerBox(Modifier.fillMaxWidth(0.9f).height(12.dp))
                     Spacer(Modifier.height(4.dp))

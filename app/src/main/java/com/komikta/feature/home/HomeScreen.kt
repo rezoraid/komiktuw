@@ -3,7 +3,6 @@ package com.komikta.feature.home
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,16 +21,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,12 +38,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,27 +54,39 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.komikta.R
+import com.komikta.data.local.entity.ReadingHistoryEntity
+import com.komikta.domain.model.Chapter
 import com.komikta.domain.model.Comic
 import com.komikta.ui.components.AppIcons
 import com.komikta.ui.components.CoverImage
 import com.komikta.ui.components.HomeShimmerLoading
 import kotlinx.coroutines.delay
+import java.text.NumberFormat
+import java.util.Locale
 
-private val CardBg = Color(0xFF111111)
-private val CardBorder = Color(0xFF1F1F1F)
-private val Muted = Color(0xFF9A9A9A)
+private val Pad = 14.dp
+private val Gap = 10.dp
+private val HeaderBg = Color(0xFF0C0C0E)
+private val Line = Color(0xFF1B1B1F)
+private val Muted = Color(0xFF9A9AA3)
+private val CoverBg = Color(0xFF16161A)
+private val ChipBg = Color(0xFF1E1F24)
+private val ChipText = Color(0xFFD6D6DC)
 private val Gold = Color(0xFFFFC107)
-
-private fun fmtRating(r: Double): String = String.format(java.util.Locale.US, "%.1f", r)
+private val CardShape = RoundedCornerShape(14.dp)
+private val IdLocale = Locale("id", "ID")
 
 @Composable
 fun HomeScreen(
     onComicClick: (source: String, slug: String) -> Unit = { _, _ -> },
+    onReadClick: (source: String, comicSlug: String, chapterSlug: String) -> Unit = { _, _, _ -> },
     onSearchClick: () -> Unit = {},
+    onContinueViewAll: () -> Unit = {},
+    onUpdateViewAll: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val continueReading by viewModel.continueReading.collectAsState()
+    val history by viewModel.continueReading.collectAsState()
 
     when {
         uiState.isLoading && uiState.latestComics.isEmpty() -> HomeShimmerLoading()
@@ -85,122 +99,132 @@ fun HomeScreen(
             }
         }
         else -> {
+            val hero = remember(uiState.popularComics) { uiState.popularComics.take(5) }
+            val update = remember(uiState.latestComics) { uiState.latestComics.take(6) }
+            val updateRows = remember(update) { update.chunked(3) }
+            val forYou = remember(uiState.latestComics) {
+                uiState.latestComics.drop(6).sortedByDescending { it.rating ?: 0.0 }.take(10)
+            }
+            val popular = remember(uiState.popularComics) { uiState.popularComics.take(10) }
+            val now = remember { System.currentTimeMillis() }
+            val cardWidth = (LocalConfiguration.current.screenWidthDp.dp - Pad * 2 - Gap * 2) / 3
+
+            // "Baca": lanjut dari riwayat kalau ada, kalau tidak buka chapter terbaru, kalau tidak ada -> detail
+            val onRead: (Comic) -> Unit = { comic ->
+                val slug = history.firstOrNull { it.source == comic.source && it.comicSlug == comic.slug }?.lastChapterSlug
+                    ?: comic.chapters.firstOrNull()?.slug
+                if (slug.isNullOrBlank()) onComicClick(comic.source, comic.slug)
+                else onReadClick(comic.source, comic.slug, slug)
+            }
+
             LazyColumn(
-                Modifier.fillMaxSize().background(Color(0xFF000000)),
-                contentPadding = PaddingValues(bottom = 32.dp)
+                Modifier.fillMaxSize().background(Color.Black),
+                contentPadding = PaddingValues(bottom = 24.dp)
             ) {
-                // Header + search bar
-                item {
-                    Column(Modifier.padding(horizontal = 16.dp).padding(top = 14.dp, bottom = 16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Image(
-                                painter = painterResource(R.drawable.ic_logo),
-                                contentDescription = "Komikta",
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier.size(34.dp)
-                            )
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                text = "Komikta",
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        Spacer(Modifier.height(14.dp))
-                        SearchPill(onClick = onSearchClick)
-                    }
-                }
+                item(key = "header") { HomeHeader(onSearch = onSearchClick) }
 
-                // Featured carousel
-                if (uiState.popularComics.isNotEmpty()) {
-                    item {
-                        FeaturedCarousel(
-                            comics = uiState.popularComics.take(5),
-                            onClick = { onComicClick(it.source, it.slug) }
+                if (hero.isNotEmpty()) {
+                    item(key = "hero") {
+                        HeroCarousel(
+                            comics = hero,
+                            onDetail = { onComicClick(it.source, it.slug) },
+                            onRead = onRead
                         )
-                        Spacer(Modifier.height(24.dp))
                     }
                 }
 
-                // Continue reading
-                if (continueReading.isNotEmpty()) {
-                    item { SectionHeader("Continue reading", "History") }
-                    item {
+                if (history.isNotEmpty()) {
+                    item(key = "continue-title") { SectionHeader("Continue reading", onContinueViewAll) }
+                    item(key = "continue-row") {
                         LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            contentPadding = PaddingValues(horizontal = Pad),
+                            horizontalArrangement = Arrangement.spacedBy(Gap)
                         ) {
-                            items(continueReading, key = { it.id }) { item ->
+                            items(history, key = { it.id }) { h ->
                                 ContinueCard(
-                                    title = item.comicTitle,
-                                    chapter = item.lastChapterNumber ?: item.lastChapterSlug ?: "",
-                                    coverUrl = item.coverUrl,
-                                    onClick = { onComicClick(item.source, item.comicSlug) }
+                                    item = h,
+                                    now = now,
+                                    onClick = {
+                                        val ch = h.lastChapterSlug
+                                        if (ch.isNullOrBlank()) onComicClick(h.source, h.comicSlug)
+                                        else onReadClick(h.source, h.comicSlug, ch)
+                                    }
                                 )
                             }
                         }
-                        Spacer(Modifier.height(24.dp))
                     }
                 }
 
-                // Recommended (ranked)
-                if (uiState.popularComics.size > 1) {
-                    item { SectionHeader("Recommended", "Top picks") }
-                    item {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                if (updateRows.isNotEmpty()) {
+                    item(key = "update-title") { SectionHeader("Update", onUpdateViewAll) }
+                    items(updateRows.size, key = { "update:${updateRows[it].first().source}:${updateRows[it].first().slug}" }) { i ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = Pad).padding(bottom = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(Gap),
+                            verticalAlignment = Alignment.Top
                         ) {
-                            val ranked = uiState.popularComics.take(10)
-                            items(ranked.size, key = { "${ranked[it].source}:${ranked[it].slug}" }) { index ->
-                                RankedCard(
-                                    rank = index + 1,
-                                    comic = ranked[index],
-                                    onClick = { onComicClick(ranked[index].source, ranked[index].slug) },
-                                    modifier = Modifier.width(132.dp)
-                                )
+                            updateRows[i].forEach { comic ->
+                                PosterCard(comic, { onComicClick(comic.source, comic.slug) }, Modifier.width(cardWidth))
                             }
                         }
-                        Spacer(Modifier.height(24.dp))
                     }
                 }
 
-                // Latest updates
-                item { SectionHeader("Latest updates", null) }
+                if (forYou.isNotEmpty()) {
+                    item(key = "foryou-title") { SectionHeader("Untukmu", null) }
+                    item(key = "foryou-row") { PosterRow(forYou, cardWidth, onComicClick) }
+                }
 
-                items(uiState.latestComics.take(20), key = { "${it.source}:${it.slug}" }) { comic ->
-                    LatestItem(
-                        comic = comic,
-                        onClick = { onComicClick(comic.source, comic.slug) }
-                    )
+                if (popular.isNotEmpty()) {
+                    item(key = "popular-title") { SectionHeader("Populer minggu ini", null) }
+                    item(key = "popular-row") { PosterRow(popular, cardWidth, onComicClick) }
                 }
             }
         }
     }
 }
 
+// ───────────────────────── Header ─────────────────────────
+
 @Composable
-private fun SearchPill(onClick: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .height(48.dp)
-            .clip(shape)
-            .background(Color(0xFF151515))
-            .border(1.dp, Color(0xFF262626), shape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(Icons.Default.Search, contentDescription = "Search", tint = Muted, modifier = Modifier.size(22.dp))
-        Spacer(Modifier.width(12.dp))
-        Text("Cari komik...", style = MaterialTheme.typography.bodyMedium, color = Muted)
+private fun HomeHeader(onSearch: () -> Unit) {
+    Column(Modifier.fillMaxWidth().background(HeaderBg)) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = Pad, end = 6.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_logo),
+                contentDescription = "Komikta",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.size(34.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "Komikta",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = onSearch) {
+                Icon(AppIcons.search, "Cari", tint = Color.White, modifier = Modifier.size(24.dp))
+            }
+            IconButton(onClick = { }) {
+                Icon(AppIcons.bell, "Notifikasi", tint = Color.White, modifier = Modifier.size(24.dp))
+            }
+        }
+        HorizontalDivider(color = Line)
     }
 }
 
+// ───────────────────────── Hero ─────────────────────────
+
 @Composable
-private fun FeaturedCarousel(comics: List<Comic>, onClick: (Comic) -> Unit) {
+private fun HeroCarousel(
+    comics: List<Comic>,
+    onDetail: (Comic) -> Unit,
+    onRead: (Comic) -> Unit
+) {
     val pagerState = rememberPagerState(pageCount = { comics.size })
 
     LaunchedEffect(comics.size) {
@@ -213,84 +237,63 @@ private fun FeaturedCarousel(comics: List<Comic>, onClick: (Comic) -> Unit) {
         }
     }
 
-    Column {
-        HorizontalPager(
-            state = pagerState,
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            pageSpacing = 12.dp,
-            modifier = Modifier.fillMaxWidth()
-        ) { page ->
-            FeaturedCard(comic = comics[page], onClick = { onClick(comics[page]) })
+    Box(Modifier.fillMaxWidth().height(236.dp)) {
+        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+            HeroSlide(
+                rank = page + 1,
+                comic = comics[page],
+                onDetail = { onDetail(comics[page]) },
+                onRead = { onRead(comics[page]) }
+            )
         }
         if (comics.size > 1) {
-            Spacer(Modifier.height(12.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                repeat(comics.size) { i ->
-                    val selected = pagerState.currentPage == i
-                    val w by animateDpAsState(if (selected) 20.dp else 6.dp, label = "dot")
-                    Box(
-                        Modifier
-                            .padding(horizontal = 3.dp)
-                            .height(6.dp)
-                            .width(w)
-                            .clip(CircleShape)
-                            .background(if (selected) Color.White else Color(0xFF3A3A3A))
-                    )
-                }
-            }
+            PagerDots(
+                pagerState, comics.size,
+                Modifier.align(Alignment.BottomEnd).padding(end = Pad, bottom = 12.dp)
+            )
         }
     }
 }
 
 @Composable
-private fun FeaturedCard(comic: Comic, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(22.dp)
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .height(230.dp)
-            .clip(shape)
-            .background(CardBg)
-            .clickable(onClick = onClick)
-    ) {
+private fun HeroSlide(rank: Int, comic: Comic, onDetail: () -> Unit, onRead: () -> Unit) {
+    val latest = comic.chapters.firstOrNull()
+    Box(Modifier.fillMaxSize().background(CoverBg).clickable(onClick = onDetail)) {
         CoverImage(
             url = comic.coverUrl,
             contentDescription = comic.title,
             widthPx = 720,
-            heightPx = 460,
+            heightPx = 440,
             modifier = Modifier.fillMaxSize()
         )
+        // gelap di kiri (teks) + gelap di bawah (menyatu dengan background)
         Box(
             Modifier.fillMaxSize().background(
-                Brush.verticalGradient(
-                    0f to Color.Transparent,
-                    0.4f to Color.Black.copy(0.35f),
-                    1f to Color.Black.copy(0.94f)
+                Brush.horizontalGradient(
+                    0f to Color.Black.copy(0.85f),
+                    0.6f to Color.Black.copy(0.4f),
+                    1f to Color.Transparent
                 )
             )
         )
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black)
+            )
+        )
         Column(
-            Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .padding(18.dp)
+            Modifier.align(Alignment.BottomStart).padding(start = Pad, end = Pad, bottom = 30.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (!comic.type.isNullOrBlank()) {
-                    TypeChip(comic.type!!)
-                    Spacer(Modifier.width(8.dp))
-                }
-                RatingChip(comic.rating)
-            }
-            Spacer(Modifier.height(8.dp))
             Text(
-                text = comic.title,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
+                "#$rank Trending",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFFB8B8C0)
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                comic.title,
+                style = MaterialTheme.typography.headlineLarge.copy(fontSize = 26.sp, lineHeight = 32.sp),
                 color = Color.White,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -298,261 +301,297 @@ private fun FeaturedCard(comic: Comic, onClick: () -> Unit) {
             if (comic.genres.isNotEmpty()) {
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = comic.genres.take(3).joinToString(" • "),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color(0xFFCFCFCF),
+                    comic.genres.take(3).joinToString(", "),
+                    fontSize = 13.sp,
+                    color = Color(0xFFC9C9D0),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                comic.rating?.let {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Star, null, tint = Gold, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(fmtRating(it), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                    }
+                }
+                latest?.let { ch ->
+                    val text = listOfNotNull(chapterShort(ch), ch.timeAgo?.takeIf { it.isNotBlank() }).joinToString(" · ")
+                    if (text.isNotEmpty()) Text(text, fontSize = 13.sp, color = Color(0xFFE0E0E5), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                }
+                comic.views?.let {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(AppIcons.eye, null, tint = Color(0xFFE0E0E5), modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(formatViewsShort(it), fontSize = 13.sp, color = Color(0xFFE0E0E5), maxLines = 1)
+                    }
+                }
+            }
             Spacer(Modifier.height(12.dp))
-            Button(
-                onClick = onClick,
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = Color.Black
-                ),
-                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 6.dp)
-            ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Read now", fontWeight = FontWeight.SemiBold)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    Modifier
+                        .height(40.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .clickable(onClick = onRead)
+                        .padding(horizontal = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Baca", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+                }
+                Box(
+                    Modifier
+                        .height(40.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.16f))
+                        .clickable(onClick = onDetail)
+                        .padding(horizontal = 20.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Detail", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ContinueCard(title: String, chapter: String, coverUrl: String?, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
-    Row(
-        Modifier
-            .width(268.dp)
-            .clip(shape)
-            .background(CardBg)
-            .border(1.dp, CardBorder, shape)
-            .clickable(onClick = onClick)
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        CoverImage(
-            url = coverUrl,
-            contentDescription = title,
-            widthPx = 180,
-            heightPx = 250,
-            modifier = Modifier
-                .size(width = 56.dp, height = 78.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFF1C1C1C))
-        )
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                chapter,
-                style = MaterialTheme.typography.labelMedium,
-                color = Muted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+private fun PagerDots(pagerState: PagerState, count: Int, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        repeat(count) { i ->
+            val selected = pagerState.currentPage == i
+            val w by animateDpAsState(if (selected) 22.dp else 6.dp, label = "dot")
+            Box(
+                Modifier
+                    .padding(start = 5.dp)
+                    .height(6.dp)
+                    .width(w)
+                    .clip(CircleShape)
+                    .background(if (selected) Color.White else Color(0xFF5A5A62))
             )
         }
-        Spacer(Modifier.width(8.dp))
-        Box(
-            Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(Color.White),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Default.PlayArrow, contentDescription = "Lanjut", tint = Color.Black, modifier = Modifier.size(22.dp))
+    }
+}
+
+// ───────────────────────── Section ─────────────────────────
+
+@Composable
+private fun SectionHeader(title: String, onAction: (() -> Unit)?) {
+    Row(
+        Modifier.fillMaxWidth().padding(start = Pad, end = Pad - 6.dp, top = 24.dp, bottom = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            title,
+            style = MaterialTheme.typography.headlineMedium.copy(fontSize = 22.sp),
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+        if (onAction != null) {
+            Text(
+                "View All",
+                fontSize = 14.sp,
+                color = Muted,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(onClick = onAction)
+                    .padding(horizontal = 6.dp, vertical = 4.dp)
+            )
         }
     }
 }
 
 @Composable
-private fun RankedCard(rank: Int, comic: Comic, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(16.dp)
-    Column(modifier.clip(shape).clickable(onClick = onClick)) {
+private fun PosterRow(comics: List<Comic>, cardWidth: androidx.compose.ui.unit.Dp, onComicClick: (String, String) -> Unit) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = Pad),
+        horizontalArrangement = Arrangement.spacedBy(Gap),
+        verticalAlignment = Alignment.Top
+    ) {
+        items(comics, key = { "${it.source}:${it.slug}" }) { comic ->
+            PosterCard(comic, { onComicClick(comic.source, comic.slug) }, Modifier.width(cardWidth))
+        }
+    }
+}
+
+// ───────────────────────── Cards ─────────────────────────
+
+@Composable
+private fun ContinueCard(item: ReadingHistoryEntity, now: Long, onClick: () -> Unit) {
+    Column(Modifier.width(126.dp).clip(CardShape).clickable(onClick = onClick)) {
         Box(
-            Modifier
-                .fillMaxWidth()
-                .aspectRatio(0.68f)
-                .clip(shape)
-                .background(Color(0xFF171717))
+            Modifier.fillMaxWidth().aspectRatio(0.75f).clip(CardShape).background(CoverBg)
         ) {
             CoverImage(
-                url = comic.coverUrl,
-                contentDescription = comic.title,
+                url = item.coverUrl,
+                contentDescription = item.comicTitle,
+                widthPx = 300,
+                heightPx = 400,
                 modifier = Modifier.fillMaxSize()
             )
             Box(
                 Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(
-                        0.55f to Color.Transparent,
-                        1f to Color.Black.copy(0.8f)
-                    )
+                    Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color.Black.copy(0.9f))
                 )
             )
-            Text(
-                text = "$rank",
-                fontSize = 34.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 2.dp)
-            )
-            RatingChip(
-                comic.rating,
-                Modifier.align(Alignment.TopEnd).padding(6.dp)
-            )
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = comic.title,
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.White,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 2.dp)
-        )
-    }
-}
-
-@Composable
-private fun SectionHeader(title: String, action: String?) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier
-                    .size(width = 4.dp, height = 18.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(Color.White)
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        }
-        if (action != null) {
-            Text(action, style = MaterialTheme.typography.labelLarge, color = Muted)
-        }
-    }
-}
-
-@Composable
-private fun TypeChip(text: String) {
-    Text(
-        text = text.uppercase(),
-        fontSize = 10.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = Color.White,
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.White.copy(alpha = 0.18f))
-            .padding(horizontal = 8.dp, vertical = 3.dp)
-    )
-}
-
-@Composable
-private fun RatingChip(rating: Double?, modifier: Modifier = Modifier) {
-    if (rating == null) return
-    Row(
-        modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.Black.copy(alpha = 0.6f))
-            .padding(horizontal = 6.dp, vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(Icons.Default.Star, contentDescription = null, tint = Gold, modifier = Modifier.size(12.dp))
-        Spacer(Modifier.width(3.dp))
-        Text(fmtRating(rating), fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color.White)
-    }
-}
-
-@Composable
-private fun LatestItem(comic: Comic, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 5.dp)
-            .clip(shape)
-            .background(CardBg)
-            .border(1.dp, CardBorder, shape)
-            .clickable(onClick = onClick)
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        CoverImage(
-            url = comic.coverUrl,
-            contentDescription = comic.title,
-            widthPx = 210,
-            heightPx = 288,
-            modifier = Modifier
-                .size(width = 70.dp, height = 96.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFF171717))
-        )
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = comic.title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (comic.genres.isNotEmpty()) {
-                Spacer(Modifier.height(2.dp))
+            Column(Modifier.align(Alignment.BottomStart).padding(10.dp)) {
                 Text(
-                    text = comic.genres.take(3).joinToString(" • "),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Muted,
+                    historyChapterLabel(item),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-            }
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (!comic.type.isNullOrBlank()) {
-                    TypeChip(comic.type!!)
-                    Spacer(Modifier.width(8.dp))
-                }
-                if (comic.rating != null) {
-                    Icon(Icons.Default.Star, contentDescription = null, tint = Gold, modifier = Modifier.size(13.dp))
-                    Spacer(Modifier.width(3.dp))
-                    Text(
-                        fmtRating(comic.rating!!),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color(0xFFDDDDDD)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                }
-                if (!comic.status.isNullOrBlank()) {
-                    Text(
-                        comic.status!!,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Muted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                Spacer(Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.PlayArrow, null, tint = Color(0xFFD0D0D6), modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(2.dp))
+                    Text("Lanjutkan", fontSize = 12.sp, color = Color(0xFFD0D0D6))
                 }
             }
         }
-        Spacer(Modifier.width(4.dp))
-        Icon(AppIcons.chevronRight, contentDescription = null, tint = Color(0xFF5A5A5A), modifier = Modifier.size(20.dp))
+        Spacer(Modifier.height(8.dp))
+        Text(
+            item.comicTitle,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(relativeTime(item.lastReadAt, now), fontSize = 12.sp, color = Muted, maxLines = 1)
+    }
+}
+
+@Composable
+private fun PosterCard(comic: Comic, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val latest = comic.chapters.firstOrNull()
+    val chapterPill = latest?.let { chapterShort(it) } ?: comic.chapterCount?.let { "Ch. $it" }
+    val chapterChip = latest?.let { chapterLong(it) }
+
+    Column(modifier.clip(CardShape).clickable(onClick = onClick)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(0.75f).clip(CardShape).background(CoverBg)) {
+            CoverImage(
+                url = comic.coverUrl,
+                contentDescription = comic.title,
+                widthPx = 300,
+                heightPx = 400,
+                modifier = Modifier.fillMaxSize()
+            )
+            chapterPill?.let {
+                Text(
+                    it,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(6.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.Black.copy(alpha = 0.62f))
+                        .padding(horizontal = 7.dp, vertical = 3.dp)
+                )
+            }
+            comic.rating?.let {
+                Row(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.Black.copy(alpha = 0.62f))
+                        .padding(horizontal = 6.dp, vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Star, null, tint = Gold, modifier = Modifier.size(11.dp))
+                    Spacer(Modifier.width(3.dp))
+                    Text(fmtRating(it), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            comic.title,
+            fontSize = 13.sp,
+            lineHeight = 17.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        comic.author?.let { MetaRow(AppIcons.person, it) }
+        comic.views?.let { MetaRow(AppIcons.eye, formatViewsFull(it)) }
+        comic.type?.takeIf { it.isNotBlank() }?.let { MetaRow(AppIcons.doc, it) }
+        chapterChip?.let {
+            Text(
+                it,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = ChipText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(ChipBg)
+                    .padding(horizontal = 8.dp, vertical = 7.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun MetaRow(icon: ImageVector, text: String) {
+    Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = Muted, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(5.dp))
+        Text(text, fontSize = 12.sp, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+// ───────────────────────── Helpers ─────────────────────────
+
+private val LeadingChapter = Regex("""(?i)^\s*(chapter|ch\.?)\s*""")
+
+private fun cleanNumber(raw: String?): String? =
+    raw?.replace(LeadingChapter, "")?.trim()?.takeIf { it.isNotEmpty() }
+
+private fun chapterShort(c: Chapter): String? = cleanNumber(c.number)?.let { "Ch. $it" }
+
+private fun chapterLong(c: Chapter): String? {
+    val name = cleanNumber(c.number)?.let { "Chapter $it" } ?: c.title?.takeIf { it.isNotBlank() } ?: return null
+    val ago = c.timeAgo?.takeIf { it.isNotBlank() }
+    return if (ago != null) "$name · $ago" else name
+}
+
+private fun historyChapterLabel(h: ReadingHistoryEntity): String =
+    cleanNumber(h.lastChapterNumber)?.let { "Chapter $it" } ?: "Lanjutkan baca"
+
+private fun fmtRating(r: Double): String = String.format(Locale.US, "%.1f", r)
+
+private fun formatViewsFull(v: Double): String = NumberFormat.getIntegerInstance(IdLocale).format(v.toLong())
+
+private fun formatViewsShort(v: Double): String = when {
+    v >= 1_000_000 -> String.format(IdLocale, "%.1f jt", v / 1_000_000)
+    v >= 1_000 -> String.format(IdLocale, "%.1f rb", v / 1_000)
+    else -> v.toLong().toString()
+}
+
+private fun relativeTime(thenMs: Long, nowMs: Long): String {
+    val s = ((nowMs - thenMs) / 1000).coerceAtLeast(0)
+    return when {
+        s < 60 -> "baru saja"
+        s < 3_600 -> "${s / 60} menit lalu"
+        s < 86_400 -> "${s / 3_600} jam lalu"
+        s < 86_400 * 30 -> "${s / 86_400} hari lalu"
+        else -> "${s / (86_400 * 30)} bulan lalu"
     }
 }

@@ -11,7 +11,7 @@ import javax.inject.Inject
 class KomiktaApp : Application(), ImageLoaderFactory {
 
     @Inject
-    lateinit var imageLoader: ImageLoader
+    lateinit var imageLoader: dagger.Lazy<ImageLoader>
 
     override fun onCreate() {
         super.onCreate()
@@ -20,5 +20,5 @@ class KomiktaApp : Application(), ImageLoaderFactory {
         }
     }
 
-    override fun newImageLoader(): ImageLoader = imageLoader
+    override fun newImageLoader(): ImageLoader = imageLoader.get()
 }
