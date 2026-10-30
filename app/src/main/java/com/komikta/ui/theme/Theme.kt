@@ -47,21 +47,12 @@ private val Type = Typography(
     titleMedium = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = Text1),
     bodyLarge = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.Normal, fontSize = 14.sp, color = Text1),
     bodyMedium = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.Normal, fontSize = 13.sp, color = Text1),
+    titleSmall = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Text1),
+    bodySmall = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.Normal, fontSize = 12.sp, color = Text2),
     labelLarge = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.Medium, fontSize = 12.sp, color = Text2),
     labelMedium = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.Medium, fontSize = 11.sp, color = Text2),
     labelSmall = TextStyle(fontFamily = Poppins, fontWeight = FontWeight.Medium, fontSize = 10.sp, color = Text3)
 )
-
-object Ui {
-    val Bg = Color(0xFF000000)
-    val Bar = Color(0xFF0E0E0E)
-    val Card = Color(0xFF161616)
-    val Chip = Color(0xFF1E1E1E)
-    val Line = Color(0xFF242424)
-    val Badge = Color(0xCC000000)
-    val Text2 = Color(0xFFA6A6A6)
-    val Text3 = Color(0xFF6E6E6E)
-}
 
 @Composable
 fun KomiktaTheme(content: @Composable () -> Unit) {

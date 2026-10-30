@@ -1,11 +1,12 @@
-# Komikta performance notes
+# Komikta performance
 
-- Ktor dihapus, API pakai OkHttp + kotlinx.serialization langsung. Parsing JSON dan mapping ke domain jalan di `Dispatchers.Default`, bukan main thread.
-- Dependency dibuang: ktor (client, android, logging, content-negotiation, serialization), timber, datastore.
-- Logo 1536x512 (di-decode di main thread saat buka Home/Profile) diganti 384x128.
-- `largeHeap` dimatikan. Rule proguard yang meng-keep seluruh ktor/okhttp dihapus supaya R8 bisa shrink.
-- `baseline-prof.txt` ditambahkan untuk kode aplikasi.
-- UI: tanpa glassmorphism, tanpa floating nav, tanpa gradient, tanpa shimmer/infinite animation, tanpa transisi navigasi, tanpa carousel auto-scroll.
-- Kartu komik: tanpa ikon vector per item, satu komponen `PosterCard` dipakai Home/Explore/Library.
-- Explore/Detail: `OutlinedTextField`, `FilterChip`, `TabRow` diganti komponen sederhana.
-- Reader: map rasio halaman tidak lagi observable (sebelumnya tiap update me-recompose semua halaman), prefetch berbasis event bukan polling 300ms, tanpa animasi fade/slide, bar kontrol solid.
+- Glassmorphism dan navigasi mengambang dihapus; bottom bar kini flat, solid, tanpa animasi dan tanpa ripple.
+- Transisi antar tab dimatikan, transisi ke detail/reader hanya fade 120-140 ms.
+- Baseline profile (`app/src/main/baseline-prof.txt`) dipasang oleh ProfileInstaller sehingga kode aplikasi, Compose, Coil, OkHttp dan Ktor dikompilasi AOT; ini mengurangi jank scroll dan startup lambat pada APK sideload.
+- Home menyimpan snapshot terakhir ke disk dan menampilkannya seketika saat aplikasi dibuka, lalu menyegarkan data di belakang layar.
+- Shimmer statis (tanpa animasi tak berhingga).
+- Kartu komik tanpa ikon vector, tanpa Surface, tanpa animasi; metadata ditampilkan sebagai teks.
+- Hero tanpa auto-slide dan hanya satu lapisan scrim.
+- Explore memakai BasicTextField dan chip sederhana (tanpa OutlinedTextField/FilterChip).
+- Detail: baris chapter tanpa graphicsLayer alpha dan tanpa ikon vector.
+- Reader: rasio halaman disimpan per item (tidak ada state map global yang menginvalidasi semua halaman), kontrol atas/bawah tanpa AnimatedVisibility.

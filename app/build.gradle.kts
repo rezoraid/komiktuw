@@ -25,6 +25,7 @@ android {
     }
 
     signingConfigs {
+        // Keystore tetap supaya signature sama di semua build (lokal/CI)
         getByName("debug") {
             storeFile = file("komikta-debug.jks")
             storePassword = "komikta123"
@@ -44,6 +45,7 @@ android {
             )
         }
         debug {
+            signingConfig = signingConfigs.getByName("debug")
             isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
@@ -80,6 +82,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.activity:activity-compose:1.9.3")
+    // Memasang baseline profile (termasuk milik Compose) -> startup & scroll jauh lebih cepat
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
 
     val composeBom = platform("androidx.compose:compose-bom:2024.10.01")
@@ -96,7 +99,12 @@ dependencies {
     ksp("com.google.dagger:hilt-compiler:2.52")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    val ktorVersion = "3.0.1"
+    implementation("io.ktor:ktor-client-android:$ktorVersion")
+    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+    implementation("io.ktor:ktor-client-logging:$ktorVersion")
+    implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
@@ -106,8 +114,10 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
 
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.coil-kt:coil:2.7.0")
+    implementation("com.jakewharton.timber:timber:5.0.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")

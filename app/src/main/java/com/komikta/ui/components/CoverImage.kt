@@ -11,15 +11,15 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Size
 
-private val Placeholder = ColorPainter(Color(0xFF161616))
+private val Placeholder = ColorPainter(Color(0xFF171717))
 
 @Composable
 fun CoverImage(
     url: String?,
     contentDescription: String?,
     modifier: Modifier = Modifier,
-    widthPx: Int = 300,
-    heightPx: Int = 420
+    widthPx: Int = 360,
+    heightPx: Int = 530
 ) {
     val context = LocalContext.current
     val request = remember(url, widthPx, heightPx) {
