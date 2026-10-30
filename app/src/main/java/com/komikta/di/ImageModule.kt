@@ -53,7 +53,7 @@ object ImageModule {
             .diskCache {
                 DiskCache.Builder()
                     .directory(context.cacheDir.resolve("image_cache"))
-                    .maxSizeBytes(300L * 1024 * 1024)
+                    .maxSizeBytes(100L * 1024 * 1024)
                     .build()
             }
             .memoryCachePolicy(CachePolicy.ENABLED)

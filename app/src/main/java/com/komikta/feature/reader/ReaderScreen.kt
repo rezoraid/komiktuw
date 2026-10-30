@@ -121,12 +121,16 @@ import coil.fetch.SourceResult
 import coil.memory.MemoryCache
 import coil.request.Options
 import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.runtime.rememberUpdatedState
 import coil.request.SuccessResult
 import coil.size.Scale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
+
+private const val PRELOAD_AHEAD = 15
 
 enum class ScrollMode { Smooth, Swipe }
 
@@ -221,21 +225,33 @@ fun ReaderScreen(
             .collect { viewModel.setCurrent(it) }
     }
 
-    // Unduh SEMUA halaman chapter ke disk (urut dari posisi baca) + ambil rasio asli, jadi tinggi item pas sebelum muncul
+    // Hemat kuota: hanya unduh PRELOAD_AHEAD halaman di depan posisi baca (yang sedang tampil diurus AsyncImage,
+    // jadi tidak diunduh dua kali). Chapter berikutnya baru disentuh (3 halaman) saat sudah dekat akhir chapter.
+    val currentSlugNow by rememberUpdatedState(currentSlug)
     LaunchedEffect(readerItems) {
-        val pages = readerItems.mapIndexedNotNull { i, item -> (item as? ReaderItem.Page)?.let { i to it.url } }
+        val pages = readerItems.mapIndexedNotNull { i, item ->
+            (item as? ReaderItem.Page)?.let { Triple(i, it.chapterSlug, it.url) }
+        }
         val claimed = HashSet<String>()
         fun nextUrl(): String? {
-            val from = listState.firstVisibleItemIndex
-            val pick = pages.firstOrNull { it.first >= from && it.second !in claimed && it.second !in ratios }
-                ?: pages.firstOrNull { it.second !in claimed && it.second !in ratios }
-            return pick?.second?.also { claimed += it }
+            val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return null
+            val cur = currentSlugNow
+            val curLast = pages.lastOrNull { it.second == cur }?.first ?: last
+            val pick = pages.firstOrNull {
+                it.second == cur && it.first > last && it.first <= last + PRELOAD_AHEAD &&
+                    it.third !in claimed && it.third !in ratios
+            } ?: pages.firstOrNull {
+                curLast - last <= 8 && it.second != cur && it.first > curLast && it.first <= curLast + 4 &&
+                    it.third !in claimed && it.third !in ratios
+            }
+            return pick?.third?.also { claimed += it }
         }
         coroutineScope {
-            repeat(4) {
+            repeat(3) {
                 launch {
                     while (true) {
-                        val url = nextUrl() ?: break
+                        val url = nextUrl()
+                        if (url == null) { delay(300); continue }
                         fetchToDisk(context, url, ratios)
                     }
                 }
@@ -265,8 +281,22 @@ fun ReaderScreen(
         }
     }
 
-    LaunchedEffect(uiState.upcoming?.chapterSlug) {
-        uiState.upcoming?.imageUrls?.forEach { fetchToDisk(context, it, ratios) }
+    // Sambung chapter berikutnya saat scroll berhenti sejenak, bukan di tengah scroll dekat akhir chapter
+    val onLastLoaded = currentSlug != null && currentSlug == uiState.loaded.lastOrNull()?.chapterSlug
+    LaunchedEffect(autoNext, onLastLoaded, uiState.upcoming?.chapterSlug) {
+        if (!autoNext || !onLastLoaded || uiState.upcoming == null) return@LaunchedEffect
+        snapshotFlow { listState.isScrollInProgress }.collectLatest { scrolling ->
+            if (!scrolling) {
+                delay(350)
+                viewModel.appendNext()
+            }
+        }
+    }
+
+    val nearEnd by remember(totalPages) { derivedStateOf { totalPages > 0 && currentPage >= totalPages - 8 } }
+    LaunchedEffect(uiState.upcoming?.chapterSlug, autoNext, nearEnd) {
+        if (autoNext || !nearEnd) return@LaunchedEffect
+        uiState.upcoming?.imageUrls?.take(3)?.forEach { fetchToDisk(context, it, ratios) }
     }
 
     LaunchedEffect(autoScroll, scrollMode, scrollSpeed) {

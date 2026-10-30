@@ -34,6 +34,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -79,12 +82,17 @@ fun ChapterEnd(
     val nextLabel = nextNumber?.let { "Chapter $it" } ?: nextTitle
 
     val density = LocalDensity.current.density
-    val bob: Float by rememberInfiniteTransition(label = "bob").animateFloat(
-        initialValue = 0f,
-        targetValue = 5f,
-        animationSpec = infiniteRepeatable(tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "bobY"
-    )
+    // Pemisah antar-chapter (compact) tidak animasi terus-menerus, supaya scroll tidak ikut terbebani
+    val bobState: State<Float> = if (compact) {
+        remember { mutableFloatStateOf(2.5f) }
+    } else {
+        rememberInfiniteTransition(label = "bob").animateFloat(
+            initialValue = 0f,
+            targetValue = 5f,
+            animationSpec = infiniteRepeatable(tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "bobY"
+        )
+    }
 
     Box(
         modifier
@@ -188,7 +196,7 @@ fun ChapterEnd(
                                 AppIcons.chevronsDown,
                                 "Chapter berikutnya",
                                 tint = Color.White,
-                                modifier = Modifier.size(26.dp).offset { IntOffset(0, ((bob - 2.5f) * density).roundToInt()) }
+                                modifier = Modifier.size(26.dp).offset { IntOffset(0, ((bobState.value - 2.5f) * density).roundToInt()) }
                             )
                         }
                         Spacer(Modifier.width(16.dp))
