@@ -109,7 +109,18 @@ import android.graphics.BitmapFactory
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.graphics.graphicsLayer
+import android.graphics.drawable.ColorDrawable
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import coil.ImageLoader
+import coil.decode.DecodeResult
+import coil.decode.Decoder
+import coil.fetch.SourceResult
+import coil.memory.MemoryCache
+import coil.request.Options
+import kotlinx.coroutines.runInterruptible
 import coil.request.SuccessResult
 import coil.size.Scale
 import kotlinx.coroutines.Dispatchers
@@ -232,12 +243,12 @@ fun ReaderScreen(
         }
     }
 
-    // Hangatkan 8 halaman di depan ke memori (sudah ter-decode) supaya muncul instan saat di-scroll
+    // Hangatkan 6 halaman di depan ke memori (sudah ter-decode) supaya muncul instan saat di-scroll
     LaunchedEffect(readerItems) {
         val warmed = HashSet<String>()
         snapshotFlow { lastVisible to ratios.size }.collect { (last, _) ->
             if (last < 0) return@collect
-            val end = (last + 8).coerceAtMost(readerItems.lastIndex)
+            val end = (last + 6).coerceAtMost(readerItems.lastIndex)
             for (i in last + 1..end) {
                 val page = readerItems[i] as? ReaderItem.Page ?: continue
                 if (page.url in ratios && warmed.add(page.url)) {
@@ -289,10 +300,7 @@ fun ReaderScreen(
         Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { controlsVisible = !controlsVisible }
+            .pointerInput(Unit) { detectTapGestures { controlsVisible = !controlsVisible } }
     ) {
         when {
             uiState.isLoading -> {
@@ -598,12 +606,15 @@ private fun buildReaderItems(chapters: List<ChapterContent>): List<ReaderItem> =
     }
 }
 
+private fun pageKey(url: String, widthPx: Int) = "$url@$widthPx"
+
 private fun pageRequest(context: android.content.Context, url: String, widthPx: Int) =
     ImageRequest.Builder(context)
         .data(url)
         .size(Size(widthPx, Dimension.Undefined))
         .scale(Scale.FIT)
         .diskCacheKey(url)
+        .memoryCacheKey(pageKey(url, widthPx))
         .crossfade(false)
         .build()
 
@@ -615,30 +626,56 @@ private fun diskPrefetchRequest(context: android.content.Context, url: String) =
     ImageRequest.Builder(context)
         .data(url)
         .size(Size(16, 16))
+        .decoderFactory(BoundsDecoder.Factory())
         .diskCacheKey(url)
         .memoryCachePolicy(CachePolicy.DISABLED)
         .crossfade(false)
         .build()
 
 private suspend fun fetchToDisk(context: android.content.Context, url: String, ratios: MutableMap<String, Float>) {
-    val loader = context.imageLoader
-    if (loader.execute(diskPrefetchRequest(context, url)) !is SuccessResult) return
-    val r = withContext(Dispatchers.IO) { readRatio(loader, url) } ?: return
-    ratios[url] = r
+    val res = context.imageLoader.execute(diskPrefetchRequest(context, url)) as? SuccessResult ?: return
+    val d = res.drawable
+    if (d.intrinsicWidth > 0 && d.intrinsicHeight > 0) ratios[url] = d.intrinsicWidth.toFloat() / d.intrinsicHeight
 }
 
-private fun readRatio(loader: ImageLoader, url: String): Float? {
-    val snapshot = loader.diskCache?.openSnapshot(url) ?: return null
-    return snapshot.use {
+/** Hanya baca ukuran gambar (tanpa decode piksel) -> prefetch ke disk hampir tanpa beban CPU. */
+private class BoundsDrawable(private val w: Int, private val h: Int) : ColorDrawable(0) {
+    override fun getIntrinsicWidth() = w
+    override fun getIntrinsicHeight() = h
+}
+
+private class BoundsDecoder(private val result: SourceResult) : Decoder {
+    override suspend fun decode(): DecodeResult {
         val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(it.data.toFile().path, o)
-        if (o.outWidth > 0 && o.outHeight > 0) o.outWidth.toFloat() / o.outHeight else null
+        runInterruptible(Dispatchers.IO) {
+            result.source.source().use { BitmapFactory.decodeStream(it.inputStream(), null, o) }
+        }
+        return DecodeResult(BoundsDrawable(o.outWidth, o.outHeight), false)
+    }
+
+    class Factory : Decoder.Factory {
+        override fun create(result: SourceResult, options: Options, imageLoader: ImageLoader): Decoder =
+            BoundsDecoder(result)
     }
 }
 
 @Composable
 private fun PageImage(url: String, widthPx: Int, ratios: MutableMap<String, Float>) {
     val context = LocalContext.current
+    // Jalur cepat: bitmap sudah ada di memori -> langsung tergambar di frame pertama, tanpa state machine/loading
+    val cached = remember(url, widthPx) {
+        context.imageLoader.memoryCache?.get(MemoryCache.Key(pageKey(url, widthPx)))?.bitmap
+    }
+    if (cached != null && cached.width > 0 && cached.height > 0) {
+        val image = remember(cached) { cached.asImageBitmap() }
+        Image(
+            bitmap = image,
+            contentDescription = null,
+            contentScale = ContentScale.FillWidth,
+            modifier = Modifier.fillMaxWidth().aspectRatio(cached.width.toFloat() / cached.height)
+        )
+        return
+    }
     var retry by remember(url) { mutableIntStateOf(0) }
     var failed by remember(url) { mutableStateOf(false) }
     var slow by remember(url) { mutableStateOf(false) }
@@ -659,7 +696,7 @@ private fun PageImage(url: String, widthPx: Int, ratios: MutableMap<String, Floa
             contentScale = ContentScale.FillWidth,
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = fade },
+                .then(if (slow) Modifier.graphicsLayer { alpha = fade } else Modifier),
             onLoading = { slow = true },
             onSuccess = { st ->
                 val d = st.painter.intrinsicSize
