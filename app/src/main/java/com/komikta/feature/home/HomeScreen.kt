@@ -198,15 +198,11 @@ private fun HomeHeader(onSearch: () -> Unit) {
         ) {
             Image(
                 painter = painterResource(R.drawable.ic_logo),
-                contentDescription = "Komikta",
+                contentDescription = "Logo Komikta",
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.size(34.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "Komikta",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                modifier = Modifier
+                    .width(142.dp)
+                    .height(48.dp)
             )
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onSearch) {

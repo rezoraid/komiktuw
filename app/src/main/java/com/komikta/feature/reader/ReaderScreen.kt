@@ -130,7 +130,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
-private const val PRELOAD_AHEAD = 15
+private const val PRELOAD_AHEAD = 4
 
 enum class ScrollMode { Smooth, Swipe }
 
@@ -247,7 +247,7 @@ fun ReaderScreen(
             return pick?.third?.also { claimed += it }
         }
         coroutineScope {
-            repeat(3) {
+            repeat(1) {
                 launch {
                     while (true) {
                         val url = nextUrl()
@@ -259,20 +259,9 @@ fun ReaderScreen(
         }
     }
 
-    // Hangatkan 6 halaman di depan ke memori (sudah ter-decode) supaya muncul instan saat di-scroll
-    LaunchedEffect(readerItems) {
-        val warmed = HashSet<String>()
-        snapshotFlow { lastVisible to ratios.size }.collect { (last, _) ->
-            if (last < 0) return@collect
-            val end = (last + 6).coerceAtMost(readerItems.lastIndex)
-            for (i in last + 1..end) {
-                val page = readerItems[i] as? ReaderItem.Page ?: continue
-                if (page.url in ratios && warmed.add(page.url)) {
-                    context.imageLoader.enqueue(pageRequest(context, page.url, screenWidthPx))
-                }
-            }
-        }
-    }
+    // Hindari decode halaman tambahan di background ketika pengguna sedang scroll.
+    // AsyncImage/Coil tetap memuat halaman yang masuk viewport; prefetch disk di atas
+    // dibatasi satu worker supaya CPU dan bandwidth tetap tersedia untuk rendering.
 
     LaunchedEffect(readerItems, autoNext) {
         if (!autoNext) return@LaunchedEffect

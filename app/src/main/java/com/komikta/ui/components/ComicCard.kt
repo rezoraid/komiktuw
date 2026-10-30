@@ -1,16 +1,7 @@
 package com.komikta.ui.components
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.indication
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,17 +37,8 @@ fun ComicCard(
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.95f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-        label = "cardPress"
-    )
     Column(
-        modifier = modifier
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+        modifier = modifier.clickable(onClick = onClick)
     ) {
         Box(
             modifier = Modifier
@@ -64,7 +46,6 @@ fun ComicCard(
                 .aspectRatio(0.68f)
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color(0xFF1A1A1A))
-                .indication(interaction, LocalIndication.current)
         ) {
             CoverImage(
                 url = comic.coverUrl,

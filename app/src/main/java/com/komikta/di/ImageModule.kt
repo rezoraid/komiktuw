@@ -5,8 +5,6 @@ import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.CachePolicy
-import coil.util.DebugLogger
-import com.komikta.BuildConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -29,8 +27,8 @@ object ImageModule {
     ): ImageLoader {
         val imageClient = okHttpClient.newBuilder()
             .dispatcher(Dispatcher().apply {
-                maxRequests = 24
-                maxRequestsPerHost = 8
+                maxRequests = 12
+                maxRequestsPerHost = 4
             })
             .connectTimeout(12, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
@@ -61,9 +59,6 @@ object ImageModule {
             .crossfade(false)
             .allowRgb565(true)
             .respectCacheHeaders(false)
-            .apply {
-                if (BuildConfig.DEBUG) logger(DebugLogger())
-            }
             .build()
     }
 }

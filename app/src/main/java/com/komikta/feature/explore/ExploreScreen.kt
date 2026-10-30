@@ -228,7 +228,7 @@ fun ExploreScreen(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(filtered, key = { it.slug }, contentType = { "comic" }) { comic ->
+                    items(filtered, key = { "${it.source}:${it.slug}" }, contentType = { "comic" }) { comic ->
                         ComicCard(
                             comic = comic,
                             onClick = { onComicClick(comic.source, comic.slug) }

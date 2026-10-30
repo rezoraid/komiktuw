@@ -26,7 +26,7 @@ fun CoverImage(
         ImageRequest.Builder(context)
             .data(url)
             .size(Size(widthPx, heightPx))
-            .crossfade(200)
+            .crossfade(false)
             .build()
     }
     AsyncImage(
