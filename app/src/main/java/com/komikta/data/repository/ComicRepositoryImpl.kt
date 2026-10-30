@@ -10,10 +10,10 @@ import com.komikta.domain.model.ComicDetail
 import com.komikta.domain.model.SearchParams
 import com.komikta.domain.model.Source
 import com.komikta.domain.repository.ComicRepository
-import io.ktor.client.plugins.ClientRequestException
-import io.ktor.client.plugins.ServerResponseException
+import com.komikta.core.network.HttpException
 import kotlinx.coroutines.CancellationException
-import timber.log.Timber
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -176,34 +176,22 @@ class ComicRepositoryImpl @Inject constructor(
 
     private suspend fun <T> safeApiCall(block: suspend () -> Result<T>): Result<T> {
         return try {
-            block()
+            withContext(Dispatchers.Default) { block() }
         } catch (e: CancellationException) {
-            throw e // Never swallow cancellation
+            throw e
         } catch (e: SocketTimeoutException) {
-            Timber.w(e, "Request timeout")
             Result.Error(message = "Request timeout. Please try again.", throwable = e)
         } catch (e: UnknownHostException) {
-            Timber.w(e, "No internet connection")
             Result.Error(message = "No internet connection.", throwable = e)
+        } catch (e: HttpException) {
+            if (e.code >= 500) {
+                Result.Error(message = "Server error. Please try again later.", code = e.code.toString(), throwable = e)
+            } else {
+                Result.Error(message = "Request failed (${e.code})", code = e.code.toString(), throwable = e)
+            }
         } catch (e: IOException) {
-            Timber.w(e, "Network error")
             Result.Error(message = "Network error. Please check your connection.", throwable = e)
-        } catch (e: ClientRequestException) {
-            Timber.w(e, "Client error ${e.response.status}")
-            Result.Error(
-                message = "Request failed (${e.response.status.value})",
-                code = e.response.status.value.toString(),
-                throwable = e
-            )
-        } catch (e: ServerResponseException) {
-            Timber.e(e, "Server error ${e.response.status}")
-            Result.Error(
-                message = "Server error. Please try again later.",
-                code = e.response.status.value.toString(),
-                throwable = e
-            )
         } catch (e: Exception) {
-            Timber.e(e, "Unexpected error")
             Result.Error(message = e.message ?: "Unexpected error occurred", throwable = e)
         }
     }

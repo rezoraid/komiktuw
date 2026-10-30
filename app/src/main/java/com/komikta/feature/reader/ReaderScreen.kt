@@ -1,19 +1,13 @@
 package com.komikta.feature.reader
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.runtime.withFrameNanos
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,12 +69,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -101,14 +93,12 @@ import androidx.compose.foundation.layout.aspectRatio
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.komikta.domain.model.ChapterContent
+import com.komikta.ui.theme.Ui
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import android.graphics.BitmapFactory
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.ui.graphics.graphicsLayer
 import android.graphics.drawable.ColorDrawable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -122,23 +112,14 @@ import coil.memory.MemoryCache
 import coil.request.Options
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.flow.collectLatest
-import androidx.compose.runtime.rememberUpdatedState
 import coil.request.SuccessResult
 import coil.size.Scale
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.withContext
 import kotlin.math.abs
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 
-private const val PRELOAD_AHEAD_WIFI = 10
-private const val PRELOAD_AHEAD_METERED = 5
-
-private val inFlight = HashMap<String, CompletableDeferred<Unit>>()
-
-private fun isMetered(context: android.content.Context): Boolean =
-    (context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager)
-        ?.isActiveNetworkMetered ?: true
+private const val PRELOAD_AHEAD = 4
 
 enum class ScrollMode { Smooth, Swipe }
 
@@ -233,42 +214,20 @@ fun ReaderScreen(
             .collect { viewModel.setCurrent(it) }
     }
 
-    val currentSlugNow by rememberUpdatedState(currentSlug)
     LaunchedEffect(readerItems) {
-        val pages = readerItems.mapIndexedNotNull { i, item ->
-            (item as? ReaderItem.Page)?.let { Triple(i, it.chapterSlug, it.url) }
-        }
-        val claimed = HashSet<String>()
-        fun nextUrl(): String? {
-            val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return null
-            val ahead = if (isMetered(context)) PRELOAD_AHEAD_METERED else PRELOAD_AHEAD_WIFI
-            val cur = currentSlugNow
-            val curLast = pages.lastOrNull { it.second == cur }?.first ?: last
-            val pick = pages.firstOrNull {
-                it.second == cur && it.first > last && it.first <= last + ahead &&
-                    it.third !in claimed && it.third !in ratios
-            } ?: pages.firstOrNull {
-                curLast - last <= ahead + 2 && it.second != cur && it.first > curLast && it.first <= curLast + minOf(ahead, 4) &&
-                    it.third !in claimed && it.third !in ratios
-            }
-            return pick?.third?.also { claimed += it }
-        }
-        coroutineScope {
-            repeat(2) {
-                launch {
-                    while (true) {
-                        val url = nextUrl()
-                        if (url == null) { delay(150); continue }
-                        fetchPage(context, url, screenWidthPx, ratios)
-                    }
+        val requested = HashSet<String>()
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
+            .distinctUntilChanged()
+            .collectLatest { last ->
+                if (last < 0) return@collectLatest
+                val end = minOf(readerItems.lastIndex, last + PRELOAD_AHEAD)
+                for (i in last + 1..end) {
+                    val page = readerItems[i] as? ReaderItem.Page ?: continue
+                    if (page.url in ratios || !requested.add(page.url)) continue
+                    fetchToDisk(context, page.url, ratios)
                 }
             }
-        }
     }
-
-    // Hindari decode halaman tambahan di background ketika pengguna sedang scroll.
-    // AsyncImage/Coil tetap memuat halaman yang masuk viewport; prefetch disk di atas
-    // dibatasi satu worker supaya CPU dan bandwidth tetap tersedia untuk rendering.
 
     LaunchedEffect(readerItems, autoNext) {
         if (!autoNext) return@LaunchedEffect
@@ -391,79 +350,87 @@ fun ReaderScreen(
             }
         }
 
-        // Top bar: pill kecil melayang (tidak lagi blok hitam selebar layar)
-        if (controlsVisible) Box(Modifier.align(Alignment.TopCenter)) {
-            val topShape = RoundedCornerShape(12.dp)
-            Row(
-                Modifier
-                    .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Top))
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .clip(topShape)
-                    .background(Color(0xFF1C1C1E))
-                    .border(1.dp, Color(0xFF3A3A3C), topShape)
-                    .padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White, modifier = Modifier.size(22.dp))
-                }
-                Text(
-                    text = uiState.content?.title ?: "Reader",
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 8.dp)
-                )
-                IconButton(
-                    onClick = { showChapters = true },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(Icons.Default.Menu, "Daftar chapter", tint = Color.White, modifier = Modifier.size(22.dp))
-                }
-            }
-        }
-
-        // Bottom floating controls: slider halaman + tombol navigasi
-        if (controlsVisible) Box(Modifier.align(Alignment.BottomCenter)) {
-            val navShape = RoundedCornerShape(30.dp)
-            val sliderShape = RoundedCornerShape(24.dp)
+        if (controlsVisible) {
             Column(
                 Modifier
-                    .navigationBarsPadding()
-                    .padding(bottom = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .background(Ui.Bar)
+                    .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Top))
             ) {
                 Row(
-                    Modifier
-                        .clip(navShape)
-                        .background(Color(0xFF1C1C1E))
-                        .border(1.dp, Color(0xFF3A3A3C), navShape)
-                        .padding(horizontal = 10.dp, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                    }
+                    Text(
+                        text = uiState.content?.title ?: "Reader",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                    )
+                    IconButton(onClick = { showChapters = true }) {
+                        Icon(Icons.Default.Menu, "Daftar chapter", tint = Color.White)
+                    }
+                }
+            }
+
+            Column(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(Ui.Bar)
+                    .navigationBarsPadding()
+            ) {
+                if (totalPages > 1) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("$currentPage", color = Color.White, style = MaterialTheme.typography.labelMedium)
+                        Slider(
+                            value = currentPage.toFloat(),
+                            onValueChange = { v ->
+                                interactTick++
+                                val page = v.toInt().coerceIn(1, totalPages)
+                                scope.launch { listState.scrollToItem(firstPageIndex + page - 1) }
+                            },
+                            valueRange = 1f..totalPages.toFloat(),
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color.White,
+                                activeTrackColor = Color.White,
+                                inactiveTrackColor = Color.White.copy(alpha = 0.25f)
+                            ),
+                            modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                        )
+                        Text("$totalPages", color = Ui.Text2, style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val hasPrev = !uiState.content?.prevChapterSlug.isNullOrBlank()
                     val hasNext = !uiState.content?.nextChapterSlug.isNullOrBlank()
                     IconButton(onClick = { viewModel.goPrev() }, enabled = hasPrev) {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Prev", tint = if (hasPrev) Color.White else Color.White.copy(alpha = 0.3f))
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Prev", tint = if (hasPrev) Color.White else Ui.Text3)
                     }
                     IconButton(onClick = { showSettings = true }) {
                         Icon(Icons.Default.Settings, "Settings", tint = Color.White)
                     }
                     IconButton(
                         onClick = { autoScroll = !autoScroll },
-                        modifier = Modifier.clip(CircleShape).background(if (autoScroll) Color.White.copy(alpha = 0.2f) else Color.Transparent)
+                        modifier = Modifier.clip(CircleShape).background(if (autoScroll) Ui.Chip else Color.Transparent)
                     ) {
                         Icon(Icons.Default.PlayArrow, if (autoScroll) "Pause" else "Auto scroll", tint = Color.White)
                     }
                     IconButton(onClick = { viewModel.goNext() }, enabled = hasNext) {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Next", tint = if (hasNext) Color.White else Color.White.copy(alpha = 0.3f))
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Next", tint = if (hasNext) Color.White else Ui.Text3)
                     }
                 }
             }
@@ -616,19 +583,6 @@ private fun diskPrefetchRequest(context: android.content.Context, url: String) =
         .crossfade(false)
         .build()
 
-private suspend fun fetchPage(context: android.content.Context, url: String, widthPx: Int, ratios: MutableMap<String, Float>) {
-    val gate = CompletableDeferred<Unit>()
-    inFlight[url] = gate
-    try {
-        val res = context.imageLoader.execute(pageRequest(context, url, widthPx)) as? SuccessResult ?: return
-        val d = res.drawable
-        if (d.intrinsicWidth > 0 && d.intrinsicHeight > 0) ratios[url] = d.intrinsicWidth.toFloat() / d.intrinsicHeight
-    } finally {
-        inFlight.remove(url)
-        gate.complete(Unit)
-    }
-}
-
 private suspend fun fetchToDisk(context: android.content.Context, url: String, ratios: MutableMap<String, Float>) {
     val res = context.imageLoader.execute(diskPrefetchRequest(context, url)) as? SuccessResult ?: return
     val d = res.drawable
@@ -659,7 +613,6 @@ private class BoundsDecoder(private val result: SourceResult) : Decoder {
 @Composable
 private fun PageImage(url: String, widthPx: Int, ratios: MutableMap<String, Float>) {
     val context = LocalContext.current
-    // Jalur cepat: bitmap sudah ada di memori -> langsung tergambar di frame pertama, tanpa state machine/loading
     val cached = remember(url, widthPx) {
         context.imageLoader.memoryCache?.get(MemoryCache.Key(pageKey(url, widthPx)))?.bitmap
     }
@@ -673,21 +626,10 @@ private fun PageImage(url: String, widthPx: Int, ratios: MutableMap<String, Floa
         )
         return
     }
-    var ratio by remember(url) { mutableFloatStateOf(ratios[url] ?: 0.7f) }
-    var ready by remember(url) { mutableStateOf(inFlight[url] == null) }
-    LaunchedEffect(url) {
-        if (!ready) {
-            inFlight[url]?.await()
-            ready = true
-        }
-    }
     var retry by remember(url) { mutableIntStateOf(0) }
     var failed by remember(url) { mutableStateOf(false) }
-    var slow by remember(url) { mutableStateOf(false) }
-    var shown by remember(url) { mutableStateOf(false) }
+    var ratio by remember(url) { mutableFloatStateOf(ratios[url] ?: 0.7f) }
     val request = remember(url, widthPx, retry) { pageRequest(context, url, widthPx) }
-    // Fade-in hanya kalau gambar memang harus menunggu; yang sudah di memori tampil langsung tanpa animasi
-    val fade by animateFloatAsState(if (!slow || shown) 1f else 0f, tween(220), label = "pageFade")
     Box(
         Modifier
             .fillMaxWidth()
@@ -695,14 +637,11 @@ private fun PageImage(url: String, widthPx: Int, ratios: MutableMap<String, Floa
             .background(Color(0xFF0E0E0E)),
         contentAlignment = Alignment.Center
     ) {
-        if (ready) AsyncImage(
+        AsyncImage(
             model = request,
             contentDescription = null,
             contentScale = ContentScale.FillWidth,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(if (slow) Modifier.graphicsLayer { alpha = fade } else Modifier),
-            onLoading = { slow = true },
+            modifier = Modifier.fillMaxSize(),
             onSuccess = { st ->
                 val d = st.painter.intrinsicSize
                 if (d.width > 0f && d.height > 0f) {
@@ -711,7 +650,6 @@ private fun PageImage(url: String, widthPx: Int, ratios: MutableMap<String, Floa
                     if (abs(ratio - r) > 0.003f) ratio = r
                 }
                 failed = false
-                shown = true
             },
             onError = { failed = true }
         )

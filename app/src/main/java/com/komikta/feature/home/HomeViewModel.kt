@@ -4,8 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.komikta.core.common.Result
 import com.komikta.core.network.ApiConfig
-import com.komikta.data.local.HomeCache
-import com.komikta.data.local.HomeSnapshot
 import com.komikta.data.local.dao.ReadingHistoryDao
 import com.komikta.data.local.entity.ReadingHistoryEntity
 import com.komikta.domain.model.Comic
@@ -23,7 +21,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class HomeUiState(
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = false,
     val latestComics: List<Comic> = emptyList(),
     val popularComics: List<Comic> = emptyList(),
     val errorMessage: String? = null
@@ -33,7 +31,6 @@ data class HomeUiState(
 class HomeViewModel @Inject constructor(
     private val getLatestComics: GetLatestComicsUseCase,
     private val getPopularComics: GetPopularComicsUseCase,
-    private val homeCache: HomeCache,
     historyDao: ReadingHistoryDao
 ) : ViewModel() {
 
@@ -48,21 +45,7 @@ class HomeViewModel @Inject constructor(
 
     fun loadHome() {
         viewModelScope.launch {
-            val hasData = _uiState.value.latestComics.isNotEmpty()
-            if (!hasData) {
-                val cached = homeCache.read()
-                if (cached != null) {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            latestComics = cached.latest,
-                            popularComics = cached.popular
-                        )
-                    }
-                } else {
-                    _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-                }
-            }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val source = ApiConfig.DEFAULT_SOURCE
             val latestDeferred = async { getLatestComics(source, page = 1) }
             val popularDeferred = async { getPopularComics(source) }
@@ -75,20 +58,8 @@ class HomeViewModel @Inject constructor(
                 popularResult is Result.Error -> popularResult.message
                 else -> null
             }
-            val current = _uiState.value
-            val keepOld = latest.isEmpty() && current.latestComics.isNotEmpty()
-            val finalLatest = if (latest.isNotEmpty()) latest else current.latestComics
-            val finalPopular = if (popular.isNotEmpty()) popular else current.popularComics
             _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    latestComics = finalLatest,
-                    popularComics = finalPopular,
-                    errorMessage = if (keepOld) null else error
-                )
-            }
-            if (latest.isNotEmpty() || popular.isNotEmpty()) {
-                homeCache.write(HomeSnapshot(finalLatest, finalPopular))
+                it.copy(isLoading = false, latestComics = latest, popularComics = popular, errorMessage = error)
             }
         }
     }

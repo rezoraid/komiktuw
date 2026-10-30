@@ -1,77 +1,75 @@
 package com.komikta.feature.explore
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Surface
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.sp
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.IconButton
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import kotlinx.coroutines.delay
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.komikta.ui.components.AppIcons
+import com.komikta.ui.components.Chip
 import com.komikta.ui.components.ComicCard
-import com.komikta.ui.components.ShimmerBox
-import com.komikta.ui.components.ShimmerHost
+import com.komikta.ui.components.PosterRowSkeleton
+import com.komikta.ui.theme.Ui
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+
+private val Types = listOf("All", "Manhwa", "Manhua", "Manga")
 
 @Composable
 fun ExploreScreen(
-    onComicClick: (source: String, slug: String) -> Unit = { _, _ -> },
-    focusSearch: Boolean = false,
-    onSearchFocused: () -> Unit = {},
+    onComicClick: (source: String, slug: String) -> Unit,
+    focusSearch: Boolean,
+    onSearchFocused: () -> Unit,
     viewModel: ExploreViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -85,9 +83,7 @@ fun ExploreScreen(
             onSearchFocused()
         }
     }
-    var selectedType by remember { mutableStateOf("All") }
     var showFilter by remember { mutableStateOf(false) }
-    val types = listOf("All", "Manhwa", "Manhua", "Manga")
     val gridState = rememberLazyGridState()
 
     val shouldLoadMore by remember {
@@ -101,141 +97,81 @@ fun ExploreScreen(
         if (shouldLoadMore) viewModel.loadMore()
     }
 
-    Column(Modifier.fillMaxSize().background(Color(0xFF000000))) {
+    Column(Modifier.fillMaxSize().background(Ui.Bg)) {
+        SearchField(uiState.query, viewModel::onQueryChange, searchFocus)
+
         Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .height(48.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(FieldBg)
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(Icons.Default.Search, null, tint = Color(0xFFBDBDBD), modifier = Modifier.size(22.dp))
-            Spacer(Modifier.width(12.dp))
-            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                if (uiState.query.isEmpty()) {
-                    Text("Search manga, manhwa, manhua", color = Color(0xFF999999), fontSize = 15.sp, maxLines = 1)
-                }
-                BasicTextField(
-                    value = uiState.query,
-                    onValueChange = viewModel::onQueryChange,
-                    singleLine = true,
-                    textStyle = TextStyle(color = Color.White, fontSize = 15.sp),
-                    cursorBrush = SolidColor(Color.White),
-                    modifier = Modifier.fillMaxWidth().focusRequester(searchFocus)
-                )
+            Types.forEach { type ->
+                val value = if (type == "All") null else type.lowercase()
+                Chip(type, uiState.type == value, { viewModel.setType(value) })
             }
         }
 
+        Spacer(Modifier.height(8.dp))
+
+        val activeCount = uiState.selectedGenres.size + listOf(uiState.sort, uiState.status).count { it != null }
+        val quickGenres = remember(uiState.selectedGenres, uiState.genres) {
+            (uiState.selectedGenres + uiState.genres.take(6)).toList()
+        }
         Row(
-            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            types.forEach { type ->
-                val selected = selectedType == type
+            Chip(
+                text = if (activeCount > 0) "Filter ($activeCount)" else "Filter",
+                selected = activeCount > 0,
+                onClick = { showFilter = true }
+            )
+            quickGenres.forEach { genre ->
+                val on = genre in uiState.selectedGenres
                 Chip(
-                    text = type,
-                    selected = selected,
+                    text = genre,
+                    selected = on,
                     onClick = {
-                        selectedType = type
-                        viewModel.setType(if (type == "All") null else type.lowercase())
+                        viewModel.applyFilters(
+                            if (on) uiState.selectedGenres - genre else uiState.selectedGenres + genre,
+                            uiState.sort,
+                            uiState.status
+                        )
                     }
                 )
             }
         }
 
-        Spacer(Modifier.height(10.dp))
-
-        Row(
-            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val activeCount = uiState.selectedGenres.size + listOf(uiState.sort, uiState.status).count { it != null }
-            val active = activeCount > 0
-            Row(
-                Modifier
-                    .clip(ChipShape)
-                    .background(if (active) Color.White else FieldBg)
-                    .clickable { showFilter = true }
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(
-                    Icons.Default.Menu,
-                    null,
-                    tint = if (active) Color.Black else Color.White,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    if (active) "Filters ($activeCount)" else "Filters",
-                    color = if (active) Color.Black else Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-            val quick = (uiState.selectedGenres + uiState.genres.take(6)).toList()
-            quick.forEach { genre ->
-                val on = genre in uiState.selectedGenres
-                Text(
-                    genre,
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    modifier = Modifier
-                        .clip(ChipShape)
-                        .background(if (on) Color(0xFF3A3A3A) else FieldBg)
-                        .clickable {
-                            viewModel.applyFilters(
-                                if (on) uiState.selectedGenres - genre else uiState.selectedGenres + genre,
-                                uiState.sort,
-                                uiState.status
-                            )
-                        }
-                        .padding(horizontal = 14.dp, vertical = 8.dp)
-                )
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
 
         when {
-            uiState.isLoading && uiState.comics.isEmpty() -> ExploreGridLoading()
+            uiState.isLoading && uiState.comics.isEmpty() -> PosterRowSkeleton(rows = 4)
             uiState.errorMessage != null && uiState.comics.isEmpty() -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(uiState.errorMessage ?: "Error", color = Color.White)
+                    Text(uiState.errorMessage ?: "Error", color = Ui.Text2)
                 }
             }
             else -> {
-                val filtered = uiState.comics
-
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
                     state = gridState,
-                    contentPadding = PaddingValues(12.dp),
+                    contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(filtered, key = { "${it.source}:${it.slug}" }, contentType = { "comic" }) { comic ->
-                        ComicCard(
-                            comic = comic,
-                            onClick = { onComicClick(comic.source, comic.slug) }
-                        )
+                    items(uiState.comics, key = { "${it.source}:${it.slug}" }, contentType = { "comic" }) { comic ->
+                        ComicCard(comic, { onComicClick(comic.source, comic.slug) })
                     }
                     if (uiState.isLoadingMore) {
-                        item {
-                            Box(
-                                Modifier.fillMaxWidth().padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    color = Color(0xFFFFFFFF),
-                                    strokeWidth = 2.dp
-                                )
-                            }
+                        item(span = { GridItemSpan(maxLineSpan) }, contentType = "loading") {
+                            Text(
+                                "Memuat...",
+                                color = Ui.Text2,
+                                fontSize = 13.sp,
+                                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
                 }
@@ -258,42 +194,32 @@ fun ExploreScreen(
     }
 }
 
-
-private val FieldBg = Color(0xFF141414)
-private val ChipShape = RoundedCornerShape(20.dp)
-
 @Composable
-private fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
-    Text(
-        text,
-        color = if (selected) Color.Black else Color.White,
-        fontSize = 14.sp,
-        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-        modifier = Modifier
-            .clip(ChipShape)
-            .background(if (selected) Color.White else FieldBg)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    )
-}
-
-@Composable
-private fun ExploreGridLoading() = ShimmerHost {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
-        contentPadding = PaddingValues(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-        modifier = Modifier.fillMaxSize()
+private fun SearchField(value: String, onChange: (String) -> Unit, focus: FocusRequester) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .height(44.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(Ui.Card)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        items(12) {
-            Column {
-                ShimmerBox(Modifier.fillMaxWidth().aspectRatio(0.68f))
-                Spacer(Modifier.height(7.dp))
-                ShimmerBox(Modifier.fillMaxWidth(0.92f).height(12.dp))
-                Spacer(Modifier.height(5.dp))
-                ShimmerBox(Modifier.fillMaxWidth(0.58f).height(9.dp))
+        Icon(AppIcons.search, null, tint = Ui.Text2, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(10.dp))
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            if (value.isEmpty()) {
+                Text("Cari manga, manhwa, manhua", color = Ui.Text3, fontSize = 14.sp, maxLines = 1)
             }
+            BasicTextField(
+                value = value,
+                onValueChange = onChange,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge,
+                cursorBrush = SolidColor(Color.White),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus)
+            )
         }
     }
 }
@@ -314,7 +240,7 @@ private fun GenreFilterSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = Color(0xFF141414),
+        containerColor = Ui.Card,
         contentColor = Color.White
     ) {
         Column(
@@ -330,10 +256,9 @@ private fun GenreFilterSheet(
             ) {
                 Text("Filter komik", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, "Close", tint = Color.White)
+                    Icon(AppIcons.close, "Close", tint = Color.White)
                 }
             }
-            Spacer(Modifier.height(4.dp))
 
             Column(
                 Modifier
@@ -354,9 +279,7 @@ private fun GenreFilterSheet(
                 )
                 SheetLabel("Genre (pilih satu atau lebih)")
                 if (genres.isEmpty()) {
-                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp)
-                    }
+                    Text("Memuat...", color = Ui.Text2, modifier = Modifier.padding(vertical = 12.dp))
                 } else {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -364,22 +287,11 @@ private fun GenreFilterSheet(
                     ) {
                         genres.forEach { genre ->
                             val isSelected = genre in draft
-                            Box(
-                                Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(if (isSelected) Color.White else Color(0xFF242424))
-                                    .clickable {
-                                        draft = if (isSelected) draft - genre else draft + genre
-                                    }
-                                    .padding(horizontal = 16.dp, vertical = 9.dp)
-                            ) {
-                                Text(
-                                    genre,
-                                    color = if (isSelected) Color.Black else Color.White,
-                                    fontSize = 14.sp,
-                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                                )
-                            }
+                            Chip(
+                                text = genre,
+                                selected = isSelected,
+                                onClick = { draft = if (isSelected) draft - genre else draft + genre }
+                            )
                         }
                     }
                 }
@@ -397,26 +309,15 @@ private fun GenreFilterSheet(
                         draftStatus = null
                     },
                     modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF242424),
-                        contentColor = Color.White
-                    )
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Ui.Chip, contentColor = Color.White)
                 ) { Text("Reset", fontWeight = FontWeight.SemiBold) }
                 Button(
                     onClick = { onApply(draft, draftSort, draftStatus) },
                     modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White,
-                        contentColor = Color.Black
-                    )
-                ) {
-                    Text(
-                        "Terapkan",
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
+                ) { Text("Terapkan", fontWeight = FontWeight.SemiBold) }
             }
         }
     }
@@ -424,12 +325,7 @@ private fun GenreFilterSheet(
 
 @Composable
 private fun SheetLabel(text: String) {
-    Text(
-        text,
-        color = Color(0xFF999999),
-        fontSize = 13.sp,
-        modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
-    )
+    Text(text, color = Ui.Text2, fontSize = 13.sp, modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -444,21 +340,7 @@ private fun OptionRow(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         options.forEach { (label, value) ->
-            val on = selected == value
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(if (on) Color.White else Color(0xFF242424))
-                    .clickable { onSelect(value) }
-                    .padding(horizontal = 16.dp, vertical = 9.dp)
-            ) {
-                Text(
-                    label,
-                    color = if (on) Color.Black else Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal
-                )
-            }
+            Chip(label, selected == value, { onSelect(value) })
         }
     }
 }
