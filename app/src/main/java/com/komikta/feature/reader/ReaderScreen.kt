@@ -355,9 +355,7 @@ fun ReaderScreen(
             uiState.content != null -> {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    // Batasi item di luar viewport agar memory & composition lebih hemat
-                    beyondBoundsItemCount = 1
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     items(
                         items = readerItems,

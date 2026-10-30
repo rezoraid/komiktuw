@@ -226,8 +226,7 @@ fun ExploreScreen(
                     contentPadding = PaddingValues(12.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
-                    modifier = Modifier.fillMaxSize(),
-                    beyondBoundsItemCount = 1
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     items(filtered, key = { it.slug }, contentType = { "comic" }) { comic ->
                         ComicCard(

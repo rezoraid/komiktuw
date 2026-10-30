@@ -96,8 +96,7 @@ fun LibraryScreen(
                 contentPadding = PaddingValues(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.fillMaxSize(),
-                beyondBoundsItemCount = 1
+                modifier = Modifier.fillMaxSize()
             ) {
                 items(list, key = { "${it.source}:${it.slug}" }, contentType = { "comic" }) { comic ->
                     ComicCard(comic = comic, onClick = { onComicClick(comic.source, comic.slug) })
