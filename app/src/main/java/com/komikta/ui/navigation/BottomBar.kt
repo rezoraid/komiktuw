@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -51,13 +53,20 @@ fun BottomBar(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
                 ) {
+                    Box(
+                        Modifier
+                            .width(20.dp)
+                            .height(3.dp)
+                            .background(if (selected) Active else Color.Transparent, RoundedCornerShape(2.dp))
+                    )
+                    Spacer(Modifier.height(5.dp))
                     Icon(
                         if (selected) item.selectedIcon else item.unselectedIcon,
                         item.title,
                         tint = tint,
                         modifier = Modifier.size(24.dp)
                     )
-                    Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.height(1.dp))
                     Text(
                         item.title,
                         color = tint,

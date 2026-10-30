@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.komikta.domain.model.Comic
 import com.komikta.ui.components.ComicCard
@@ -87,10 +88,19 @@ fun LibraryScreen(
 
         if (list.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    if (tab == 0) "Belum ada bookmark" else "Belum ada history",
-                    color = Color(0xFF999999)
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        if (tab == 0) "Belum ada bookmark" else "Belum ada history",
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        if (tab == 0) "Ketuk ikon bookmark di halaman komik" else "Komik yang kamu baca muncul di sini",
+                        color = Color(0xFF777777),
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
             }
         } else {
             LazyVerticalGrid(

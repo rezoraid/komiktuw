@@ -302,29 +302,29 @@ fun DetailScreen(
                 }
 
                 if (startChapter != null) {
-                    Surface(
-                        onClick = { onChapterClick(detail.source, detail.slug, startChapter.slug) },
-                        shape = RoundedCornerShape(24.dp),
-                        color = Color(0xFF161618),
-                        border = BorderStroke(1.dp, PanelBorder),
-                        modifier = Modifier
+                    Row(
+                        Modifier
                             .align(Alignment.BottomCenter)
                             .navigationBarsPadding()
                             .padding(horizontal = 14.dp, vertical = 14.dp)
                             .fillMaxWidth()
+                            .clip(RoundedCornerShape(28.dp))
+                            .background(Color.White)
+                            .clickable { onChapterClick(detail.source, detail.slug, startChapter.slug) }
+                            .padding(horizontal = 22.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(AppIcons.play, null, tint = SoftText, modifier = Modifier.size(30.dp))
-                            Spacer(Modifier.width(16.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text("Mulai Membaca", style = MaterialTheme.typography.titleLarge, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                                Text(chapterName(startChapter), style = MaterialTheme.typography.bodyLarge, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                            Icon(AppIcons.chevronRight, null, tint = SoftText, modifier = Modifier.size(26.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Mulai Membaca", color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                chapterName(startChapter),
+                                color = Color(0xFF555555),
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
+                        Icon(AppIcons.chevronRight, null, tint = Color.Black, modifier = Modifier.size(24.dp))
                     }
                 }
             }
@@ -404,27 +404,31 @@ private fun MetaRow(icon: ImageVector, text: String) {
 
 @Composable
 private fun ChapterRow(chapter: Chapter, isRead: Boolean, onClick: () -> Unit) {
+    Column {
     Row(
         Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 text = chapterName(chapter),
-                style = MaterialTheme.typography.titleLarge,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
                 color = if (isRead) Color(0xFF6A6A6E) else Color(0xFFD8D8DC),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             if (!chapter.timeAgo.isNullOrBlank()) {
-                Text(chapter.timeAgo!!, style = MaterialTheme.typography.bodyLarge, color = if (isRead) Color(0xFF55555A) else Muted)
+                Text(chapter.timeAgo!!, style = MaterialTheme.typography.bodySmall, color = if (isRead) Color(0xFF55555A) else Muted)
             }
         }
+        if (isRead) Text("Dibaca", fontSize = 11.sp, color = Color(0xFF6A6A6E))
+    }
+    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(Color(0xFF161616)))
     }
 }
 

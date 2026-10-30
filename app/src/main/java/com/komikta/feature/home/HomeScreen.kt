@@ -350,20 +350,20 @@ private fun PagerDots(pagerState: PagerState, count: Int, modifier: Modifier = M
 @Composable
 private fun SectionHeader(title: String, onAction: (() -> Unit)?) {
     Row(
-        Modifier.fillMaxWidth().padding(start = Pad, end = Pad - 6.dp, top = 24.dp, bottom = 10.dp),
+        Modifier.fillMaxWidth().padding(start = Pad, end = Pad - 6.dp, top = 22.dp, bottom = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             title,
-            style = MaterialTheme.typography.headlineMedium.copy(fontSize = 22.sp),
+            style = MaterialTheme.typography.headlineMedium.copy(fontSize = 19.sp),
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
         if (onAction != null) {
             Text(
-                "View All",
-                fontSize = 14.sp,
+                "Lihat semua",
+                fontSize = 13.sp,
                 color = Muted,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))

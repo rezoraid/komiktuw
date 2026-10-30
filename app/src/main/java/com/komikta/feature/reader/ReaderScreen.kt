@@ -125,12 +125,20 @@ import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.runtime.rememberUpdatedState
 import coil.request.SuccessResult
 import coil.size.Scale
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
-private const val PRELOAD_AHEAD = 4
+private const val PRELOAD_AHEAD_WIFI = 10
+private const val PRELOAD_AHEAD_METERED = 5
+
+private val inFlight = HashMap<String, CompletableDeferred<Unit>>()
+
+private fun isMetered(context: android.content.Context): Boolean =
+    (context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager)
+        ?.isActiveNetworkMetered ?: true
 
 enum class ScrollMode { Smooth, Swipe }
 
@@ -225,8 +233,6 @@ fun ReaderScreen(
             .collect { viewModel.setCurrent(it) }
     }
 
-    // Hemat kuota: hanya unduh PRELOAD_AHEAD halaman di depan posisi baca (yang sedang tampil diurus AsyncImage,
-    // jadi tidak diunduh dua kali). Chapter berikutnya baru disentuh (3 halaman) saat sudah dekat akhir chapter.
     val currentSlugNow by rememberUpdatedState(currentSlug)
     LaunchedEffect(readerItems) {
         val pages = readerItems.mapIndexedNotNull { i, item ->
@@ -235,24 +241,25 @@ fun ReaderScreen(
         val claimed = HashSet<String>()
         fun nextUrl(): String? {
             val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return null
+            val ahead = if (isMetered(context)) PRELOAD_AHEAD_METERED else PRELOAD_AHEAD_WIFI
             val cur = currentSlugNow
             val curLast = pages.lastOrNull { it.second == cur }?.first ?: last
             val pick = pages.firstOrNull {
-                it.second == cur && it.first > last && it.first <= last + PRELOAD_AHEAD &&
+                it.second == cur && it.first > last && it.first <= last + ahead &&
                     it.third !in claimed && it.third !in ratios
             } ?: pages.firstOrNull {
-                curLast - last <= 8 && it.second != cur && it.first > curLast && it.first <= curLast + 4 &&
+                curLast - last <= ahead + 2 && it.second != cur && it.first > curLast && it.first <= curLast + minOf(ahead, 4) &&
                     it.third !in claimed && it.third !in ratios
             }
             return pick?.third?.also { claimed += it }
         }
         coroutineScope {
-            repeat(1) {
+            repeat(2) {
                 launch {
                     while (true) {
                         val url = nextUrl()
-                        if (url == null) { delay(300); continue }
-                        fetchToDisk(context, url, ratios)
+                        if (url == null) { delay(150); continue }
+                        fetchPage(context, url, screenWidthPx, ratios)
                     }
                 }
             }
@@ -432,38 +439,6 @@ fun ReaderScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                if (totalPages > 1) {
-                    Row(
-                        Modifier
-                            .padding(horizontal = 16.dp)
-                            .fillMaxWidth()
-                            .clip(sliderShape)
-                            .background(Color(0xFF1C1C1E))
-                            .border(1.dp, Color(0xFF3A3A3C), sliderShape)
-                            .padding(horizontal = 16.dp, vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("$currentPage", color = Color.White, style = MaterialTheme.typography.labelMedium)
-                        Slider(
-                            value = currentPage.toFloat(),
-                            onValueChange = { v ->
-                                interactTick++
-                                val page = v.toInt().coerceIn(1, totalPages)
-                                scope.launch { listState.scrollToItem(firstPageIndex + page - 1) }
-                            },
-                            valueRange = 1f..totalPages.toFloat(),
-                            colors = SliderDefaults.colors(
-                                thumbColor = Color.White,
-                                activeTrackColor = Color.White,
-                                inactiveTrackColor = Color.White.copy(alpha = 0.25f)
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 8.dp)
-                        )
-                        Text("$totalPages", color = Color(0xFFBDBDBD), style = MaterialTheme.typography.labelMedium)
-                    }
-                }
                 Row(
                     Modifier
                         .clip(navShape)
@@ -641,6 +616,19 @@ private fun diskPrefetchRequest(context: android.content.Context, url: String) =
         .crossfade(false)
         .build()
 
+private suspend fun fetchPage(context: android.content.Context, url: String, widthPx: Int, ratios: MutableMap<String, Float>) {
+    val gate = CompletableDeferred<Unit>()
+    inFlight[url] = gate
+    try {
+        val res = context.imageLoader.execute(pageRequest(context, url, widthPx)) as? SuccessResult ?: return
+        val d = res.drawable
+        if (d.intrinsicWidth > 0 && d.intrinsicHeight > 0) ratios[url] = d.intrinsicWidth.toFloat() / d.intrinsicHeight
+    } finally {
+        inFlight.remove(url)
+        gate.complete(Unit)
+    }
+}
+
 private suspend fun fetchToDisk(context: android.content.Context, url: String, ratios: MutableMap<String, Float>) {
     val res = context.imageLoader.execute(diskPrefetchRequest(context, url)) as? SuccessResult ?: return
     val d = res.drawable
@@ -686,6 +674,13 @@ private fun PageImage(url: String, widthPx: Int, ratios: MutableMap<String, Floa
         return
     }
     var ratio by remember(url) { mutableFloatStateOf(ratios[url] ?: 0.7f) }
+    var ready by remember(url) { mutableStateOf(inFlight[url] == null) }
+    LaunchedEffect(url) {
+        if (!ready) {
+            inFlight[url]?.await()
+            ready = true
+        }
+    }
     var retry by remember(url) { mutableIntStateOf(0) }
     var failed by remember(url) { mutableStateOf(false) }
     var slow by remember(url) { mutableStateOf(false) }
@@ -700,7 +695,7 @@ private fun PageImage(url: String, widthPx: Int, ratios: MutableMap<String, Floa
             .background(Color(0xFF0E0E0E)),
         contentAlignment = Alignment.Center
     ) {
-        AsyncImage(
+        if (ready) AsyncImage(
             model = request,
             contentDescription = null,
             contentScale = ContentScale.FillWidth,
