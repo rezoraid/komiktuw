@@ -36,8 +36,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -236,7 +234,6 @@ private fun HeroCarousel(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
 
     // Auto-scroll hanya saat layar RESUMED — berhenti saat user pindah tab / app di background
-    // Animasi singkat (280ms) mengurangi waktu main-thread sibuk dibanding default spring panjang
     LaunchedEffect(comics.size, lifecycle) {
         if (comics.size < 2) return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -244,10 +241,7 @@ private fun HeroCarousel(
                 delay(5500)
                 if (!pagerState.isScrollInProgress) {
                     val next = (pagerState.currentPage + 1) % comics.size
-                    pagerState.animateScrollToPage(
-                        page = next,
-                        animationSpec = tween(durationMillis = 280)
-                    )
+                    pagerState.animateScrollToPage(next)
                 }
             }
         }
@@ -256,9 +250,6 @@ private fun HeroCarousel(
     Box(Modifier.fillMaxWidth().height(236.dp)) {
         HorizontalPager(
             state = pagerState,
-            // Jangan compose page jauh di luar viewport (hemat memory + composition)
-            beyondViewportPageCount = 0,
-            flingBehavior = PagerDefaults.flingBehavior(state = pagerState),
             modifier = Modifier.fillMaxSize()
         ) { page ->
             val comic = comics[page]

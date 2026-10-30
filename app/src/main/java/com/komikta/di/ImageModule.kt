@@ -74,7 +74,6 @@ object ImageModule {
             .memoryCache {
                 MemoryCache.Builder(context)
                     .maxSizePercent(memPercent)
-                    .strongReferencesEnabled(false) // izinkan GC lebih agresif di low-end
                     .build()
             }
             .diskCache {
@@ -85,7 +84,6 @@ object ImageModule {
             }
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
-            .networkCachePolicy(CachePolicy.ENABLED)
             .crossfade(false)
             .allowRgb565(true)
             .respectCacheHeaders(false)
