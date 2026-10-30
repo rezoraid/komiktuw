@@ -3,7 +3,10 @@ package com.komikta.feature.home
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -424,9 +427,11 @@ private fun PosterRow(comics: List<Comic>, cardWidth: androidx.compose.ui.unit.D
 
 @Composable
 private fun ContinueCard(item: ReadingHistoryEntity, now: Long, onClick: () -> Unit) {
-    Column(Modifier.width(126.dp).clip(CardShape).clickable(onClick = onClick)) {
+    val interaction = remember { MutableInteractionSource() }
+    Column(Modifier.width(126.dp).clickable(interactionSource = interaction, indication = null, onClick = onClick)) {
         Box(
             Modifier.fillMaxWidth().aspectRatio(0.75f).clip(CardShape).background(CoverBg)
+                .indication(interaction, LocalIndication.current)
         ) {
             CoverImage(
                 url = item.coverUrl,
@@ -476,8 +481,12 @@ private fun PosterCard(comic: Comic, onClick: () -> Unit, modifier: Modifier = M
     val chapterPill = latest?.let { chapterShort(it) } ?: comic.chapterCount?.let { "Ch. $it" }
     val chapterChip = latest?.let { chapterLong(it) }
 
-    Column(modifier.clip(CardShape).clickable(onClick = onClick)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(0.75f).clip(CardShape).background(CoverBg)) {
+    val interaction = remember { MutableInteractionSource() }
+    Column(modifier.clickable(interactionSource = interaction, indication = null, onClick = onClick)) {
+        Box(
+            Modifier.fillMaxWidth().aspectRatio(0.75f).clip(CardShape).background(CoverBg)
+                .indication(interaction, LocalIndication.current)
+        ) {
             CoverImage(
                 url = comic.coverUrl,
                 contentDescription = comic.title,

@@ -1,5 +1,10 @@
 package com.komikta.ui.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.HorizontalDivider
@@ -12,6 +17,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +50,7 @@ fun MainNavGraph() {
     val showBottomBar = currentDestination?.route in bottomNavItems.map { it.route }
     val settings: SettingsViewModel = hiltViewModel()
     val floatingNav by settings.floatingNav.collectAsState()
+    var focusSearch by remember { mutableStateOf(false) }
     val goTo: (String) -> Unit = { route ->
         navController.navigate(route) {
             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -108,7 +117,27 @@ fun MainNavGraph() {
         NavHost(
             navController = navController,
             startDestination = BottomNavItem.Home.route,
-            modifier = if (isDetail) Modifier else Modifier.padding(innerPadding)
+            modifier = if (isDetail) Modifier else Modifier.padding(innerPadding),
+            enterTransition = {
+                if (isDeepRoute(targetState.destination.route)) {
+                    fadeIn(tween(240)) + slideIntoContainer(
+                        AnimatedContentTransitionScope.SlideDirection.Start,
+                        tween(300, easing = FastOutSlowInEasing),
+                        initialOffset = { it / 8 }
+                    )
+                } else fadeIn(tween(220))
+            },
+            exitTransition = { fadeOut(tween(160)) },
+            popEnterTransition = { fadeIn(tween(220)) },
+            popExitTransition = {
+                if (isDeepRoute(initialState.destination.route)) {
+                    fadeOut(tween(180)) + slideOutOfContainer(
+                        AnimatedContentTransitionScope.SlideDirection.End,
+                        tween(260, easing = FastOutSlowInEasing),
+                        targetOffset = { it / 8 }
+                    )
+                } else fadeOut(tween(160))
+            }
         ) {
             composable(BottomNavItem.Home.route) {
                 HomeScreen(
@@ -117,6 +146,7 @@ fun MainNavGraph() {
                     onContinueViewAll = { goTo(BottomNavItem.Library.route) },
                     onUpdateViewAll = { goTo(BottomNavItem.Explore.route) },
                     onSearchClick = {
+                        focusSearch = true
                         navController.navigate(BottomNavItem.Explore.route) {
                             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                             launchSingleTop = true
@@ -126,7 +156,11 @@ fun MainNavGraph() {
                 )
             }
             composable(BottomNavItem.Explore.route) {
-                ExploreScreen(onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") })
+                ExploreScreen(
+                    onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") },
+                    focusSearch = focusSearch,
+                    onSearchFocused = { focusSearch = false }
+                )
             }
             composable(BottomNavItem.Library.route) {
                 LibraryScreen(onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") })
@@ -161,3 +195,6 @@ fun MainNavGraph() {
         }
     }
 }
+
+private fun isDeepRoute(route: String?): Boolean =
+    route?.startsWith("detail") == true || route?.startsWith("reader") == true

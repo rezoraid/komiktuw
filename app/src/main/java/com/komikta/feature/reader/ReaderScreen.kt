@@ -105,7 +105,17 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
-import java.util.concurrent.ConcurrentHashMap
+import android.graphics.BitmapFactory
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.ui.graphics.graphicsLayer
+import coil.ImageLoader
+import coil.request.SuccessResult
+import coil.size.Scale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
+import kotlin.math.abs
 
 enum class ScrollMode { Smooth, Swipe }
 
@@ -170,7 +180,7 @@ fun ReaderScreen(
     }
     val screenWidthPx = with(density) { LocalConfiguration.current.screenWidthDp.dp.roundToPx() }
     val readerItems = remember(uiState.loaded) { buildReaderItems(uiState.loaded) }
-    val ratios = remember { ConcurrentHashMap<String, Float>() }
+    val ratios = remember { mutableStateMapOf<String, Float>() }
     val firstSlug = uiState.loaded.firstOrNull()?.chapterSlug
 
     // Progress halaman untuk chapter yang sedang dibaca
@@ -200,25 +210,40 @@ fun ReaderScreen(
             .collect { viewModel.setCurrent(it) }
     }
 
+    // Unduh SEMUA halaman chapter ke disk (urut dari posisi baca) + ambil rasio asli, jadi tinggi item pas sebelum muncul
     LaunchedEffect(readerItems) {
-        var done = -1
-        snapshotFlow { lastVisible }.collect { last ->
-            if (last < 0) return@collect
-            val end = (last + 6).coerceAtMost(readerItems.lastIndex)
-            for (i in maxOf(last + 1, done + 1)..end) {
-                (readerItems[i] as? ReaderItem.Page)?.let { page ->
-                    val req = pageRequest(context, page.url, screenWidthPx).newBuilder()
-                        .listener(onSuccess = { _, result ->
-                            val d = result.drawable
-                            if (d.intrinsicWidth > 0 && d.intrinsicHeight > 0) {
-                                ratios[page.url] = d.intrinsicWidth.toFloat() / d.intrinsicHeight
-                            }
-                        })
-                        .build()
-                    context.imageLoader.enqueue(req)
+        val pages = readerItems.mapIndexedNotNull { i, item -> (item as? ReaderItem.Page)?.let { i to it.url } }
+        val claimed = HashSet<String>()
+        fun nextUrl(): String? {
+            val from = listState.firstVisibleItemIndex
+            val pick = pages.firstOrNull { it.first >= from && it.second !in claimed && it.second !in ratios }
+                ?: pages.firstOrNull { it.second !in claimed && it.second !in ratios }
+            return pick?.second?.also { claimed += it }
+        }
+        coroutineScope {
+            repeat(4) {
+                launch {
+                    while (true) {
+                        val url = nextUrl() ?: break
+                        fetchToDisk(context, url, ratios)
+                    }
                 }
             }
-            done = maxOf(done, end)
+        }
+    }
+
+    // Hangatkan 8 halaman di depan ke memori (sudah ter-decode) supaya muncul instan saat di-scroll
+    LaunchedEffect(readerItems) {
+        val warmed = HashSet<String>()
+        snapshotFlow { lastVisible to ratios.size }.collect { (last, _) ->
+            if (last < 0) return@collect
+            val end = (last + 8).coerceAtMost(readerItems.lastIndex)
+            for (i in last + 1..end) {
+                val page = readerItems[i] as? ReaderItem.Page ?: continue
+                if (page.url in ratios && warmed.add(page.url)) {
+                    context.imageLoader.enqueue(pageRequest(context, page.url, screenWidthPx))
+                }
+            }
         }
     }
 
@@ -230,9 +255,7 @@ fun ReaderScreen(
     }
 
     LaunchedEffect(uiState.upcoming?.chapterSlug) {
-        uiState.upcoming?.imageUrls?.take(4)?.forEach {
-            context.imageLoader.enqueue(diskPrefetchRequest(context, it))
-        }
+        uiState.upcoming?.imageUrls?.forEach { fetchToDisk(context, it, ratios) }
     }
 
     LaunchedEffect(autoScroll, scrollMode, scrollSpeed) {
@@ -579,6 +602,8 @@ private fun pageRequest(context: android.content.Context, url: String, widthPx: 
     ImageRequest.Builder(context)
         .data(url)
         .size(Size(widthPx, Dimension.Undefined))
+        .scale(Scale.FIT)
+        .diskCacheKey(url)
         .crossfade(false)
         .build()
 
@@ -590,36 +615,61 @@ private fun diskPrefetchRequest(context: android.content.Context, url: String) =
     ImageRequest.Builder(context)
         .data(url)
         .size(Size(16, 16))
+        .diskCacheKey(url)
         .memoryCachePolicy(CachePolicy.DISABLED)
         .crossfade(false)
         .build()
+
+private suspend fun fetchToDisk(context: android.content.Context, url: String, ratios: MutableMap<String, Float>) {
+    val loader = context.imageLoader
+    if (loader.execute(diskPrefetchRequest(context, url)) !is SuccessResult) return
+    val r = withContext(Dispatchers.IO) { readRatio(loader, url) } ?: return
+    ratios[url] = r
+}
+
+private fun readRatio(loader: ImageLoader, url: String): Float? {
+    val snapshot = loader.diskCache?.openSnapshot(url) ?: return null
+    return snapshot.use {
+        val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(it.data.toFile().path, o)
+        if (o.outWidth > 0 && o.outHeight > 0) o.outWidth.toFloat() / o.outHeight else null
+    }
+}
 
 @Composable
 private fun PageImage(url: String, widthPx: Int, ratios: MutableMap<String, Float>) {
     val context = LocalContext.current
     var retry by remember(url) { mutableIntStateOf(0) }
     var failed by remember(url) { mutableStateOf(false) }
-    var ratio by remember(url) { mutableStateOf(ratios[url]) }
+    var slow by remember(url) { mutableStateOf(false) }
+    var shown by remember(url) { mutableStateOf(false) }
     val request = remember(url, widthPx, retry) { pageRequest(context, url, widthPx) }
+    // Fade-in hanya kalau gambar memang harus menunggu; yang sudah di memori tampil langsung tanpa animasi
+    val fade by animateFloatAsState(if (!slow || shown) 1f else 0f, tween(220), label = "pageFade")
     Box(
         Modifier
             .fillMaxWidth()
-            .aspectRatio(ratio ?: 0.7f),
+            .aspectRatio(ratios[url] ?: 0.7f)
+            .background(Color(0xFF0E0E0E)),
         contentAlignment = Alignment.Center
     ) {
         AsyncImage(
             model = request,
             contentDescription = null,
             contentScale = ContentScale.FillWidth,
-            modifier = Modifier.fillMaxSize(),
-            onSuccess = { s ->
-                val d = s.painter.intrinsicSize
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = fade },
+            onLoading = { slow = true },
+            onSuccess = { st ->
+                val d = st.painter.intrinsicSize
                 if (d.width > 0f && d.height > 0f) {
                     val r = d.width / d.height
-                    ratios[url] = r
-                    if (ratio != r) ratio = r
+                    val old = ratios[url]
+                    if (old == null || abs(old - r) > 0.003f) ratios[url] = r
                 }
                 failed = false
+                shown = true
             },
             onError = { failed = true }
         )

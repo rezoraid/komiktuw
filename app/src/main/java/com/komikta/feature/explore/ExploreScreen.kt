@@ -46,6 +46,10 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import kotlinx.coroutines.delay
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -68,9 +72,21 @@ import com.komikta.ui.components.ShimmerHost
 @Composable
 fun ExploreScreen(
     onComicClick: (source: String, slug: String) -> Unit = { _, _ -> },
+    focusSearch: Boolean = false,
+    onSearchFocused: () -> Unit = {},
     viewModel: ExploreViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val searchFocus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(focusSearch) {
+        if (focusSearch) {
+            delay(150)
+            runCatching { searchFocus.requestFocus() }
+            keyboard?.show()
+            onSearchFocused()
+        }
+    }
     var selectedType by remember { mutableStateOf("All") }
     var showFilter by remember { mutableStateOf(false) }
     val types = listOf("All", "Manhwa", "Manhua", "Manga")
@@ -93,7 +109,8 @@ fun ExploreScreen(
             onValueChange = viewModel::onQueryChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .focusRequester(searchFocus),
             placeholder = { Text("Search manga, manhwa, manhua", color = Color(0xFF999999)) },
             leadingIcon = { Icon(Icons.Default.Search, null, tint = Color(0xFFBDBDBD)) },
             singleLine = true,
