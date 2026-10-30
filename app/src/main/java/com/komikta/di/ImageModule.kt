@@ -47,7 +47,7 @@ object ImageModule {
             .okHttpClient(imageClient)
             .memoryCache {
                 MemoryCache.Builder(context)
-                    .maxSizePercent(0.20)
+                    .maxSizePercent(0.25)
                     .build()
             }
             .diskCache {

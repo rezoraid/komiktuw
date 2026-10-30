@@ -105,6 +105,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 
 enum class ScrollMode { Smooth, Swipe }
 
@@ -169,7 +170,7 @@ fun ReaderScreen(
     }
     val screenWidthPx = with(density) { LocalConfiguration.current.screenWidthDp.dp.roundToPx() }
     val readerItems = remember(uiState.loaded) { buildReaderItems(uiState.loaded) }
-    val ratios = remember { HashMap<String, Float>() }
+    val ratios = remember { ConcurrentHashMap<String, Float>() }
     val firstSlug = uiState.loaded.firstOrNull()?.chapterSlug
 
     // Progress halaman untuk chapter yang sedang dibaca
@@ -203,9 +204,19 @@ fun ReaderScreen(
         var done = -1
         snapshotFlow { lastVisible }.collect { last ->
             if (last < 0) return@collect
-            val end = (last + 4).coerceAtMost(readerItems.lastIndex)
+            val end = (last + 6).coerceAtMost(readerItems.lastIndex)
             for (i in maxOf(last + 1, done + 1)..end) {
-                (readerItems[i] as? ReaderItem.Page)?.let { context.imageLoader.enqueue(pageRequest(context, it.url, screenWidthPx)) }
+                (readerItems[i] as? ReaderItem.Page)?.let { page ->
+                    val req = pageRequest(context, page.url, screenWidthPx).newBuilder()
+                        .listener(onSuccess = { _, result ->
+                            val d = result.drawable
+                            if (d.intrinsicWidth > 0 && d.intrinsicHeight > 0) {
+                                ratios[page.url] = d.intrinsicWidth.toFloat() / d.intrinsicHeight
+                            }
+                        })
+                        .build()
+                    context.imageLoader.enqueue(req)
+                }
             }
             done = maxOf(done, end)
         }
@@ -219,8 +230,8 @@ fun ReaderScreen(
     }
 
     LaunchedEffect(uiState.upcoming?.chapterSlug) {
-        uiState.upcoming?.imageUrls?.take(3)?.forEach {
-            context.imageLoader.enqueue(pageRequest(context, it, screenWidthPx, diskOnly = true))
+        uiState.upcoming?.imageUrls?.take(4)?.forEach {
+            context.imageLoader.enqueue(diskPrefetchRequest(context, it))
         }
     }
 
@@ -280,7 +291,7 @@ fun ReaderScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(readerItems, key = { it.key }, contentType = { it::class }) { item ->
+                    items(readerItems, key = { it.key }, contentType = { if (it is ReaderItem.Page) 0 else 1 }) { item ->
                         when (item) {
                             is ReaderItem.Page -> PageImage(item.url, screenWidthPx, ratios)
                             is ReaderItem.Divider -> {
@@ -547,13 +558,13 @@ sealed interface ReaderItem {
     val key: String
     val chapterSlug: String
     data class Page(override val chapterSlug: String, val index: Int, val url: String) : ReaderItem {
-        override val key get() = "$chapterSlug:$index:$url"
+        override val key: String = "$chapterSlug:$index"
     }
     data class Divider(override val chapterSlug: String) : ReaderItem {
-        override val key get() = "divider:$chapterSlug"
+        override val key: String = "divider:$chapterSlug"
     }
     data class End(override val chapterSlug: String) : ReaderItem {
-        override val key get() = "end:$chapterSlug"
+        override val key: String = "end:$chapterSlug"
     }
 }
 
@@ -564,26 +575,36 @@ private fun buildReaderItems(chapters: List<ChapterContent>): List<ReaderItem> =
     }
 }
 
-private fun pageRequest(context: android.content.Context, url: String, widthPx: Int, diskOnly: Boolean = false) =
+private fun pageRequest(context: android.content.Context, url: String, widthPx: Int) =
     ImageRequest.Builder(context)
         .data(url)
         .size(Size(widthPx, Dimension.Undefined))
         .crossfade(false)
-        .apply { if (diskOnly) memoryCachePolicy(CachePolicy.DISABLED) }
+        .build()
+
+/**
+ * Hanya mengunduh ke disk cache (untuk chapter berikutnya). Ukuran sangat kecil -> decode hampir gratis,
+ * tapi file aslinya tetap tersimpan, jadi tidak ada lonjakan CPU saat sedang membaca.
+ */
+private fun diskPrefetchRequest(context: android.content.Context, url: String) =
+    ImageRequest.Builder(context)
+        .data(url)
+        .size(Size(16, 16))
+        .memoryCachePolicy(CachePolicy.DISABLED)
+        .crossfade(false)
         .build()
 
 @Composable
-private fun PageImage(url: String, widthPx: Int, ratios: HashMap<String, Float>) {
+private fun PageImage(url: String, widthPx: Int, ratios: MutableMap<String, Float>) {
     val context = LocalContext.current
-    var retry by remember(url) { mutableStateOf(0) }
+    var retry by remember(url) { mutableIntStateOf(0) }
     var failed by remember(url) { mutableStateOf(false) }
     var ratio by remember(url) { mutableStateOf(ratios[url]) }
     val request = remember(url, widthPx, retry) { pageRequest(context, url, widthPx) }
     Box(
         Modifier
             .fillMaxWidth()
-            .aspectRatio(ratio ?: 0.7f)
-            .background(Color.Black),
+            .aspectRatio(ratio ?: 0.7f),
         contentAlignment = Alignment.Center
     ) {
         AsyncImage(
@@ -596,7 +617,7 @@ private fun PageImage(url: String, widthPx: Int, ratios: HashMap<String, Float>)
                 if (d.width > 0f && d.height > 0f) {
                     val r = d.width / d.height
                     ratios[url] = r
-                    ratio = r
+                    if (ratio != r) ratio = r
                 }
                 failed = false
             },
@@ -609,8 +630,6 @@ private fun PageImage(url: String, widthPx: Int, ratios: HashMap<String, Float>)
                 color = Color(0xFF8A8A8A),
                 modifier = Modifier.clickable { failed = false; retry++ }.padding(16.dp)
             )
-        } else if (ratio == null) {
-            CircularProgressIndicator(color = Color.White.copy(0.5f), strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
         }
     }
 }

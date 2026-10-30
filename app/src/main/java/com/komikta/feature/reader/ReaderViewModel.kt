@@ -51,6 +51,8 @@ class ReaderViewModel @Inject constructor(
     private var chapterSlug: String = savedStateHandle["chapterSlug"] ?: ""
     private var prefetchJob: Job? = null
     private var appending = false
+    private var comicTitle: String? = null
+    private var comicCover: String? = null
 
     private val _uiState = MutableStateFlow(ReaderUiState(source = source, comicSlug = comicSlug))
     val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
@@ -133,22 +135,27 @@ class ReaderViewModel @Inject constructor(
         if (comicSlug.isBlank()) return
         viewModelScope.launch {
             val detail = getComicDetail(source, comicSlug).getOrNull() ?: return@launch
+            comicTitle = detail.title.takeIf { it.isNotBlank() }
+            comicCover = detail.coverUrl
             _uiState.update { it.copy(chapterInfo = detail.chapters.associateBy { c -> c.slug }) }
+            _uiState.value.content?.let { saveHistory(it) }
         }
     }
 
     private suspend fun saveHistory(content: ChapterContent) {
         val id = "${source}_$comicSlug"
+        val old = historyDao.getById(id)
+        val number = _uiState.value.chapterInfo[content.chapterSlug]?.number
         readChapterDao.markRead(ReadChapterEntity(comicId = id, chapterSlug = content.chapterSlug, readAt = System.currentTimeMillis()))
         historyDao.upsert(
             ReadingHistoryEntity(
                 id = id,
                 source = source,
                 comicSlug = comicSlug,
-                comicTitle = content.title ?: comicSlug,
-                coverUrl = null,
+                comicTitle = comicTitle ?: old?.comicTitle ?: content.title ?: comicSlug,
+                coverUrl = comicCover ?: old?.coverUrl,
                 lastChapterSlug = content.chapterSlug,
-                lastChapterNumber = content.title,
+                lastChapterNumber = number ?: content.title,
                 lastReadAt = System.currentTimeMillis()
             )
         )

@@ -572,8 +572,15 @@ private fun chapterLong(c: Chapter): String? {
     return if (ago != null) "$name · $ago" else name
 }
 
-private fun historyChapterLabel(h: ReadingHistoryEntity): String =
-    cleanNumber(h.lastChapterNumber)?.let { "Chapter $it" } ?: "Lanjutkan baca"
+private val AnyChapterNumber = Regex("""(?i)(?:chapter|ch\.?)\s*(\d+(?:\.\d+)?)""")
+
+private fun historyChapterLabel(h: ReadingHistoryEntity): String {
+    val raw = h.lastChapterNumber?.trim().orEmpty()
+    if (raw.isEmpty()) return "Lanjutkan baca"
+    if (raw.all { it.isDigit() || it == '.' }) return "Chapter $raw"
+    AnyChapterNumber.find(raw)?.let { return "Chapter ${it.groupValues[1]}" }
+    return raw
+}
 
 private fun fmtRating(r: Double): String = String.format(Locale.US, "%.1f", r)
 
