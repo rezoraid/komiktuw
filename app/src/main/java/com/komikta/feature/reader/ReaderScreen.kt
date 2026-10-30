@@ -130,10 +130,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
-// Prefetch agresif memakan bandwidth & decode buffer di low-end.
-// 8 halaman di depan cukup untuk scroll lancar tanpa lonjakan memori.
-private const val PRELOAD_AHEAD = 8
-private const val MEMORY_WARM_AHEAD = 4
+private const val PRELOAD_AHEAD = 15
 
 enum class ScrollMode { Smooth, Swipe }
 
@@ -250,12 +247,11 @@ fun ReaderScreen(
             return pick?.third?.also { claimed += it }
         }
         coroutineScope {
-            // 2 worker cukup; lebih banyak hanya menambah tekanan jaringan & decode di low-end
-            repeat(2) {
+            repeat(3) {
                 launch {
                     while (true) {
                         val url = nextUrl()
-                        if (url == null) { delay(350); continue }
+                        if (url == null) { delay(300); continue }
                         fetchToDisk(context, url, ratios)
                     }
                 }
@@ -263,13 +259,12 @@ fun ReaderScreen(
         }
     }
 
-    // Hangatkan sedikit halaman di depan ke memori (decode) supaya scroll terasa instan
-    // Jumlah dikurangi agar low-end tidak kelebihan buffer bitmap
+    // Hangatkan 6 halaman di depan ke memori (sudah ter-decode) supaya muncul instan saat di-scroll
     LaunchedEffect(readerItems) {
         val warmed = HashSet<String>()
         snapshotFlow { lastVisible to ratios.size }.collect { (last, _) ->
             if (last < 0) return@collect
-            val end = (last + MEMORY_WARM_AHEAD).coerceAtMost(readerItems.lastIndex)
+            val end = (last + 6).coerceAtMost(readerItems.lastIndex)
             for (i in last + 1..end) {
                 val page = readerItems[i] as? ReaderItem.Page ?: continue
                 if (page.url in ratios && warmed.add(page.url)) {
@@ -357,11 +352,7 @@ fun ReaderScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(
-                        items = readerItems,
-                        key = { it.key },
-                        contentType = { if (it is ReaderItem.Page) 0 else 1 }
-                    ) { item ->
+                    items(readerItems, key = { it.key }, contentType = { if (it is ReaderItem.Page) 0 else 1 }) { item ->
                         when (item) {
                             is ReaderItem.Page -> PageImage(item.url, screenWidthPx, ratios)
                             is ReaderItem.Divider -> {

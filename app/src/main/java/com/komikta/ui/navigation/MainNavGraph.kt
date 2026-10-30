@@ -118,33 +118,25 @@ fun MainNavGraph() {
             navController = navController,
             startDestination = BottomNavItem.Home.route,
             modifier = if (isDetail) Modifier else Modifier.padding(innerPadding),
-            // Tab bawah: fade sangat singkat agar perpindahan terasa instan.
-            // Detail/Reader: slide ringan tetap dipakai untuk hierarchy yang jelas.
             enterTransition = {
                 if (isDeepRoute(targetState.destination.route)) {
-                    fadeIn(tween(200)) + slideIntoContainer(
+                    fadeIn(tween(240)) + slideIntoContainer(
                         AnimatedContentTransitionScope.SlideDirection.Start,
-                        tween(260, easing = FastOutSlowInEasing),
-                        initialOffset = { it / 10 }
+                        tween(300, easing = FastOutSlowInEasing),
+                        initialOffset = { it / 8 }
                     )
-                } else fadeIn(tween(120))
+                } else fadeIn(tween(220))
             },
-            exitTransition = {
-                if (isDeepRoute(targetState.destination.route)) fadeOut(tween(140))
-                else fadeOut(tween(90))
-            },
-            popEnterTransition = {
-                if (isDeepRoute(initialState.destination.route)) fadeIn(tween(160))
-                else fadeIn(tween(120))
-            },
+            exitTransition = { fadeOut(tween(160)) },
+            popEnterTransition = { fadeIn(tween(220)) },
             popExitTransition = {
                 if (isDeepRoute(initialState.destination.route)) {
-                    fadeOut(tween(160)) + slideOutOfContainer(
+                    fadeOut(tween(180)) + slideOutOfContainer(
                         AnimatedContentTransitionScope.SlideDirection.End,
-                        tween(240, easing = FastOutSlowInEasing),
-                        targetOffset = { it / 10 }
+                        tween(260, easing = FastOutSlowInEasing),
+                        targetOffset = { it / 8 }
                     )
-                } else fadeOut(tween(90))
+                } else fadeOut(tween(160))
             }
         ) {
             composable(BottomNavItem.Home.route) {

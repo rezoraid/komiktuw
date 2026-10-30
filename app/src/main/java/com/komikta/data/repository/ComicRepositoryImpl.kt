@@ -30,7 +30,6 @@ class ComicRepositoryImpl @Inject constructor(
     private val listCache = ConcurrentHashMap<String, CacheEntry<Result<List<Comic>>>>()
     private val detailCache = ConcurrentHashMap<String, CacheEntry<Result<ComicDetail>>>()
     private val chapterCache = ConcurrentHashMap<String, CacheEntry<Result<ChapterContent>>>()
-    private val genreCache = ConcurrentHashMap<String, CacheEntry<Result<List<String>>>>()
 
     private fun <T> cached(cache: ConcurrentHashMap<String, CacheEntry<T>>, key: String, ttlMs: Long): T? {
         val entry = cache[key] ?: return null
@@ -96,42 +95,25 @@ class ComicRepositoryImpl @Inject constructor(
         key: String,
         request: suspend () -> Result<List<Comic>>
     ): Result<List<Comic>> {
-        // Popular/latest jarang berubah tiap detik; 2 menit mengurangi request berulang
-        // saat user bolak-balik Home ↔ Explore tanpa kehilangan kesegaran data.
-        val ttl = when {
-            key.startsWith("popular:") -> 180_000L
-            key.startsWith("latest:") -> 120_000L
-            else -> 90_000L
-        }
-        cached(listCache, key, ttl)?.let { return it }
+        cached(listCache, key, 60_000L)?.let { return it }
         val result = safeApiCall { request() }
         if (result is Result.Success || result is Result.Empty) {
             listCache[key] = CacheEntry(result)
-            trimCache(listCache, 80)
+            trimCache(listCache, 100)
         }
         return result
     }
 
-    override suspend fun getGenres(source: String): Result<List<String>> {
-        // Genre jarang berubah; cache 30 menit menghindari request berulang tiap buka Explore
-        val key = "genres:$source"
-        cached(genreCache, key, 1_800_000L)?.let { return it }
-        val result = safeApiCall {
-            val response = api.getGenres(source)
-            if (!response.ok || response.data == null) {
-                return@safeApiCall Result.Error(
-                    message = response.error?.message ?: "Failed to fetch genres",
-                    code = response.error?.code
-                )
-            }
-            val items = response.data.items
-            if (items.isEmpty()) Result.Empty else Result.Success(items)
+    override suspend fun getGenres(source: String): Result<List<String>> = safeApiCall {
+        val response = api.getGenres(source)
+        if (!response.ok || response.data == null) {
+            return@safeApiCall Result.Error(
+                message = response.error?.message ?: "Failed to fetch genres",
+                code = response.error?.code
+            )
         }
-        if (result is Result.Success || result is Result.Empty) {
-            genreCache[key] = CacheEntry(result)
-            trimCache(genreCache, 8)
-        }
-        return result
+        val items = response.data.items
+        if (items.isEmpty()) Result.Empty else Result.Success(items)
     }
 
     override suspend fun getComicDetail(source: String, slug: String): Result<ComicDetail> {
@@ -173,8 +155,7 @@ class ComicRepositoryImpl @Inject constructor(
         }
         if (result is Result.Success) {
             chapterCache[key] = CacheEntry(result)
-            // Batasi chapter cache agar tidak menahan terlalu banyak list URL di heap
-            trimCache(chapterCache, 24)
+            trimCache(chapterCache, 40)
         }
         return result
     }

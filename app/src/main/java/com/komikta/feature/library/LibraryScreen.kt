@@ -73,13 +73,15 @@ fun LibraryScreen(
             }
         }
 
-        val list = if (tab == 0) {
-            bookmarks.map {
-                Comic(it.comicTitle, it.comicSlug, it.coverUrl, it.type, it.status, source = it.source)
-            }
-        } else {
-            history.map {
-                Comic(it.comicTitle, it.comicSlug, it.coverUrl, source = it.source)
+        val list = remember(tab, bookmarks, history) {
+            if (tab == 0) {
+                bookmarks.map {
+                    Comic(it.comicTitle, it.comicSlug, it.coverUrl, it.type, it.status, source = it.source)
+                }
+            } else {
+                history.map {
+                    Comic(it.comicTitle, it.comicSlug, it.coverUrl, source = it.source)
+                }
             }
         }
 

@@ -95,8 +95,12 @@ fun DetailScreen(
                 }
             }
             detail != null -> {
-                val ordered = if (uiState.chaptersNewestFirst) detail.chapters else detail.chapters.reversed()
-                val visible = if (query.isBlank()) ordered else ordered.filter { chapterName(it).contains(query.trim(), ignoreCase = true) }
+                val ordered = remember(detail.chapters, uiState.chaptersNewestFirst) {
+                    if (uiState.chaptersNewestFirst) detail.chapters else detail.chapters.reversed()
+                }
+                val visible = remember(ordered, query) {
+                    if (query.isBlank()) ordered else ordered.filter { chapterName(it).contains(query.trim(), ignoreCase = true) }
+                }
                 val startChapter = detail.chapters.lastOrNull()
 
                 LazyColumn(

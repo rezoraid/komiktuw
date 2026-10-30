@@ -1,10 +1,17 @@
 package com.komikta.ui.components
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,24 +21,25 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.komikta.domain.model.Comic
 
-/**
- * Kartu komik ringan: tanpa animasi scale/spring agar scroll & press
- * tidak membebani main thread di perangkat low-end.
- */
 @Composable
 fun ComicCard(
     comic: Comic,
@@ -39,14 +47,16 @@ fun ComicCard(
     modifier: Modifier = Modifier
 ) {
     val interaction = remember { MutableInteractionSource() }
-
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.95f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "cardPress"
+    )
     Column(
         modifier = modifier
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onClick
-            )
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
     ) {
         Box(
             modifier = Modifier
@@ -56,14 +66,10 @@ fun ComicCard(
                 .background(Color(0xFF1A1A1A))
                 .indication(interaction, LocalIndication.current)
         ) {
-            // Ukuran decode disesuaikan card (~120–160dp lebar di grid 3 kolom)
             CoverImage(
                 url = comic.coverUrl,
                 contentDescription = comic.title,
-                modifier = Modifier.fillMaxSize(),
-                targetWidth = 160.dp,
-                targetHeight = 236.dp,
-                crossfade = false
+                modifier = Modifier.fillMaxSize()
             )
             if (!comic.type.isNullOrBlank()) {
                 Surface(

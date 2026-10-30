@@ -1,8 +1,5 @@
 package com.komikta.domain.model
 
-import androidx.compose.runtime.Immutable
-
-@Immutable
 data class Source(
     val id: String,
     val name: String,
@@ -12,12 +9,6 @@ data class Source(
     val sorts: List<String> = emptyList()
 )
 
-/**
- * Domain models ditandai @Immutable agar Compose tidak menganggap
- * parameter "selalu berubah" hanya karena berisi List (default unstable).
- * Ini mengurangi recomposition yang tidak perlu di list & card.
- */
-@Immutable
 data class Comic(
     val title: String,
     val slug: String,
@@ -33,7 +24,6 @@ data class Comic(
     val chapters: List<Chapter> = emptyList()
 )
 
-@Immutable
 data class ComicDetail(
     val title: String,
     val slug: String,
@@ -53,7 +43,6 @@ data class ComicDetail(
     val source: String
 )
 
-@Immutable
 data class Chapter(
     val slug: String,
     val number: String? = null,
@@ -61,7 +50,6 @@ data class Chapter(
     val timeAgo: String? = null
 )
 
-@Immutable
 data class ChapterContent(
     val title: String? = null,
     val comicSlug: String,

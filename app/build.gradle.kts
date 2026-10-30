@@ -25,25 +25,18 @@ android {
     }
 
     signingConfigs {
-        // Pakai komikta-debug.jks hanya jika file ada (lokal).
-        // Di CI, file sering tidak di-commit → fallback ke Android default debug keystore
-        // supaya :app:validateSigningDebug tidak gagal.
-        val localJks = file("komikta-debug.jks")
-        if (localJks.exists()) {
-            getByName("debug") {
-                storeFile = localJks
-                storePassword = "komikta123"
-                keyAlias = "komikta"
-                keyPassword = "komikta123"
-            }
+        // Keystore tetap supaya signature sama di semua build (lokal/CI)
+        getByName("debug") {
+            storeFile = file("komikta-debug.jks")
+            storePassword = "komikta123"
+            keyAlias = "komikta"
+            keyPassword = "komikta123"
         }
     }
 
     buildTypes {
         release {
-            if (file("komikta-debug.jks").exists()) {
-                signingConfig = signingConfigs.getByName("debug")
-            }
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -97,9 +90,7 @@ dependencies {
     implementation(composeBom)
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
-    debugImplementation("androidx.compose.ui:ui-tooling")
 
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
