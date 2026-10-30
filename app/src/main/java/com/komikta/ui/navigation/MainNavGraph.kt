@@ -15,7 +15,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,7 +49,7 @@ fun MainNavGraph() {
     val isDetail = currentDestination?.route?.startsWith("detail") == true
     val showBottomBar = currentDestination?.route in bottomNavItems.map { it.route }
     val settings: SettingsViewModel = hiltViewModel()
-    val floatingNav by settings.floatingNav.collectAsState()
+    val floatingNav by settings.floatingNav.collectAsStateWithLifecycle()
     var focusSearch by remember { mutableStateOf(false) }
     val goTo: (String) -> Unit = { route ->
         navController.navigate(route) {
@@ -118,25 +118,33 @@ fun MainNavGraph() {
             navController = navController,
             startDestination = BottomNavItem.Home.route,
             modifier = if (isDetail) Modifier else Modifier.padding(innerPadding),
+            // Tab bawah: fade sangat singkat agar perpindahan terasa instan.
+            // Detail/Reader: slide ringan tetap dipakai untuk hierarchy yang jelas.
             enterTransition = {
                 if (isDeepRoute(targetState.destination.route)) {
-                    fadeIn(tween(240)) + slideIntoContainer(
+                    fadeIn(tween(200)) + slideIntoContainer(
                         AnimatedContentTransitionScope.SlideDirection.Start,
-                        tween(300, easing = FastOutSlowInEasing),
-                        initialOffset = { it / 8 }
+                        tween(260, easing = FastOutSlowInEasing),
+                        initialOffset = { it / 10 }
                     )
-                } else fadeIn(tween(220))
+                } else fadeIn(tween(120))
             },
-            exitTransition = { fadeOut(tween(160)) },
-            popEnterTransition = { fadeIn(tween(220)) },
+            exitTransition = {
+                if (isDeepRoute(targetState.destination.route)) fadeOut(tween(140))
+                else fadeOut(tween(90))
+            },
+            popEnterTransition = {
+                if (isDeepRoute(initialState.destination.route)) fadeIn(tween(160))
+                else fadeIn(tween(120))
+            },
             popExitTransition = {
                 if (isDeepRoute(initialState.destination.route)) {
-                    fadeOut(tween(180)) + slideOutOfContainer(
+                    fadeOut(tween(160)) + slideOutOfContainer(
                         AnimatedContentTransitionScope.SlideDirection.End,
-                        tween(260, easing = FastOutSlowInEasing),
-                        targetOffset = { it / 8 }
+                        tween(240, easing = FastOutSlowInEasing),
+                        targetOffset = { it / 10 }
                     )
-                } else fadeOut(tween(160))
+                } else fadeOut(tween(90))
             }
         ) {
             composable(BottomNavItem.Home.route) {

@@ -54,12 +54,14 @@ fun FloatingNavBar(
         ) {
             items.forEach { item ->
                 val selected = item.route == currentRoute
+                // key = route agar remember stabil per item (hindari anti-pattern remember di loop)
+                val interaction = remember(item.route) { MutableInteractionSource() }
                 Column(
                     Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(26.dp))
                         .background(if (selected) Color.White.copy(alpha = 0.16f) else Color.Transparent)
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(item.route) }
+                        .clickable(interactionSource = interaction, indication = null) { onSelect(item.route) }
                         .padding(vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {

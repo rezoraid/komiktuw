@@ -17,7 +17,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -31,7 +31,7 @@ import com.komikta.R
 
 @Composable
 fun ProfileScreen(viewModel: SettingsViewModel = hiltViewModel()) {
-    val floatingNav by viewModel.floatingNav.collectAsState()
+    val floatingNav by viewModel.floatingNav.collectAsStateWithLifecycle()
     Column(
         Modifier
             .fillMaxSize()

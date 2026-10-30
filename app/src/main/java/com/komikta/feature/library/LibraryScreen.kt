@@ -17,7 +17,7 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -36,8 +36,8 @@ fun LibraryScreen(
     onComicClick: (source: String, slug: String) -> Unit = { _, _ -> },
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
-    val bookmarks by viewModel.bookmarks.collectAsState()
-    val history by viewModel.history.collectAsState()
+    val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
+    val history by viewModel.history.collectAsStateWithLifecycle()
     var tab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Bookmarks", "History")
 
@@ -96,9 +96,10 @@ fun LibraryScreen(
                 contentPadding = PaddingValues(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                beyondBoundsItemCount = 1
             ) {
-                items(list) { comic ->
+                items(list, key = { "${it.source}:${it.slug}" }, contentType = { "comic" }) { comic ->
                     ComicCard(comic = comic, onClick = { onComicClick(comic.source, comic.slug) })
                 }
             }

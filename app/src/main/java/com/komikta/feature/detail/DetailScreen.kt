@@ -31,7 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.draw.alpha
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,9 +74,9 @@ fun DetailScreen(
     onChapterClick: (source: String, comicSlug: String, chapterSlug: String) -> Unit,
     viewModel: DetailViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val isBookmarked by viewModel.isBookmarked.collectAsState()
-    val readChapters by viewModel.readChapters.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isBookmarked by viewModel.isBookmarked.collectAsStateWithLifecycle()
+    val readChapters by viewModel.readChapters.collectAsStateWithLifecycle()
     val detail = uiState.detail
     var query by remember { mutableStateOf("") }
     var synopsisExpanded by remember { mutableStateOf(false) }

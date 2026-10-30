@@ -12,10 +12,11 @@ import kotlinx.serialization.json.doubleOrNull
 fun SourceDto.toDomain(): Source = Source(
     id = id,
     name = name,
-    features = features,
-    types = filters?.types.orEmpty(),
-    statuses = filters?.statuses.orEmpty(),
-    sorts = filters?.sorts.orEmpty()
+    // Salinan list agar model @Immutable tidak memegang referensi mutable dari JSON decoder
+    features = features.toList(),
+    types = filters?.types.orEmpty().toList(),
+    statuses = filters?.statuses.orEmpty().toList(),
+    sorts = filters?.sorts.orEmpty().toList()
 )
 
 fun ComicListItemDto.toDomain(source: String): Comic = Comic(
@@ -26,11 +27,11 @@ fun ComicListItemDto.toDomain(source: String): Comic = Comic(
     status = status,
     rating = rating,
     chapterCount = chapterCount,
-    genres = genres,
+    genres = genres.toList(),
     source = source,
     author = author?.trim()?.takeIf { it.isNotEmpty() },
     views = views.toViewCount(),
-    chapters = chapters.map { it.toDomain() }
+    chapters = chapters.map { it.toDomain() }.toList()
 )
 
 private val GroupedNumber = Regex("""^\d{1,3}([.,]\d{3})+$""")
@@ -58,7 +59,7 @@ fun ComicDetailDto.toDomain(source: String): ComicDetail = ComicDetail(
     title = title,
     slug = slug,
     coverUrl = cover,
-    alternativeTitles = alt,
+    alternativeTitles = alt.toList(),
     synopsis = synopsis,
     status = status,
     type = type,
@@ -67,9 +68,9 @@ fun ComicDetailDto.toDomain(source: String): ComicDetail = ComicDetail(
     year = year,
     views = views,
     rating = rating,
-    genres = genres,
+    genres = genres.toList(),
     totalChapters = totalChapters,
-    chapters = chapters.map { it.toDomain() },
+    chapters = chapters.map { it.toDomain() }.toList(),
     source = source
 )
 
@@ -86,8 +87,8 @@ fun ChapterContentDto.toDomain(source: String, comicSlug: String, chapterSlug: S
         title = title,
         comicSlug = comicSlug,
         chapterSlug = chapterSlug,
-        imageUrls = urls,
-        proxyPaths = proxy,
+        imageUrls = urls.toList(),
+        proxyPaths = proxy.toList(),
         prevChapterSlug = prev,
         nextChapterSlug = next,
         source = source

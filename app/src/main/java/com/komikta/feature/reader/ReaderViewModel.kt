@@ -15,6 +15,7 @@ import com.komikta.domain.usecase.GetChapterContentUseCase
 import com.komikta.domain.usecase.GetComicDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
@@ -23,6 +24,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import timber.log.Timber
 import javax.inject.Inject
 
 data class ReaderUiState(
@@ -143,22 +146,36 @@ class ReaderViewModel @Inject constructor(
     }
 
     private suspend fun saveHistory(content: ChapterContent) {
-        val id = "${source}_$comicSlug"
-        val old = historyDao.getById(id)
-        val number = _uiState.value.chapterInfo[content.chapterSlug]?.number
-        readChapterDao.markRead(ReadChapterEntity(comicId = id, chapterSlug = content.chapterSlug, readAt = System.currentTimeMillis()))
-        historyDao.upsert(
-            ReadingHistoryEntity(
-                id = id,
-                source = source,
-                comicSlug = comicSlug,
-                comicTitle = comicTitle ?: old?.comicTitle ?: content.title ?: comicSlug,
-                coverUrl = comicCover ?: old?.coverUrl,
-                lastChapterSlug = content.chapterSlug,
-                lastChapterNumber = number ?: content.title,
-                lastReadAt = System.currentTimeMillis()
-            )
-        )
+        // NonCancellable hanya untuk progres baca yang harus selesai meski ViewModel di-clear.
+        // Error ditangkap agar kegagalan Room tidak menabrak coroutine caller.
+        withContext(NonCancellable) {
+            try {
+                val id = "${source}_$comicSlug"
+                val old = historyDao.getById(id)
+                val number = _uiState.value.chapterInfo[content.chapterSlug]?.number
+                readChapterDao.markRead(
+                    ReadChapterEntity(
+                        comicId = id,
+                        chapterSlug = content.chapterSlug,
+                        readAt = System.currentTimeMillis()
+                    )
+                )
+                historyDao.upsert(
+                    ReadingHistoryEntity(
+                        id = id,
+                        source = source,
+                        comicSlug = comicSlug,
+                        comicTitle = comicTitle ?: old?.comicTitle ?: content.title ?: comicSlug,
+                        coverUrl = comicCover ?: old?.coverUrl,
+                        lastChapterSlug = content.chapterSlug,
+                        lastChapterNumber = number ?: content.title,
+                        lastReadAt = System.currentTimeMillis()
+                    )
+                )
+            } catch (e: Exception) {
+                Timber.w(e, "Gagal menyimpan progres baca %s/%s", comicSlug, content.chapterSlug)
+            }
+        }
     }
 
     fun goPrev() {
@@ -167,5 +184,11 @@ class ReaderViewModel @Inject constructor(
 
     fun goNext() {
         _uiState.value.content?.nextChapterSlug?.let { loadChapter(it) }
+    }
+
+    override fun onCleared() {
+        prefetchJob?.cancel()
+        prefetchJob = null
+        super.onCleared()
     }
 }

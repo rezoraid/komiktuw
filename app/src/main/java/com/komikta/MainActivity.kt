@@ -2,6 +2,7 @@ package com.komikta
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.ReportDrawn
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.komikta.ui.navigation.MainNavGraph
@@ -14,6 +15,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            // Memberi sinyal ke sistem bahwa first frame siap (startup tracing / baseline profile)
+            ReportDrawn()
             KomiktaTheme {
                 MainNavGraph()
             }

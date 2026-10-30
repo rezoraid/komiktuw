@@ -1,6 +1,5 @@
 package com.komikta.feature.home
 
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.LocalIndication
@@ -37,9 +36,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -56,6 +56,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.Lifecycle
 import com.komikta.R
 import com.komikta.data.local.entity.ReadingHistoryEntity
 import com.komikta.domain.model.Chapter
@@ -88,8 +92,8 @@ fun HomeScreen(
     onUpdateViewAll: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val history by viewModel.continueReading.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val history by viewModel.continueReading.collectAsStateWithLifecycle()
 
     when {
         uiState.isLoading && uiState.latestComics.isEmpty() -> HomeShimmerLoading()
@@ -229,24 +233,40 @@ private fun HeroCarousel(
     onRead: (Comic) -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { comics.size })
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
 
-    LaunchedEffect(comics.size) {
+    // Auto-scroll hanya saat layar RESUMED — berhenti saat user pindah tab / app di background
+    // Animasi singkat (280ms) mengurangi waktu main-thread sibuk dibanding default spring panjang
+    LaunchedEffect(comics.size, lifecycle) {
         if (comics.size < 2) return@LaunchedEffect
-        while (true) {
-            delay(5000)
-            if (!pagerState.isScrollInProgress) {
-                pagerState.animateScrollToPage((pagerState.currentPage + 1) % comics.size)
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                delay(5500)
+                if (!pagerState.isScrollInProgress) {
+                    val next = (pagerState.currentPage + 1) % comics.size
+                    pagerState.animateScrollToPage(
+                        page = next,
+                        animationSpec = tween(durationMillis = 280)
+                    )
+                }
             }
         }
     }
 
     Box(Modifier.fillMaxWidth().height(236.dp)) {
-        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+        HorizontalPager(
+            state = pagerState,
+            // Jangan compose page jauh di luar viewport (hemat memory + composition)
+            beyondViewportPageCount = 0,
+            flingBehavior = PagerDefaults.flingBehavior(state = pagerState),
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            val comic = comics[page]
             HeroSlide(
                 rank = page + 1,
-                comic = comics[page],
-                onDetail = { onDetail(comics[page]) },
-                onRead = { onRead(comics[page]) }
+                comic = comic,
+                onDetail = { onDetail(comic) },
+                onRead = { onRead(comic) }
             )
         }
         if (comics.size > 1) {
@@ -265,8 +285,9 @@ private fun HeroSlide(rank: Int, comic: Comic, onDetail: () -> Unit, onRead: () 
         CoverImage(
             url = comic.coverUrl,
             contentDescription = comic.title,
-            widthPx = 720,
-            heightPx = 440,
+            widthPx = 540,
+            heightPx = 330,
+            crossfade = true,
             modifier = Modifier.fillMaxSize()
         )
         // gelap di kiri (teks) + gelap di bawah (menyatu dengan background)
@@ -365,15 +386,15 @@ private fun HeroSlide(rank: Int, comic: Comic, onDetail: () -> Unit, onRead: () 
 
 @Composable
 private fun PagerDots(pagerState: PagerState, count: Int, modifier: Modifier = Modifier) {
+    // Tanpa animateDpAsState: ganti ukuran langsung agar page change tidak memicu animasi layout
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         repeat(count) { i ->
             val selected = pagerState.currentPage == i
-            val w by animateDpAsState(if (selected) 22.dp else 6.dp, label = "dot")
             Box(
                 Modifier
                     .padding(start = 5.dp)
                     .height(6.dp)
-                    .width(w)
+                    .width(if (selected) 22.dp else 6.dp)
                     .clip(CircleShape)
                     .background(if (selected) Color.White else Color(0xFF5A5A62))
             )
@@ -436,8 +457,9 @@ private fun ContinueCard(item: ReadingHistoryEntity, now: Long, onClick: () -> U
             CoverImage(
                 url = item.coverUrl,
                 contentDescription = item.comicTitle,
-                widthPx = 300,
-                heightPx = 400,
+                widthPx = 240,
+                heightPx = 320,
+                crossfade = false,
                 modifier = Modifier.fillMaxSize()
             )
             Box(
@@ -490,8 +512,9 @@ private fun PosterCard(comic: Comic, onClick: () -> Unit, modifier: Modifier = M
             CoverImage(
                 url = comic.coverUrl,
                 contentDescription = comic.title,
-                widthPx = 300,
-                heightPx = 400,
+                widthPx = 240,
+                heightPx = 320,
+                crossfade = false,
                 modifier = Modifier.fillMaxSize()
             )
             chapterPill?.let {

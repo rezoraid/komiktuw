@@ -71,7 +71,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.material3.SliderDefaults
@@ -130,7 +130,10 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
-private const val PRELOAD_AHEAD = 15
+// Prefetch agresif memakan bandwidth & decode buffer di low-end.
+// 8 halaman di depan cukup untuk scroll lancar tanpa lonjakan memori.
+private const val PRELOAD_AHEAD = 8
+private const val MEMORY_WARM_AHEAD = 4
 
 enum class ScrollMode { Smooth, Swipe }
 
@@ -140,9 +143,9 @@ fun ReaderScreen(
     onBack: () -> Unit,
     viewModel: ReaderViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val autoNext by viewModel.autoNext.collectAsState()
-    val readSlugs by viewModel.readSlugs.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val autoNext by viewModel.autoNext.collectAsStateWithLifecycle()
+    val readSlugs by viewModel.readSlugs.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
@@ -247,11 +250,12 @@ fun ReaderScreen(
             return pick?.third?.also { claimed += it }
         }
         coroutineScope {
-            repeat(3) {
+            // 2 worker cukup; lebih banyak hanya menambah tekanan jaringan & decode di low-end
+            repeat(2) {
                 launch {
                     while (true) {
                         val url = nextUrl()
-                        if (url == null) { delay(300); continue }
+                        if (url == null) { delay(350); continue }
                         fetchToDisk(context, url, ratios)
                     }
                 }
@@ -259,12 +263,13 @@ fun ReaderScreen(
         }
     }
 
-    // Hangatkan 6 halaman di depan ke memori (sudah ter-decode) supaya muncul instan saat di-scroll
+    // Hangatkan sedikit halaman di depan ke memori (decode) supaya scroll terasa instan
+    // Jumlah dikurangi agar low-end tidak kelebihan buffer bitmap
     LaunchedEffect(readerItems) {
         val warmed = HashSet<String>()
         snapshotFlow { lastVisible to ratios.size }.collect { (last, _) ->
             if (last < 0) return@collect
-            val end = (last + 6).coerceAtMost(readerItems.lastIndex)
+            val end = (last + MEMORY_WARM_AHEAD).coerceAtMost(readerItems.lastIndex)
             for (i in last + 1..end) {
                 val page = readerItems[i] as? ReaderItem.Page ?: continue
                 if (page.url in ratios && warmed.add(page.url)) {
@@ -350,9 +355,15 @@ fun ReaderScreen(
             uiState.content != null -> {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    // Batasi item di luar viewport agar memory & composition lebih hemat
+                    beyondBoundsItemCount = 1
                 ) {
-                    items(readerItems, key = { it.key }, contentType = { if (it is ReaderItem.Page) 0 else 1 }) { item ->
+                    items(
+                        items = readerItems,
+                        key = { it.key },
+                        contentType = { if (it is ReaderItem.Page) 0 else 1 }
+                    ) { item ->
                         when (item) {
                             is ReaderItem.Page -> PageImage(item.url, screenWidthPx, ratios)
                             is ReaderItem.Divider -> {

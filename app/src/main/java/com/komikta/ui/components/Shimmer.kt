@@ -46,11 +46,12 @@ private val ShimmerColors = listOf(
 @Composable
 fun ShimmerHost(content: @Composable () -> Unit) {
     val transition = rememberInfiniteTransition(label = "shimmer")
+    // Sedikit lebih lambat → lebih hemat GPU saat loading di low-end
     val translate = transition.animateFloat(
         initialValue = 0f,
         targetValue = 1200f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1100, easing = LinearEasing),
+            animation = tween(1400, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "shimmer"
