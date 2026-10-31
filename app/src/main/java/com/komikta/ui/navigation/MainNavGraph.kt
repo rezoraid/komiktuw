@@ -2,19 +2,14 @@ package com.komikta.ui.navigation
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -27,31 +22,36 @@ import com.komikta.feature.home.HomeScreen
 import com.komikta.feature.library.LibraryScreen
 import com.komikta.feature.profile.ProfileScreen
 import com.komikta.feature.reader.ReaderScreen
+import com.komikta.ui.theme.Ui
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+
+private val tabRoutes = bottomNavItems.map { it.route }
+
+private fun NavHostController.goToTab(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
 
 @Composable
 fun MainNavGraph() {
     val navController = rememberNavController()
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = navBackStackEntry?.destination
-    val isDetail = currentDestination?.route?.startsWith("detail") == true
-    val showBottomBar = currentDestination?.route in tabRoutes
+    val route = navController.currentBackStackEntryAsState().value?.destination?.route
+    val showBottomBar = route in tabRoutes
+    val isDetail = route?.startsWith("detail") == true
     var focusSearch by remember { mutableStateOf(false) }
-    val goTo: (String) -> Unit = { route ->
-        navController.navigate(route) {
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
-        }
-    }
 
     Scaffold(
-        containerColor = Color(0xFF000000),
+        containerColor = Ui.Bg,
         bottomBar = {
             if (showBottomBar) {
                 BottomBar(
                     items = bottomNavItems,
-                    currentRoute = currentDestination?.route,
-                    onSelect = goTo
+                    selectedRoute = route,
+                    onSelect = navController::goToTab
                 )
             }
         }
@@ -60,24 +60,20 @@ fun MainNavGraph() {
             navController = navController,
             startDestination = BottomNavItem.Home.route,
             modifier = if (isDetail) Modifier else Modifier.padding(innerPadding),
-            enterTransition = { if (isDeepRoute(targetState.destination.route)) fadeIn(tween(140)) else EnterTransition.None },
+            enterTransition = { EnterTransition.None },
             exitTransition = { ExitTransition.None },
             popEnterTransition = { EnterTransition.None },
-            popExitTransition = { if (isDeepRoute(initialState.destination.route)) fadeOut(tween(120)) else ExitTransition.None }
+            popExitTransition = { ExitTransition.None }
         ) {
             composable(BottomNavItem.Home.route) {
                 HomeScreen(
                     onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") },
                     onReadClick = { s, comic, chapter -> navController.navigate("reader/$s/$comic/$chapter") },
-                    onContinueViewAll = { goTo(BottomNavItem.Library.route) },
-                    onUpdateViewAll = { goTo(BottomNavItem.Explore.route) },
+                    onContinueViewAll = { navController.goToTab(BottomNavItem.Library.route) },
+                    onUpdateViewAll = { navController.goToTab(BottomNavItem.Explore.route) },
                     onSearchClick = {
                         focusSearch = true
-                        navController.navigate(BottomNavItem.Explore.route) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        navController.goToTab(BottomNavItem.Explore.route)
                     }
                 )
             }
@@ -121,8 +117,3 @@ fun MainNavGraph() {
         }
     }
 }
-
-private val tabRoutes = bottomNavItems.map { it.route }.toSet()
-
-private fun isDeepRoute(route: String?): Boolean =
-    route?.startsWith("detail") == true || route?.startsWith("reader") == true

@@ -2,6 +2,7 @@ package com.komikta.ui.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
@@ -11,15 +12,16 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Size
 
-private val Placeholder = ColorPainter(Color(0xFF171717))
+private val Placeholder = ColorPainter(Color(0xFF161616))
 
 @Composable
 fun CoverImage(
     url: String?,
     contentDescription: String?,
     modifier: Modifier = Modifier,
-    widthPx: Int = 360,
-    heightPx: Int = 530
+    widthPx: Int = 300,
+    heightPx: Int = 420,
+    alignment: Alignment = Alignment.Center
 ) {
     val context = LocalContext.current
     val request = remember(url, widthPx, heightPx) {
@@ -33,6 +35,7 @@ fun CoverImage(
         model = request,
         contentDescription = contentDescription,
         contentScale = ContentScale.Crop,
+        alignment = alignment,
         placeholder = Placeholder,
         error = Placeholder,
         modifier = modifier

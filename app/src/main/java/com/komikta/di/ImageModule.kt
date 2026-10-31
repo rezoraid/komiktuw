@@ -45,18 +45,19 @@ object ImageModule {
             .okHttpClient(imageClient)
             .memoryCache {
                 MemoryCache.Builder(context)
-                    .maxSizePercent(0.35)
+                    .maxSizePercent(0.25)
                     .build()
             }
             .diskCache {
                 DiskCache.Builder()
                     .directory(context.cacheDir.resolve("image_cache"))
-                    .maxSizeBytes(64L * 1024 * 1024)
+                    .maxSizeBytes(100L * 1024 * 1024)
                     .build()
             }
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
             .crossfade(false)
+            .allowRgb565(true)
             .respectCacheHeaders(false)
             .build()
     }
