@@ -45,7 +45,7 @@ object GoogleSignIn {
         withContext(Dispatchers.Default) {
             try {
                 val r = manager(context).prepareGetCredential(sheetRequest(clientId))
-                if (r.hasPendingGetCredentialHandle()) pending = r.pendingGetCredentialHandle
+                pending = r.pendingGetCredentialHandle
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
