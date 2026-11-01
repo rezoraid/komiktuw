@@ -25,9 +25,9 @@ private val BadgeShape = RoundedCornerShape(5.dp)
 fun RoleBadge(role: String, modifier: Modifier = Modifier) {
     val base = modifier.clip(BadgeShape)
     when (role) {
-        "OWNER" -> Text("OWNER", fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = Color.White, modifier = base.background(Color(0xFFB3261E)).padding(horizontal = 6.dp, vertical = 2.dp))
-        "MODERATOR" -> Text("MOD", fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = Ui.Accent, modifier = base.border(1.dp, Ui.Accent, BadgeShape).padding(horizontal = 6.dp, vertical = 1.dp))
-        "PREMIUM" -> Text("PREMIUM", fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = Ui.Star, modifier = base.background(Color(0xFF263136)).padding(horizontal = 6.dp, vertical = 2.dp))
+        "OWNER" -> Text("OWNER", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = base.background(Color(0xFF1769E0)).border(1.dp, Color(0xFF78B7FF), BadgeShape).padding(horizontal = 6.dp, vertical = 2.dp))
+        "MODERATOR" -> Text("MOD", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF78B7FF), modifier = base.background(Color(0xFF102B4E)).border(1.dp, Color(0xFF1769E0), BadgeShape).padding(horizontal = 6.dp, vertical = 1.dp))
+        "PREMIUM" -> Text("PREMIUM", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = base.background(Color(0xFF1769E0)).border(1.dp, Color(0xFF78B7FF), BadgeShape).padding(horizontal = 6.dp, vertical = 2.dp))
         else -> Text("USER", fontSize = 9.sp, fontWeight = FontWeight.Medium, color = Ui.Text2, modifier = base.background(Ui.Chip).padding(horizontal = 6.dp, vertical = 2.dp))
     }
 }
@@ -38,8 +38,8 @@ fun LevelChip(level: Int, modifier: Modifier = Modifier) {
         "Lv $level",
         fontSize = 10.sp,
         fontWeight = FontWeight.Medium,
-        color = Ui.Accent,
-        modifier = modifier.clip(BadgeShape).background(Ui.AccentSoft).padding(horizontal = 6.dp, vertical = 2.dp)
+        color = Color(0xFF78B7FF),
+        modifier = modifier.clip(BadgeShape).background(Color(0xFF102B4E)).border(1.dp, Color(0xFF1769E0), BadgeShape).padding(horizontal = 6.dp, vertical = 2.dp)
     )
 }
 

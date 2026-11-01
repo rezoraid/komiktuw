@@ -14,6 +14,7 @@ import com.komikta.data.remote.dto.LikeResultDto
 import com.komikta.data.remote.dto.MeResponse
 import com.komikta.data.remote.dto.OkDto
 import com.komikta.data.remote.dto.ReportPageDto
+import com.komikta.data.remote.dto.PublicReadingHistoryDto
 import com.komikta.data.remote.dto.ResolveDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -60,6 +61,12 @@ class CommunityApi @Inject constructor(
         call("PATCH", listOf("me"), body = buildJsonObject { put("username", username) })
 
     suspend fun deleteAccount(): ApiResponse<OkDto> = call("DELETE", listOf("me"))
+
+    suspend fun setReadingHistoryPublic(isPublic: Boolean): ApiResponse<OkDto> =
+        call("PUT", listOf("me", "history-visibility"), body = buildJsonObject { put("publicHistory", isPublic) })
+
+    suspend fun publicReadingHistory(userId: String): ApiResponse<PublicReadingHistoryDto> =
+        call("GET", listOf("users", userId, "history"))
 
     suspend fun reports(page: Int): ApiResponse<ReportPageDto> =
         call("GET", listOf("admin", "reports"), query = mapOf("page" to page.toString()))

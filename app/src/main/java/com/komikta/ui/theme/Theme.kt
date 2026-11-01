@@ -13,10 +13,10 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
 
-private val Bg = Color(0xFF0F1417)
-private val Surface = Color(0xFF151D20)
-private val Surface2 = Color(0xFF1B2529)
-private val Primary = Color(0xFF90CCE8)
+private val Bg = Color(0xFF090909)
+private val Surface = Color(0xFF141414)
+private val Surface2 = Color(0xFF202020)
+private val Primary = Color(0xFFF5F5F5)
 private val Text1 = Color.White
 private val Text2 = Color(0xFFB4BDC1)
 private val Text3 = Color(0xFF797C81)
@@ -31,7 +31,7 @@ private val Scheme = darkColorScheme(
     onSurface = Text1,
     surfaceVariant = Surface2,
     onSurfaceVariant = Text2,
-    outline = Color(0xFF263136)
+    outline = Color(0xFF303030)
 )
 
 private val Poppins = FontFamily(
@@ -54,20 +54,20 @@ private val Type = Typography(
 )
 
 object Ui {
-    val Bg = Color(0xFF0F1417)
-    val Bar = Color(0xFF121A1D)
-    val Card = Color(0xFF151D20)
-    val Chip = Color(0xFF1C262A)
-    val Line = Color(0xFF243035)
-    val Badge = Color(0xB30F1417)
-    val Text2 = Color(0xFFA3ADB2)
-    val Text3 = Color(0xFF6F7A80)
-    val Accent = Color(0xFF90CCE8)
-    val AccentSoft = Color(0x2690CCE8)
-    val OnAccent = Color(0xFF0F1417)
-    val Star = Color(0xFFE8EDEF)
-    val AccentBrush = Brush.linearGradient(listOf(Color(0xFF90CCE8), Color(0xFFCCD0D1)))
-    val Scrim = Brush.verticalGradient(listOf(Color.Transparent, Color(0xE60F1417)))
+    val Bg = Color(0xFF090909)
+    val Bar = Color(0xFF101010)
+    val Card = Color(0xFF151515)
+    val Chip = Color(0xFF222222)
+    val Line = Color(0xFF2C2C2C)
+    val Badge = Color(0xB3090909)
+    val Text2 = Color(0xFFB7B7B7)
+    val Text3 = Color(0xFF777777)
+    val Accent = Color(0xFFF4F4F4)
+    val AccentSoft = Color(0x1FFFFFFF)
+    val OnAccent = Color(0xFF101010)
+    val Star = Color(0xFFF0F0F0)
+    val AccentBrush = Brush.linearGradient(listOf(Color(0xFFF5F5F5), Color(0xFFD8D8D8)))
+    val Scrim = Brush.verticalGradient(listOf(Color.Transparent, Color(0xE6090909)))
 }
 
 @Composable

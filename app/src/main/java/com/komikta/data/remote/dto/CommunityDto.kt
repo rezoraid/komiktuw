@@ -9,6 +9,7 @@ data class CommunityUserDto(
     val name: String = "",
     val picture: String = "",
     val role: String = "USER",
+    val publicHistory: Boolean = false,
     val level: Int = 1,
     val email: String? = null,
     val xp: Int = 0,
@@ -100,3 +101,20 @@ data class ReportPageDto(
 
 @Serializable
 data class ResolveDto(val ok: Boolean = true, val status: String = "")
+
+@Serializable
+data class PublicReadingHistoryDto(
+    val user: CommunityUserDto = CommunityUserDto(),
+    val items: List<PublicReadingProgressDto> = emptyList()
+)
+
+@Serializable
+data class PublicReadingProgressDto(
+    val source: String = "",
+    val slug: String = "",
+    val chapter: String = "",
+    val comicTitle: String = "",
+    val chapterTitle: String = "",
+    val coverUrl: String = "",
+    val updatedAt: Long = 0L
+)
