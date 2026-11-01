@@ -46,6 +46,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material3.Icon
 import com.komikta.ui.components.AppIcons
+import androidx.compose.foundation.shape.CircleShape
+import com.komikta.ui.navigation.BottomNavItem
 import com.komikta.BuildConfig
 import com.komikta.R
 import com.komikta.data.remote.dto.CommunityUserDto
@@ -60,7 +62,7 @@ import com.komikta.ui.theme.Ui
 fun ProfileScreen(onModeration: () -> Unit = {}, viewModel: ProfileViewModel = hiltViewModel()) {
     val user by viewModel.user.collectAsStateWithLifecycle()
     val ui by viewModel.ui.collectAsStateWithLifecycle()
-    val signIn = rememberGoogleSignIn(onToken = viewModel::signIn, onError = viewModel::message)
+    val signIn = rememberGoogleSignIn(onToken = viewModel::signIn, onError = viewModel::message, onStart = { viewModel.busy(true) }, onDone = { viewModel.busy(false) })
     var editing by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
@@ -72,12 +74,18 @@ fun ProfileScreen(onModeration: () -> Unit = {}, viewModel: ProfileViewModel = h
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 20.dp)
     ) {
-        Text("Profile", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(24.dp))
         val u = user
         if (u == null) {
-            SignedOut(ui.busy, signIn)
+            GuestContent(
+                busy = ui.busy,
+                message = ui.message,
+                onSignIn = signIn,
+                onTerms = { uriHandler.openUri("${BuildConfig.BASE_URL}/terms") },
+                onPrivacy = { uriHandler.openUri("${BuildConfig.BASE_URL}/privacy") }
+            )
         } else {
+            Text("Profile", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(24.dp))
             SignedIn(
                 u,
                 onEdit = { editing = true },
@@ -85,21 +93,16 @@ fun ProfileScreen(onModeration: () -> Unit = {}, viewModel: ProfileViewModel = h
                 onDelete = { confirmDelete = true },
                 onModeration = onModeration
             )
+            ui.message?.let { Text(it, fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.padding(top = 14.dp)) }
+            Spacer(Modifier.height(28.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("Ketentuan", fontSize = 12.sp, color = Ui.Accent, modifier = Modifier.clickable { uriHandler.openUri("${BuildConfig.BASE_URL}/terms") }.padding(vertical = 6.dp))
+                Text("Kebijakan Privasi", fontSize = 12.sp, color = Ui.Accent, modifier = Modifier.clickable { uriHandler.openUri("${BuildConfig.BASE_URL}/privacy") }.padding(vertical = 6.dp))
+            }
+            Spacer(Modifier.height(16.dp))
+            Text("Komikta ${BuildConfig.VERSION_NAME}", fontSize = 12.sp, color = Ui.Text3)
+            Text("Sumber: Lumos · Manta · Shinigami", fontSize = 12.sp, color = Ui.Text3, modifier = Modifier.padding(top = 2.dp))
         }
-        ui.message?.let { Text(it, fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.padding(top = 14.dp)) }
-        Spacer(Modifier.height(28.dp))
-        Text(
-            "Dengan masuk kamu menyetujui Ketentuan dan Kebijakan Privasi",
-            fontSize = 11.sp,
-            color = Ui.Text3
-        )
-        Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("Ketentuan", fontSize = 12.sp, color = Ui.Accent, modifier = Modifier.clickable { uriHandler.openUri("${BuildConfig.BASE_URL}/terms") }.padding(vertical = 6.dp))
-            Text("Kebijakan Privasi", fontSize = 12.sp, color = Ui.Accent, modifier = Modifier.clickable { uriHandler.openUri("${BuildConfig.BASE_URL}/privacy") }.padding(vertical = 6.dp))
-        }
-        Spacer(Modifier.height(20.dp))
-        Text("Komikta ${BuildConfig.VERSION_NAME}", fontSize = 12.sp, color = Ui.Text3)
-        Text("Sumber: Lumos · Manta · Shinigami", fontSize = 12.sp, color = Ui.Text3, modifier = Modifier.padding(top = 2.dp))
     }
 
     if (confirmDelete) {
@@ -143,22 +146,55 @@ fun ProfileScreen(onModeration: () -> Unit = {}, viewModel: ProfileViewModel = h
 }
 
 @Composable
-private fun SignedOut(busy: Boolean, onSignIn: () -> Unit) {
-    Text("Masuk untuk berkomentar, membalas, dan mengumpulkan XP.", fontSize = 14.sp, lineHeight = 21.sp, color = Ui.Text2)
-    Text(
-        if (busy) "Memproses…" else "Masuk dengan Google",
-        fontSize = 14.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = Ui.OnAccent,
-        textAlign = TextAlign.Center,
-        modifier = Modifier
-            .padding(top = 16.dp)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(Ui.AccentBrush)
-            .clickable(enabled = !busy, onClick = onSignIn)
-            .padding(vertical = 13.dp)
-    )
+private fun GuestContent(busy: Boolean, message: String?, onSignIn: () -> Unit, onTerms: () -> Unit, onPrivacy: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(top = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(84.dp).clip(CircleShape).background(Ui.Chip), contentAlignment = Alignment.Center) {
+            Icon(BottomNavItem.Profile.unselectedIcon, null, tint = Ui.Text2, modifier = Modifier.size(38.dp))
+        }
+        Text("Pembaca tamu", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
+        Text("Bookmark dan riwayat baca tersimpan di perangkat ini", fontSize = 13.sp, color = Ui.Text2, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+    }
+    Column(Modifier.padding(top = 28.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Ui.Card).padding(16.dp)) {
+        Text("Masuk untuk ikut komunitas", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text("Tulis komentar, balas, beri like, dan kumpulkan XP di setiap chapter.", fontSize = 13.sp, lineHeight = 19.sp, color = Ui.Text2, modifier = Modifier.padding(top = 4.dp))
+        Text(
+            if (busy) "Memproses…" else "Masuk dengan Google",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Ui.OnAccent,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .padding(top = 16.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(Ui.AccentBrush)
+                .clickable(enabled = !busy, onClick = onSignIn)
+                .padding(vertical = 13.dp)
+        )
+        message?.let { Text(it, fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.padding(top = 10.dp)) }
+    }
+    Text("TENTANG APLIKASI", fontSize = 11.sp, letterSpacing = 1.sp, color = Ui.Text3, modifier = Modifier.padding(top = 28.dp, bottom = 8.dp, start = 2.dp))
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Ui.Card)) {
+        InfoLine("Ketentuan", null, onTerms)
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
+        InfoLine("Kebijakan Privasi", null, onPrivacy)
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
+        InfoLine("Versi", BuildConfig.VERSION_NAME, null)
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
+        InfoLine("Sumber", "Lumos · Manta · Shinigami", null)
+    }
+}
+
+@Composable
+private fun InfoLine(label: String, value: String?, onClick: (() -> Unit)?) {
+    Row(
+        Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 16.dp, vertical = 15.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, fontSize = 14.sp, modifier = Modifier.weight(1f))
+        if (value != null) Text(value, fontSize = 13.sp, color = Ui.Text2)
+        if (onClick != null) Icon(AppIcons.chevronRight, null, tint = Ui.Text3, modifier = Modifier.size(18.dp))
+    }
 }
 
 @Composable

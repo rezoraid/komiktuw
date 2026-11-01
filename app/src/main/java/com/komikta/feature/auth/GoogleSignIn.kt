@@ -2,12 +2,15 @@ package com.komikta.feature.auth
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
+import androidx.credentials.PrepareGetCredentialResponse
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
@@ -18,21 +21,64 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingExcept
 import com.komikta.BuildConfig
 import com.komikta.core.common.Result
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 object GoogleSignIn {
+    private var manager: CredentialManager? = null
+    private var pending: PrepareGetCredentialResponse.PendingGetCredentialHandle? = null
+
+    private fun manager(context: Context) = manager ?: CredentialManager.create(context.applicationContext).also { manager = it }
+
+    private fun sheetRequest(clientId: String) = GetCredentialRequest.Builder()
+        .addCredentialOption(GetGoogleIdOption.Builder().setServerClientId(clientId).setFilterByAuthorizedAccounts(false).setAutoSelectEnabled(false).build())
+        .build()
+
+    private fun fullRequest(clientId: String) = GetCredentialRequest.Builder()
+        .addCredentialOption(GetSignInWithGoogleOption.Builder(clientId).build())
+        .build()
+
+    suspend fun prepare(context: Context) {
+        val clientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
+        if (clientId.isBlank() || pending != null) return
+        withContext(Dispatchers.Default) {
+            try {
+                val r = manager(context).prepareGetCredential(sheetRequest(clientId))
+                if (r.hasPendingGetCredentialHandle()) pending = r.pendingGetCredentialHandle
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Unit
+            }
+        }
+    }
+
+    private suspend fun fetch(context: Context, clientId: String): GetCredentialResponse {
+        val mgr = manager(context)
+        val handle = pending
+        pending = null
+        if (handle != null) {
+            try {
+                return mgr.getCredential(context, handle)
+            } catch (e: GetCredentialCancellationException) {
+                throw e
+            } catch (e: GetCredentialException) {
+                Unit
+            }
+        }
+        return try {
+            mgr.getCredential(context, sheetRequest(clientId))
+        } catch (e: NoCredentialException) {
+            mgr.getCredential(context, fullRequest(clientId))
+        }
+    }
+
     suspend fun idToken(context: Context): Result<String> {
         val clientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
         if (clientId.isBlank()) return Result.Error("Login Google belum dikonfigurasi di aplikasi ini", "NOT_CONFIGURED")
         return try {
-            val manager = CredentialManager.create(context)
-            val sheet = GetGoogleIdOption.Builder().setServerClientId(clientId).setFilterByAuthorizedAccounts(false).setAutoSelectEnabled(false).build()
-            val credential = try {
-                manager.getCredential(context, GetCredentialRequest.Builder().addCredentialOption(sheet).build()).credential
-            } catch (e: NoCredentialException) {
-                val full = GetSignInWithGoogleOption.Builder(clientId).build()
-                manager.getCredential(context, GetCredentialRequest.Builder().addCredentialOption(full).build()).credential
-            }
+            val credential = fetch(context, clientId).credential
             if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                 Result.Success(GoogleIdTokenCredential.createFrom(credential.data).idToken)
             } else {
@@ -53,17 +99,30 @@ object GoogleSignIn {
 }
 
 @Composable
-fun rememberGoogleSignIn(onToken: (String) -> Unit, onError: (String) -> Unit): () -> Unit {
+fun rememberGoogleSignIn(
+    onToken: (String) -> Unit,
+    onError: (String) -> Unit,
+    onStart: () -> Unit = {},
+    onDone: () -> Unit = {}
+): () -> Unit {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val tokenHandler = rememberUpdatedState(onToken)
     val errorHandler = rememberUpdatedState(onError)
+    val startHandler = rememberUpdatedState(onStart)
+    val doneHandler = rememberUpdatedState(onDone)
+    LaunchedEffect(Unit) { GoogleSignIn.prepare(context) }
     val action: () -> Unit = {
+        startHandler.value()
         scope.launch {
             when (val r = GoogleSignIn.idToken(context)) {
                 is Result.Success -> tokenHandler.value(r.data)
-                is Result.Error -> if (r.code != "CANCELLED") errorHandler.value(r.message)
-                else -> Unit
+                is Result.Error -> {
+                    doneHandler.value()
+                    if (r.code != "CANCELLED") errorHandler.value(r.message)
+                    GoogleSignIn.prepare(context)
+                }
+                else -> doneHandler.value()
             }
         }
     }

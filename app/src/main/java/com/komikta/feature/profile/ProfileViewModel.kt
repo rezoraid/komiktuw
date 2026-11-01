@@ -21,6 +21,8 @@ class ProfileViewModel @Inject constructor(private val repo: CommunityRepository
 
     init { if (repo.user.value != null) viewModelScope.launch { repo.refreshMe() } }
 
+    fun busy(b: Boolean) { _ui.value = _ui.value.copy(busy = b) }
+
     fun message(msg: String?) { _ui.value = _ui.value.copy(message = msg) }
 
     fun signIn(idToken: String) {
