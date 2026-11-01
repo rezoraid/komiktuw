@@ -60,6 +60,7 @@ private val IdLocale = Locale("id", "ID")
 fun DetailScreen(
     onBack: () -> Unit,
     onChapterClick: (source: String, comicSlug: String, chapterSlug: String) -> Unit,
+    onCommentsClick: (source: String, slug: String) -> Unit,
     viewModel: DetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -202,6 +203,24 @@ fun DetailScreen(
                                     )
                                 }
                             }
+                        }
+                    }
+
+                    item(key = "comments", contentType = "comments") {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Ui.Card)
+                                .clickable { onCommentsClick(detail.source, detail.slug) }
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(AppIcons.comment, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(10.dp))
+                            Text("Komentar", fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                            Icon(AppIcons.chevronRight, null, tint = Ui.Text2, modifier = Modifier.size(20.dp))
                         }
                     }
 

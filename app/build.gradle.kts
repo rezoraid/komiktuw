@@ -15,13 +15,14 @@ android {
         applicationId = "com.komikta"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "BASE_URL", "\"https://web-production-b2a1d.up.railway.app\"")
         buildConfigField("String", "DEFAULT_SOURCE", "\"lumos\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${(project.findProperty("GOOGLE_WEB_CLIENT_ID") as String?).orEmpty()}\"")
     }
 
     signingConfigs {
@@ -33,9 +34,19 @@ android {
         }
     }
 
+    val releaseStore = System.getenv("KOMIKTA_STORE_FILE") ?: (project.findProperty("KOMIKTA_STORE_FILE") as String?)
+    if (releaseStore != null) {
+        signingConfigs.create("release") {
+            storeFile = file(releaseStore)
+            storePassword = System.getenv("KOMIKTA_STORE_PASSWORD") ?: (project.findProperty("KOMIKTA_STORE_PASSWORD") as String?)
+            keyAlias = System.getenv("KOMIKTA_KEY_ALIAS") ?: (project.findProperty("KOMIKTA_KEY_ALIAS") as String?)
+            keyPassword = System.getenv("KOMIKTA_KEY_PASSWORD") ?: (project.findProperty("KOMIKTA_KEY_PASSWORD") as String?)
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -108,6 +119,10 @@ dependencies {
 
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.coil-kt:coil:2.7.0")
+
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")

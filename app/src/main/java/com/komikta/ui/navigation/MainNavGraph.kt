@@ -16,6 +16,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.komikta.feature.community.CommentsScreen
+import com.komikta.feature.community.ModerationScreen
 import com.komikta.feature.detail.DetailScreen
 import com.komikta.feature.explore.ExploreScreen
 import com.komikta.feature.home.HomeScreen
@@ -41,7 +43,7 @@ fun MainNavGraph() {
     val navController = rememberNavController()
     val route = navController.currentBackStackEntryAsState().value?.destination?.route
     val showBottomBar = route in tabRoutes
-    val isDetail = route?.startsWith("detail") == true
+    val isDetail = route?.startsWith("detail") == true || route?.startsWith("comments") == true || route == "moderation"
     var focusSearch by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -87,7 +89,9 @@ fun MainNavGraph() {
             composable(BottomNavItem.Library.route) {
                 LibraryScreen(onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") })
             }
-            composable(BottomNavItem.Profile.route) { ProfileScreen() }
+            composable(BottomNavItem.Profile.route) { ProfileScreen(onModeration = { navController.navigate("moderation") }) }
+
+            composable("moderation") { ModerationScreen(onBack = { navController.popBackStack() }) }
 
             composable(
                 route = "detail/{source}/{slug}",
@@ -100,7 +104,8 @@ fun MainNavGraph() {
                     onBack = { navController.popBackStack() },
                     onChapterClick = { source, comicSlug, chapterSlug ->
                         navController.navigate("reader/$source/$comicSlug/$chapterSlug")
-                    }
+                    },
+                    onCommentsClick = { source, slug -> navController.navigate("comments/$source/$slug") }
                 )
             }
 
@@ -111,9 +116,31 @@ fun MainNavGraph() {
                     navArgument("comicSlug") { type = NavType.StringType },
                     navArgument("chapterSlug") { type = NavType.StringType }
                 )
-            ) {
-                ReaderScreen(onBack = { navController.popBackStack() })
+            ) { entry ->
+                val source = entry.arguments?.getString("source").orEmpty()
+                val comicSlug = entry.arguments?.getString("comicSlug").orEmpty()
+                ReaderScreen(
+                    onBack = { navController.popBackStack() },
+                    onComments = { chapter -> navController.navigate("comments/$source/$comicSlug/$chapter") }
+                )
             }
+
+            composable(
+                route = "comments/{source}/{slug}",
+                arguments = listOf(
+                    navArgument("source") { type = NavType.StringType },
+                    navArgument("slug") { type = NavType.StringType }
+                )
+            ) { CommentsScreen(onBack = { navController.popBackStack() }) }
+
+            composable(
+                route = "comments/{source}/{slug}/{chapter}",
+                arguments = listOf(
+                    navArgument("source") { type = NavType.StringType },
+                    navArgument("slug") { type = NavType.StringType },
+                    navArgument("chapter") { type = NavType.StringType }
+                )
+            ) { CommentsScreen(onBack = { navController.popBackStack() }) }
         }
     }
 }

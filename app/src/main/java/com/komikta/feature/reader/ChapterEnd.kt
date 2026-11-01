@@ -34,7 +34,8 @@ fun ChapterEnd(
     next: Chapter?,
     onNext: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    compact: Boolean = false
+    compact: Boolean = false,
+    onComments: (() -> Unit)? = null
 ) {
     val currentNumber = cleanNumber(current?.number)
     val doneText = currentNumber?.let { "Chapter $it selesai" }
@@ -100,6 +101,21 @@ fun ChapterEnd(
                     )
                 }
             }
+            if (onComments != null) {
+                Row(
+                    Modifier
+                        .padding(top = 16.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Ui.Chip)
+                        .clickable(onClick = onComments)
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(AppIcons.comment, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    Text("Komentar", style = MaterialTheme.typography.labelLarge, color = Color.White)
+                }
+            }
         }
     }
 }
@@ -111,7 +127,8 @@ fun ChapterNav(
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onDetail: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onComments: (() -> Unit)? = null
 ) {
     Row(
         modifier
@@ -133,6 +150,19 @@ fun ChapterNav(
         ) {
             Icon(AppIcons.chevronLeft, null, tint = prevColor, modifier = Modifier.size(20.dp))
             Text("Previous", style = MaterialTheme.typography.titleMedium, color = prevColor)
+        }
+        if (onComments != null) {
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onComments)
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(AppIcons.comment, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                Text("Komentar", style = MaterialTheme.typography.titleMedium, color = Color.White)
+            }
         }
         Row(
             Modifier

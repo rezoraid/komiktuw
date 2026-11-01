@@ -127,6 +127,7 @@ enum class ScrollMode { Smooth, Swipe }
 @Composable
 fun ReaderScreen(
     onBack: () -> Unit,
+    onComments: (chapterSlug: String) -> Unit = {},
     viewModel: ReaderViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -319,7 +320,8 @@ fun ReaderScreen(
                                     nextSlug = nextSlug,
                                     next = nextSlug?.let { info[it] },
                                     onNext = null,
-                                    compact = true
+                                    compact = true,
+                                    onComments = { onComments(item.chapterSlug) }
                                 )
                             }
                             is ReaderItem.End -> {
@@ -332,7 +334,8 @@ fun ReaderScreen(
                                         fallbackTitle = chapter?.title,
                                         nextSlug = nextSlug,
                                         next = nextSlug?.let { info[it] },
-                                        onNext = { viewModel.appendNext() }
+                                        onNext = { viewModel.appendNext() },
+                                        onComments = { onComments(item.chapterSlug) }
                                     )
                                 } else {
                                     ChapterNav(
@@ -340,7 +343,8 @@ fun ReaderScreen(
                                         hasNext = !nextSlug.isNullOrBlank(),
                                         onPrev = { viewModel.goPrev() },
                                         onNext = { viewModel.goNext() },
-                                        onDetail = onBack
+                                        onDetail = onBack,
+                                        onComments = { onComments(item.chapterSlug) }
                                     )
                                 }
                             }

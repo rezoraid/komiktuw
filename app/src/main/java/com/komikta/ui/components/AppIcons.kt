@@ -68,4 +68,40 @@ object AppIcons {
         lineTo(6.5f, 20.4f)
         close()
     }
+
+    val comment: ImageVector by lazy {
+        navIcon("Comment", false, strokeWidth = 1.8f) {
+            moveTo(4f, 5.5f); lineTo(20f, 5.5f); lineTo(20f, 16.2f); lineTo(10.2f, 16.2f)
+            lineTo(5.8f, 19.8f); lineTo(5.8f, 16.2f); lineTo(4f, 16.2f); close()
+        }
+    }
+
+    val more: ImageVector by lazy {
+        navIcon("More", true, stroked = false) {
+            circle(5f, 12f, 1.7f); circle(12f, 12f, 1.7f); circle(19f, 12f, 1.7f)
+        }
+    }
+
+    val send: ImageVector by lazy {
+        navIcon("Send", false, strokeWidth = 1.8f) {
+            moveTo(4f, 11.6f); lineTo(20f, 4.4f); lineTo(14f, 20f); lineTo(11.4f, 13.2f); close()
+            moveTo(11.4f, 13.2f); lineTo(20f, 4.4f)
+        }
+    }
+
+    fun heart(filled: Boolean): ImageVector = if (filled) heartFilled else heartOutline
+
+    private val heartOutline: ImageVector by lazy { buildHeart(false) }
+    private val heartFilled: ImageVector by lazy { buildHeart(true) }
+
+    private fun buildHeart(filled: Boolean) = navIcon("Heart", filled, strokeWidth = 1.8f) {
+        moveTo(12f, 20.2f)
+        curveTo(5.5f, 15.2f, 3.4f, 11.8f, 3.4f, 8.9f)
+        curveTo(3.4f, 6.5f, 5.2f, 4.8f, 7.4f, 4.8f)
+        curveTo(9.2f, 4.8f, 10.9f, 5.8f, 12f, 7.6f)
+        curveTo(13.1f, 5.8f, 14.8f, 4.8f, 16.6f, 4.8f)
+        curveTo(18.8f, 4.8f, 20.6f, 6.5f, 20.6f, 8.9f)
+        curveTo(20.6f, 11.8f, 18.5f, 15.2f, 12f, 20.2f)
+        close()
+    }
 }
