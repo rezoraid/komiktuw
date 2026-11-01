@@ -11,6 +11,7 @@ import com.komikta.data.remote.dto.CommentResultDto
 import com.komikta.data.remote.dto.CommunityUserDto
 import com.komikta.data.remote.dto.LikeResultDto
 import com.komikta.data.remote.dto.ReportPageDto
+import com.komikta.data.remote.dto.PublicReadingHistoryDto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.StateFlow
 import java.io.IOException
@@ -64,9 +65,22 @@ class CommunityRepository @Inject constructor(
     suspend fun updateUsername(username: String): Result<CommunityUserDto> =
         call { api.updateUsername(username) }.map { session.update(it.user); it.user }
 
+    suspend fun updateAvatar(imageData: String): Result<CommunityUserDto> =
+        call { api.updateAvatar(imageData) }.map { session.update(it.user); it.user }
+
+    suspend fun setReadingHistoryPublic(isPublic: Boolean): Result<Unit> =
+        call { api.setReadingHistoryPublic(isPublic) }.map {
+            session.user.value?.let { u -> session.update(u.copy(publicHistory = isPublic)) }
+        }
+
+    suspend fun saveReadingProgress(source: String, slug: String, chapter: String, comicTitle: String, chapterTitle: String, coverUrl: String): Result<Unit> =
+        call { api.saveReadingProgress(source, slug, chapter, comicTitle, chapterTitle, coverUrl) }.map { }
+
     fun signOut() = session.clear()
 
     suspend fun deleteAccount(): Result<Unit> = call { api.deleteAccount() }.map { session.clear() }
+
+    suspend fun publicReadingHistory(userId: String): Result<PublicReadingHistoryDto> = call { api.publicReadingHistory(userId) }
 
     suspend fun reports(page: Int): Result<ReportPageDto> = call { api.reports(page) }
 

@@ -708,11 +708,12 @@ private fun ChapterListSheet(
     onDismiss: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
-    // Urut dari chapter terbaru ke terlama (kalau nomor chapter terbaca)
-    val sorted = remember(chapters) {
+    var oldestFirst by remember { mutableStateOf(false) }
+    // Default chapter terbaru; pembaca bisa membalik urutan dengan satu ketukan.
+    val sorted = remember(chapters, oldestFirst) {
         if (chapters.isNotEmpty() && chapters.all { chapterNumber(it) != null }) {
-            chapters.sortedByDescending { chapterNumber(it) }
-        } else chapters
+            if (oldestFirst) chapters.sortedBy { chapterNumber(it) } else chapters.sortedByDescending { chapterNumber(it) }
+        } else if (oldestFirst) chapters.reversed() else chapters
     }
     val filtered = remember(sorted, query) {
         val q = query.trim()
@@ -740,13 +741,20 @@ private fun ChapterListSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    "Chapters",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
-                    modifier = Modifier.padding(start = 4.dp)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Chapters",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                    TextButton(onClick = { oldestFirst = !oldestFirst }) {
+                        Icon(com.komikta.ui.components.AppIcons.chevronsDown, contentDescription = "Ubah urutan chapter", tint = Ui.Accent, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(if (oldestFirst) "Terlama" else "Terbaru", color = Ui.Accent, fontSize = 12.sp)
+                    }
+                }
                 IconButton(
                     onClick = onDismiss,
                     modifier = Modifier

@@ -66,6 +66,27 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    fun setHistoryVisibility(isPublic: Boolean) {
+        viewModelScope.launch {
+            when (val r = repo.setReadingHistoryPublic(isPublic)) {
+                is Result.Success -> _ui.value = ProfileUiState(message = if (isPublic) "Riwayat sekarang publik" else "Riwayat sekarang privat")
+                is Result.Error -> _ui.value = ProfileUiState(message = r.message)
+                else -> Unit
+            }
+        }
+    }
+
+    fun changeAvatar(imageData: String) {
+        viewModelScope.launch {
+            _ui.value = ProfileUiState(busy = true)
+            when (val r = repo.updateAvatar(imageData)) {
+                is Result.Success -> _ui.value = ProfileUiState(message = "Foto profil diperbarui")
+                is Result.Error -> _ui.value = ProfileUiState(message = r.message)
+                else -> _ui.value = ProfileUiState()
+            }
+        }
+    }
+
     fun changeUsername(username: String, onDone: (Boolean) -> Unit) {
         viewModelScope.launch {
             _ui.value = ProfileUiState(busy = true)

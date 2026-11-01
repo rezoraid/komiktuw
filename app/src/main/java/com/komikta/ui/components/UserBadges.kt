@@ -1,5 +1,7 @@
 package com.komikta.ui.components
 
+import com.komikta.BuildConfig
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -51,6 +53,6 @@ fun Avatar(url: String?, name: String, size: Dp, modifier: Modifier = Modifier) 
             Text(name.trim().take(1).uppercase().ifEmpty { "?" }, fontSize = (size.value * 0.42f).sp, fontWeight = FontWeight.SemiBold, color = Color.White)
         }
     } else {
-        CoverImage(url = url, contentDescription = name, widthPx = 160, heightPx = 160, modifier = frame)
+        CoverImage(url = if (url.startsWith("/")) BuildConfig.BASE_URL.trimEnd('/') + url else url, contentDescription = name, widthPx = 160, heightPx = 160, modifier = frame)
     }
 }

@@ -37,6 +37,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Base64
+import java.io.ByteArrayOutputStream
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -82,6 +89,29 @@ fun ProfileScreen(onComicClick: (String, String) -> Unit = { _, _ -> }, onSeeAll
     var editing by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
+    val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            runCatching {
+                val source = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
+                    ?: error("Foto tidak bisa dibuka")
+                val maxSide = 640
+                val scale = minOf(1f, maxSide.toFloat() / maxOf(source.width, source.height))
+                val resized = if (scale < 1f) Bitmap.createScaledBitmap(source, (source.width * scale).toInt().coerceAtLeast(1), (source.height * scale).toInt().coerceAtLeast(1), true) else source
+                val output = ByteArrayOutputStream()
+                var quality = 82
+                do {
+                    output.reset()
+                    resized.compress(Bitmap.CompressFormat.JPEG, quality, output)
+                    quality -= 8
+                } while (output.size() > 260_000 && quality >= 42)
+                if (resized !== source) resized.recycle()
+                if (source !== resized) source.recycle()
+                require(output.size() <= 280_000) { "Foto terlalu besar. Pilih foto lain." }
+                "data:image/jpeg;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
+            }.onSuccess(viewModel::changeAvatar).onFailure { viewModel.message(it.message ?: "Gagal membaca foto") }
+        }
+    }
     LaunchedEffect(user?.id) { viewModel.refresh() }
 
     Column(
@@ -108,6 +138,8 @@ fun ProfileScreen(onComicClick: (String, String) -> Unit = { _, _ -> }, onSeeAll
                 onComicClick = onComicClick,
                 onSeeAll = onSeeAll,
                 onEdit = { editing = true },
+                onPickAvatar = { avatarPicker.launch("image/*") },
+                onHistoryVisibility = viewModel::setHistoryVisibility,
                 onSignOut = viewModel::signOut,
                 onDelete = { confirmDelete = true },
                 onModeration = onModeration
@@ -224,6 +256,8 @@ private fun SignedIn(
     onComicClick: (String, String) -> Unit,
     onSeeAll: () -> Unit,
     onEdit: () -> Unit,
+    onPickAvatar: () -> Unit,
+    onHistoryVisibility: (Boolean) -> Unit,
     onSignOut: () -> Unit,
     onDelete: () -> Unit,
     onModeration: () -> Unit
@@ -234,7 +268,13 @@ private fun SignedIn(
         Text("Keluar", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Ui.Text2, modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onSignOut).padding(horizontal = 8.dp, vertical = 6.dp))
     }
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Avatar(u.picture, u.name.ifBlank { u.username }, 96.dp)
+        Box(contentAlignment = Alignment.BottomEnd) {
+            Avatar(u.picture, u.name.ifBlank { u.username }, 96.dp)
+            Box(Modifier.padding(2.dp).size(30.dp).clip(CircleShape).background(Ui.Accent).clickable(onClick = onPickAvatar), contentAlignment = Alignment.Center) {
+                Icon(AppIcons.edit, contentDescription = "Ganti foto profil", tint = Color.White, modifier = Modifier.size(16.dp))
+            }
+        }
+        Text("Ganti foto profil", fontSize = 12.sp, color = Ui.Accent, modifier = Modifier.padding(top = 6.dp).clickable(onClick = onPickAvatar))
         Text(u.name.ifBlank { u.username }, style = MaterialTheme.typography.headlineMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 14.dp))
         Text("@${u.username}", fontSize = 13.sp, color = Ui.Text2, modifier = Modifier.padding(top = 2.dp))
         Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -263,6 +303,13 @@ private fun SignedIn(
         Stat("${u.commentCount.coerceAtLeast(0)}", "komentar", Modifier.weight(1f))
         Stat("${bookmarks.size}", "bookmark", Modifier.weight(1f))
         Stat(joined, joinedLabel, Modifier.weight(1f))
+    }
+    Row(Modifier.padding(top = 18.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Ui.Card).clickable { onHistoryVisibility(!u.publicHistory) }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text("Riwayat baca publik", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(if (u.publicHistory) "Pengguna lain bisa melihat riwayatmu" else "Hanya kamu yang bisa melihat riwayatmu", fontSize = 11.sp, color = Ui.Text2, modifier = Modifier.padding(top = 3.dp))
+        }
+        Text(if (u.publicHistory) "Publik" else "Privat", fontSize = 12.sp, color = if (u.publicHistory) Ui.Accent else Ui.Text2, fontWeight = FontWeight.SemiBold)
     }
     Row(Modifier.padding(top = 24.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
         listOf("Riwayat", "Bookmark").forEachIndexed { i, label ->

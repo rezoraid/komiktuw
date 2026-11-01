@@ -292,11 +292,14 @@ fun DetailScreen(
                                     )
                                 }
                             }
-                            Chip(
-                                text = if (uiState.chaptersNewestFirst) "Terbaru" else "Terlama",
-                                selected = false,
-                                onClick = viewModel::toggleChapterOrder
-                            )
+                            IconButton(onClick = viewModel::toggleChapterOrder) {
+                                Icon(
+                                    AppIcons.sort,
+                                    contentDescription = if (uiState.chaptersNewestFirst) "Urutkan chapter terlama" else "Urutkan chapter terbaru",
+                                    tint = Ui.Text2,
+                                    modifier = Modifier.size(21.dp)
+                                )
+                            }
                         }
                     }
 

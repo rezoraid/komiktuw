@@ -31,11 +31,28 @@ object AppIcons {
         }
     }
 
+    val sort: ImageVector by lazy {
+        navIcon("Sort", false, strokeWidth = 2f) {
+            moveTo(7f, 4f); lineTo(7f, 20f)
+            moveTo(3.5f, 7.5f); lineTo(7f, 4f); lineTo(10.5f, 7.5f)
+            moveTo(17f, 20f); lineTo(17f, 4f)
+            moveTo(13.5f, 16.5f); lineTo(17f, 20f); lineTo(20.5f, 16.5f)
+        }
+    }
+
     val filter: ImageVector by lazy {
         navIcon("Filter", false, strokeWidth = 2.2f) {
             moveTo(4f, 7f); lineTo(20f, 7f)
             moveTo(7f, 12f); lineTo(17f, 12f)
             moveTo(10f, 17f); lineTo(14f, 17f)
+        }
+    }
+
+    val edit: ImageVector by lazy {
+        navIcon("Edit", false, strokeWidth = 2f) {
+            moveTo(4f, 16.5f); lineTo(3.5f, 20.5f); lineTo(7.5f, 20f)
+            moveTo(5f, 19f); lineTo(16.8f, 7.2f)
+            moveTo(14.8f, 5.2f); lineTo(16.8f, 3.2f); lineTo(20.8f, 7.2f); lineTo(18.8f, 9.2f)
         }
     }
 

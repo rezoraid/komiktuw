@@ -173,6 +173,16 @@ class ReaderViewModel @Inject constructor(
                 lastReadAt = System.currentTimeMillis()
             )
         )
+        if (community.user.value != null) {
+            community.saveReadingProgress(
+                source = source,
+                slug = comicSlug,
+                chapter = content.chapterSlug,
+                comicTitle = comicTitle ?: content.title ?: comicSlug,
+                chapterTitle = content.title ?: content.chapterSlug,
+                coverUrl = comicCover.orEmpty()
+            )
+        }
     }
 
     fun goPrev() {

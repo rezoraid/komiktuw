@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -98,6 +99,16 @@ fun HomeScreen(
             ) {
                 item(key = "header", contentType = "header") { HomeHeader(onSearchClick) }
 
+                val featured = popular.firstOrNull() ?: latest.firstOrNull()
+                if (featured != null) {
+                    item(key = "featured", contentType = "featured") {
+                        FeaturedBanner(
+                            comic = featured,
+                            onClick = { onComicClick(featured.source, featured.slug) }
+                        )
+                    }
+                }
+
                 if (history.isNotEmpty()) {
                     item(key = "continue-title", contentType = "title") { SectionHeader("Lanjut baca", onContinueViewAll) }
                     item(key = "continue-row", contentType = "row") {
@@ -151,6 +162,67 @@ fun HomeScreen(
                     item(key = "foryou-title", contentType = "title") { SectionHeader("Untukmu", null) }
                     item(key = "foryou-row", contentType = "row") { PosterRow(forYou, cardWidth, onComicClick) }
                 }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun FeaturedBanner(comic: Comic, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Pad, vertical = 8.dp)
+            .height(178.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Ui.Card)
+            .clickable(onClick = onClick)
+    ) {
+        CoverImage(
+            url = comic.coverUrl,
+            contentDescription = comic.title,
+            modifier = Modifier.fillMaxSize(),
+            widthPx = 720,
+            heightPx = 420
+        )
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.horizontalGradient(
+                    0f to Color(0xF0090909),
+                    0.52f to Color(0xB8090909),
+                    1f to Color(0x12090909)
+                )
+            )
+        )
+        Column(
+            Modifier.align(Alignment.BottomStart).fillMaxWidth(0.76f).padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Text("PILIHAN KOMIKTA", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Ui.Text2, letterSpacing = 1.sp)
+            Text(
+                comic.title,
+                fontSize = 18.sp,
+                lineHeight = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                listOfNotNull(comic.type, comic.status, comic.rating?.takeIf { it > 0 }?.let { "★ ${fmtRating(it)}" }).joinToString("  ·  ").ifBlank { "Temukan bacaan berikutnya" },
+                fontSize = 11.sp,
+                color = Ui.Text2,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                Modifier.padding(top = 3.dp).clip(RoundedCornerShape(5.dp)).background(Color.White).padding(horizontal = 11.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text("Lihat komik", color = Color(0xFF111111), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                Icon(AppIcons.chevronRight, null, tint = Color(0xFF111111), modifier = Modifier.size(14.dp))
             }
         }
     }

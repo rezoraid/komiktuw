@@ -66,7 +66,7 @@ private val ReportReasons = listOf("spam" to "Spam", "abuse" to "Kasar / peleceh
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CommentsScreen(onBack: () -> Unit, viewModel: CommentsViewModel = hiltViewModel()) {
+fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewModel: CommentsViewModel = hiltViewModel()) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val me by viewModel.user.collectAsStateWithLifecycle()
     val draft by viewModel.draft.collectAsStateWithLifecycle()
@@ -124,7 +124,7 @@ fun CommentsScreen(onBack: () -> Unit, viewModel: CommentsViewModel = hiltViewMo
             else -> LazyColumn(Modifier.weight(1f)) {
                 ui.items.forEach { root ->
                     item(key = root.id, contentType = "comment") {
-                        CommentRow(root, false, me?.id, viewModel, { deleteTarget = it }, { reportTarget = it })
+                        CommentRow(root, false, me?.id, viewModel, { deleteTarget = it }, { reportTarget = it }, onUserClick)
                     }
                     val rs = ui.replies[root.id]
                     if (root.replyCount > 0) {
@@ -139,7 +139,7 @@ fun CommentsScreen(onBack: () -> Unit, viewModel: CommentsViewModel = hiltViewMo
                     }
                     if (rs?.expanded == true) {
                         items(rs.items, key = { it.id }, contentType = { "reply" }) { reply ->
-                            CommentRow(reply, true, me?.id, viewModel, { deleteTarget = it }, { reportTarget = it })
+                            CommentRow(reply, true, me?.id, viewModel, { deleteTarget = it }, { reportTarget = it }, onUserClick)
                         }
                         if (rs.loading) item(key = "rl-${root.id}", contentType = "more") { Text("Memuat balasan…", fontSize = 12.sp, color = Ui.Text3, modifier = Modifier.padding(start = 62.dp, bottom = 8.dp)) }
                         else if (rs.hasMore && rs.page > 0) item(key = "rm-${root.id}", contentType = "more") {
@@ -249,17 +249,18 @@ private fun CommentRow(
     meId: String?,
     vm: CommentsViewModel,
     onDelete: (CommentDto) -> Unit,
-    onReport: (CommentDto) -> Unit
+    onReport: (CommentDto) -> Unit,
+    onUserClick: (String) -> Unit
 ) {
     val avatar: Dp = if (isReply) 28.dp else 36.dp
     var menu by remember { mutableStateOf(false) }
     val canReport = !c.deleted && c.user.id != meId
     Row(Modifier.fillMaxWidth().padding(start = if (isReply) 50.dp else 14.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)) {
-        Avatar(c.user.picture, c.user.name.ifBlank { c.user.username }, avatar)
+        Box(Modifier.clickable { if (c.user.id.isNotBlank()) onUserClick(c.user.id) }) { Avatar(c.user.picture, c.user.name.ifBlank { c.user.username }, avatar) }
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(c.user.username, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(c.user.username, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false).clickable { if (c.user.id.isNotBlank()) onUserClick(c.user.id) })
                 if (c.user.role != "USER") RoleBadge(c.user.role)
                 LevelChip(c.user.level)
                 Text(relativeTime(c.createdAt, System.currentTimeMillis()) + if (c.edited && !c.deleted) " · diedit" else "", fontSize = 11.sp, color = Ui.Text3, maxLines = 1)

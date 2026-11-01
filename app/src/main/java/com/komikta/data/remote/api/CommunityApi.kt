@@ -60,10 +60,19 @@ class CommunityApi @Inject constructor(
     suspend fun updateUsername(username: String): ApiResponse<MeResponse> =
         call("PATCH", listOf("me"), body = buildJsonObject { put("username", username) })
 
+    suspend fun updateAvatar(imageData: String): ApiResponse<MeResponse> =
+        call("PUT", listOf("me", "avatar"), body = buildJsonObject { put("image", imageData) })
+
     suspend fun deleteAccount(): ApiResponse<OkDto> = call("DELETE", listOf("me"))
 
     suspend fun setReadingHistoryPublic(isPublic: Boolean): ApiResponse<OkDto> =
         call("PUT", listOf("me", "history-visibility"), body = buildJsonObject { put("publicHistory", isPublic) })
+
+    suspend fun saveReadingProgress(source: String, slug: String, chapter: String, comicTitle: String, chapterTitle: String, coverUrl: String): ApiResponse<OkDto> =
+        call("PUT", listOf("me", "reading-progress"), body = buildJsonObject {
+            put("source", source); put("slug", slug); put("chapter", chapter)
+            put("comicTitle", comicTitle); put("chapterTitle", chapterTitle); put("coverUrl", coverUrl)
+        })
 
     suspend fun publicReadingHistory(userId: String): ApiResponse<PublicReadingHistoryDto> =
         call("GET", listOf("users", userId, "history"))

@@ -234,6 +234,11 @@ private fun SearchField(
                     modifier = Modifier.fillMaxWidth().focusRequester(focus)
                 )
             }
+            if (value.isNotEmpty()) {
+                IconButton(onClick = { onChange("") }, modifier = Modifier.size(28.dp)) {
+                    Icon(AppIcons.close, "Hapus pencarian", tint = Ui.Text3, modifier = Modifier.size(17.dp))
+                }
+            }
         }
         Box(
             Modifier

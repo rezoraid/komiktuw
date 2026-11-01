@@ -24,6 +24,7 @@ import com.komikta.feature.explore.ExploreScreen
 import com.komikta.feature.home.HomeScreen
 import com.komikta.feature.library.LibraryScreen
 import com.komikta.feature.profile.ProfileScreen
+import com.komikta.feature.profile.PublicProfileScreen
 import com.komikta.feature.reader.ReaderScreen
 import com.komikta.ui.theme.Ui
 import androidx.compose.runtime.setValue
@@ -44,7 +45,7 @@ fun MainNavGraph() {
     val navController = rememberNavController()
     val route = navController.currentBackStackEntryAsState().value?.destination?.route
     val showBottomBar = route in tabRoutes
-    val isDetail = route?.startsWith("detail") == true || route?.startsWith("comments") == true || route == "moderation"
+    val isDetail = route?.startsWith("detail") == true || route?.startsWith("comments") == true || route == "moderation" || route?.startsWith("public-profile") == true
     var focusSearch by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -99,6 +100,17 @@ fun MainNavGraph() {
             composable("moderation") { ModerationScreen(onBack = { navController.popBackStack() }) }
 
             composable(
+                route = "public-profile/{userId}",
+                arguments = listOf(navArgument("userId") { type = NavType.StringType })
+            ) { entry ->
+                PublicProfileScreen(
+                    userId = entry.arguments?.getString("userId").orEmpty(),
+                    onBack = { navController.popBackStack() },
+                    onComicClick = { source, slug, chapter -> navController.navigate("reader/$source/$slug/$chapter") }
+                )
+            }
+
+            composable(
                 route = "detail/{source}/{slug}",
                 arguments = listOf(
                     navArgument("source") { type = NavType.StringType },
@@ -136,7 +148,7 @@ fun MainNavGraph() {
                     navArgument("source") { type = NavType.StringType },
                     navArgument("slug") { type = NavType.StringType }
                 )
-            ) { CommentsScreen(onBack = { navController.popBackStack() }) }
+            ) { CommentsScreen(onBack = { navController.popBackStack() }, onUserClick = { id -> navController.navigate("public-profile/$id") }) }
 
             composable(
                 route = "comments/{source}/{slug}/{chapter}",
@@ -145,7 +157,7 @@ fun MainNavGraph() {
                     navArgument("slug") { type = NavType.StringType },
                     navArgument("chapter") { type = NavType.StringType }
                 )
-            ) { CommentsScreen(onBack = { navController.popBackStack() }) }
+            ) { CommentsScreen(onBack = { navController.popBackStack() }, onUserClick = { id -> navController.navigate("public-profile/$id") }) }
         }
     }
 }
