@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material3.Icon
+import com.komikta.ui.components.AppIcons
 import com.komikta.BuildConfig
 import com.komikta.R
 import com.komikta.data.remote.dto.CommunityUserDto
@@ -68,38 +70,36 @@ fun ProfileScreen(onModeration: () -> Unit = {}, viewModel: ProfileViewModel = h
             .fillMaxSize()
             .background(Ui.Bg)
             .verticalScroll(rememberScrollState())
-            .padding(20.dp)
+            .padding(horizontal = 20.dp, vertical = 20.dp)
     ) {
         Text("Profile", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(24.dp))
+        val u = user
+        if (u == null) {
+            SignedOut(ui.busy, signIn)
+        } else {
+            SignedIn(
+                u,
+                onEdit = { editing = true },
+                onSignOut = viewModel::signOut,
+                onDelete = { confirmDelete = true },
+                onModeration = onModeration
+            )
+        }
+        ui.message?.let { Text(it, fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.padding(top = 14.dp)) }
+        Spacer(Modifier.height(28.dp))
+        Text(
+            "Dengan masuk kamu menyetujui Ketentuan dan Kebijakan Privasi",
+            fontSize = 11.sp,
+            color = Ui.Text3
+        )
+        Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text("Ketentuan", fontSize = 12.sp, color = Ui.Accent, modifier = Modifier.clickable { uriHandler.openUri("${BuildConfig.BASE_URL}/terms") }.padding(vertical = 6.dp))
+            Text("Kebijakan Privasi", fontSize = 12.sp, color = Ui.Accent, modifier = Modifier.clickable { uriHandler.openUri("${BuildConfig.BASE_URL}/privacy") }.padding(vertical = 6.dp))
+        }
         Spacer(Modifier.height(20.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ui.Card).border(1.dp, Ui.Line, RoundedCornerShape(16.dp)).padding(16.dp)) {
-            val u = user
-            if (u == null) SignedOut(ui.busy, signIn) else SignedIn(u, onEdit = { editing = true }, onSignOut = viewModel::signOut, onDelete = { confirmDelete = true }, onModeration = onModeration)
-            Text(
-                "Dengan masuk kamu menyetujui Ketentuan dan Kebijakan Privasi",
-                fontSize = 11.sp,
-                color = Ui.Text3,
-                modifier = Modifier.padding(top = 12.dp)
-            )
-            Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Ketentuan", fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.clickable { uriHandler.openUri("${BuildConfig.BASE_URL}/terms") }.padding(vertical = 4.dp))
-                Text("Kebijakan Privasi", fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.clickable { uriHandler.openUri("${BuildConfig.BASE_URL}/privacy") }.padding(vertical = 4.dp))
-            }
-            ui.message?.let { Text(it, fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.padding(top = 12.dp)) }
-        }
-        Spacer(Modifier.height(16.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ui.Card).border(1.dp, Ui.Line, RoundedCornerShape(16.dp)).padding(16.dp)) {
-            Image(
-                painter = painterResource(R.drawable.ic_logo),
-                contentDescription = "Komikta",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.size(width = 120.dp, height = 40.dp)
-            )
-            Spacer(Modifier.height(16.dp))
-            InfoRow("Version", BuildConfig.VERSION_NAME)
-            Spacer(Modifier.height(12.dp))
-            InfoRow("Source", "Lumos · Manta · Shinigami")
-        }
+        Text("Komikta ${BuildConfig.VERSION_NAME}", fontSize = 12.sp, color = Ui.Text3)
+        Text("Sumber: Lumos · Manta · Shinigami", fontSize = 12.sp, color = Ui.Text3, modifier = Modifier.padding(top = 2.dp))
     }
 
     if (confirmDelete) {
@@ -144,32 +144,32 @@ fun ProfileScreen(onModeration: () -> Unit = {}, viewModel: ProfileViewModel = h
 
 @Composable
 private fun SignedOut(busy: Boolean, onSignIn: () -> Unit) {
-    Text("Masuk untuk berkomentar, membalas, dan mengumpulkan XP.", fontSize = 14.sp, color = Ui.Text2)
+    Text("Masuk untuk berkomentar, membalas, dan mengumpulkan XP.", fontSize = 14.sp, lineHeight = 21.sp, color = Ui.Text2)
     Text(
         if (busy) "Memproses…" else "Masuk dengan Google",
         fontSize = 14.sp,
-        fontWeight = FontWeight.Medium,
-        color = Color.White,
+        fontWeight = FontWeight.SemiBold,
+        color = Ui.OnAccent,
         textAlign = TextAlign.Center,
         modifier = Modifier
-            .padding(top = 14.dp)
+            .padding(top = 16.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Ui.Accent)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Ui.AccentBrush)
             .clickable(enabled = !busy, onClick = onSignIn)
-            .padding(vertical = 12.dp)
+            .padding(vertical = 13.dp)
     )
 }
 
 @Composable
 private fun SignedIn(u: CommunityUserDto, onEdit: () -> Unit, onSignOut: () -> Unit, onDelete: () -> Unit, onModeration: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Avatar(u.picture, u.name.ifBlank { u.username }, 64.dp)
-        Spacer(Modifier.width(14.dp))
+        Avatar(u.picture, u.name.ifBlank { u.username }, 72.dp)
+        Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text(u.name.ifBlank { u.username }, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(u.name.ifBlank { u.username }, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text("@${u.username}", fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 RoleBadge(u.role)
                 LevelChip(u.level)
             }
@@ -177,28 +177,29 @@ private fun SignedIn(u: CommunityUserDto, onEdit: () -> Unit, onSignOut: () -> U
     }
     val span = (u.xpNextLevel - u.xpCurrentLevel).coerceAtLeast(1)
     val into = (u.xp - u.xpCurrentLevel).coerceIn(0, span)
-    Row(Modifier.padding(top = 16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text("XP", fontSize = 12.sp, color = Ui.Text2)
-        Text("${u.xp} / ${u.xpNextLevel}", fontSize = 12.sp, color = Ui.Text2)
+    Row(Modifier.padding(top = 24.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text("Menuju level ${u.level + 1}", fontSize = 12.sp, color = Ui.Text2)
+        Text("${u.xp} / ${u.xpNextLevel} XP", fontSize = 12.sp, color = Ui.Text2)
     }
-    Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(Ui.Chip)) {
-        Box(Modifier.fillMaxWidth(into.toFloat() / span).height(8.dp).background(Brush.horizontalGradient(listOf(Ui.Accent, Color(0xFFC1B8FF)))))
+    Box(Modifier.padding(top = 8.dp).fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(Ui.Line)) {
+        Box(Modifier.fillMaxWidth(into.toFloat() / span).height(4.dp).background(Ui.Accent))
     }
-    Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Chip("Ganti username", selected = false, onClick = onEdit)
-        Chip("Keluar", selected = false, onClick = onSignOut)
-    }
-    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (u.role == "MODERATOR" || u.role == "OWNER") Chip("Moderasi", selected = false, onClick = onModeration)
-        Chip("Hapus akun", selected = false, onClick = onDelete)
-    }
+    Spacer(Modifier.height(24.dp))
+    MenuRow("Ganti username", onEdit)
+    if (u.role == "MODERATOR" || u.role == "OWNER") MenuRow("Moderasi", onModeration)
+    MenuRow("Keluar", onSignOut)
+    MenuRow("Hapus akun", onDelete, Color(0xFFE08F8F), last = true)
 }
 
 @Composable
-private fun InfoRow(label: String, value: String) {
-    Column {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = Ui.Text2)
-        Spacer(Modifier.height(2.dp))
-        Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+private fun MenuRow(label: String, onClick: () -> Unit, color: Color = Color.White, last: Boolean = false) {
+    Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 15.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, fontSize = 14.sp, color = color, modifier = Modifier.weight(1f))
+        Icon(AppIcons.chevronRight, null, tint = Ui.Text3, modifier = Modifier.size(18.dp))
     }
+    if (last) Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
 }

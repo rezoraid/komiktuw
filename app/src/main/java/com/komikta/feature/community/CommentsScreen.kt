@@ -61,7 +61,7 @@ import com.komikta.ui.components.relativeTime
 import com.komikta.ui.theme.Ui
 import kotlinx.coroutines.delay
 
-private val Soft = Color(0xFFC4C4C8)
+private val Soft = Color(0xFFC3CBCE)
 private val ReportReasons = listOf("spam" to "Spam", "abuse" to "Kasar / pelecehan", "hate" to "SARA / kebencian", "spoiler" to "Spoiler", "other" to "Lainnya")
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -181,19 +181,19 @@ fun CommentsScreen(onBack: () -> Unit, viewModel: CommentsViewModel = hiltViewMo
                     "Masuk dengan Google untuk berkomentar",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color.White,
+                    color = Ui.OnAccent,
                     modifier = Modifier
                         .padding(horizontal = 14.dp, vertical = 10.dp)
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Ui.Accent)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Ui.AccentBrush)
                         .clickable(onClick = signIn)
                         .padding(vertical = 12.dp),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             } else {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(Modifier.weight(1f).clip(RoundedCornerShape(20.dp)).background(Ui.Card).padding(horizontal = 14.dp, vertical = 10.dp)) {
+                    Box(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(Ui.Card).padding(horizontal = 14.dp, vertical = 10.dp)) {
                         if (draft.isEmpty()) Text("Tulis komentar…", fontSize = 14.sp, color = Ui.Text3)
                         BasicTextField(
                             value = draft,

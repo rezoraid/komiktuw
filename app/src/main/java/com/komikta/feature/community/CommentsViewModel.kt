@@ -118,6 +118,7 @@ class CommentsViewModel @Inject constructor(
     }
 
     fun startReply(c: CommentDto) {
+        if (c.id.startsWith(TMP)) return
         val wasEditing = _ui.value.editing != null
         _ui.update { it.copy(replyingTo = c, editing = null) }
         if (wasEditing) _draft.value = ""
@@ -141,55 +142,89 @@ class CommentsViewModel @Inject constructor(
         )
     }
 
+    private fun addLocal(st: CommentsUiState, c: CommentDto, notice: String? = st.notice): CommentsUiState {
+        val rootId = c.parentId
+        if (rootId == null) return st.copy(replyingTo = null, items = listOf(c) + st.items, total = st.total + 1, notice = notice)
+        val cur = st.replies[rootId] ?: RepliesState()
+        return st.copy(
+            replyingTo = null,
+            total = st.total + 1,
+            notice = notice,
+            items = st.items.map { if (it.id == rootId) it.copy(replyCount = it.replyCount + 1) else it },
+            replies = st.replies + (rootId to cur.copy(expanded = true, items = cur.items + c))
+        )
+    }
+
+    private fun dropLocal(id: String, rootId: String?) = _ui.update { st ->
+        val cur = rootId?.let { st.replies[it] }
+        st.copy(
+            total = (st.total - 1).coerceAtLeast(0),
+            items = st.items.mapNotNull { if (it.id == id) null else if (it.id == rootId) it.copy(replyCount = (it.replyCount - 1).coerceAtLeast(0)) else it },
+            replies = if (rootId == null || cur == null) st.replies else st.replies + (rootId to cur.copy(items = cur.items.filter { it.id != id }))
+        )
+    }
+
     fun submit() {
         val text = _draft.value.trim()
         val s = _ui.value
-        if (text.isEmpty() || s.sending) return
-        viewModelScope.launch {
-            _ui.update { it.copy(sending = true) }
-            val editing = s.editing
-            if (editing != null) {
+        if (text.isEmpty()) return
+        val editing = s.editing
+        if (editing != null) {
+            if (editing.id.startsWith(TMP)) return
+            mapAll(editing.id) { it.copy(body = text, edited = true) }
+            _draft.value = ""
+            _ui.update { it.copy(editing = null) }
+            viewModelScope.launch {
                 when (val r = repo.edit(editing.id, text)) {
                     is Result.Success -> {
                         mapAll(editing.id) { r.data }
-                        _draft.value = ""
-                        _ui.update { it.copy(sending = false, editing = null, notice = "Komentar diperbarui") }
+                        notice("Komentar diperbarui")
                     }
-                    is Result.Error -> _ui.update { it.copy(sending = false, notice = r.message) }
-                    else -> _ui.update { it.copy(sending = false) }
+                    is Result.Error -> {
+                        mapAll(editing.id) { editing }
+                        notice(r.message)
+                    }
+                    else -> mapAll(editing.id) { editing }
                 }
-                return@launch
             }
-            when (val r = repo.post(source, slug, chapter, s.replyingTo?.id, text)) {
+            return
+        }
+        val me = user.value ?: return
+        val target = s.replyingTo
+        val rootId = target?.let { it.parentId ?: it.id }
+        val tmp = CommentDto(
+            id = TMP + System.nanoTime(),
+            parentId = rootId,
+            replyTo = target?.user?.username,
+            body = text,
+            createdAt = System.currentTimeMillis(),
+            user = me
+        )
+        _draft.value = ""
+        _ui.update { addLocal(it, tmp) }
+        viewModelScope.launch {
+            when (val r = repo.post(source, slug, chapter, target?.id, text)) {
                 is Result.Success -> {
                     val c = r.data.comment
-                    _draft.value = ""
-                    _ui.update { st ->
-                        val xp = if (r.data.xpGained > 0) "Terkirim · +${r.data.xpGained} XP" else "Terkirim"
-                        val rootId = c.parentId
-                        if (rootId == null) {
-                            st.copy(sending = false, replyingTo = null, items = listOf(c) + st.items, total = st.total + 1, notice = xp)
-                        } else {
-                            val cur = st.replies[rootId] ?: RepliesState()
-                            st.copy(
-                                sending = false,
-                                replyingTo = null,
-                                total = st.total + 1,
-                                notice = xp,
-                                items = st.items.map { if (it.id == rootId) it.copy(replyCount = it.replyCount + 1) else it },
-                                replies = st.replies + (rootId to cur.copy(expanded = true, items = if (cur.page == 0) cur.items else cur.items + c))
-                            )
-                        }
-                    }
+                    mapAll(tmp.id) { c }
+                    notice(if (r.data.xpGained > 0) "Terkirim · +${r.data.xpGained} XP" else "Terkirim")
                     if (c.parentId != null && (_ui.value.replies[c.parentId]?.page ?: 0) == 0) loadReplies(c.parentId)
                 }
-                is Result.Error -> _ui.update { it.copy(sending = false, notice = r.message) }
-                else -> _ui.update { it.copy(sending = false) }
+                is Result.Error -> {
+                    dropLocal(tmp.id, rootId)
+                    if (_draft.value.isEmpty()) _draft.value = text
+                    notice(r.message)
+                }
+                else -> {
+                    dropLocal(tmp.id, rootId)
+                    if (_draft.value.isEmpty()) _draft.value = text
+                }
             }
         }
     }
 
     fun toggleLike(c: CommentDto) {
+        if (c.id.startsWith(TMP)) return
         if (user.value == null) { notice("Masuk dulu untuk menyukai komentar"); return }
         val on = !c.liked
         mapAll(c.id) { it.copy(liked = on, likeCount = (it.likeCount + if (on) 1 else -1).coerceAtLeast(0)) }
@@ -259,5 +294,8 @@ class CommentsViewModel @Inject constructor(
         }
     }
 
-    companion object { const val MAX_LEN = 1000 }
+    companion object {
+        const val MAX_LEN = 1000
+        const val TMP = "tmp-"
+    }
 }

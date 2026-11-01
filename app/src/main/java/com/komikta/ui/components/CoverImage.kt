@@ -12,7 +12,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Size
 
-private val Placeholder = ColorPainter(Color(0xFF14141A))
+private val Placeholder = ColorPainter(Color(0xFF151D20))
 
 @Composable
 fun CoverImage(

@@ -74,7 +74,7 @@ fun LibraryScreen(
                         if (tab == 0) AppIcons.bookmark(false) else AppIcons.comment,
                         null,
                         tint = Ui.Accent,
-                        modifier = Modifier.size(56.dp).background(Ui.AccentSoft, CircleShape).padding(14.dp)
+                        modifier = Modifier.size(48.dp)
                     )
                     Text(if (tab == 0) "Belum ada bookmark" else "Belum ada history", fontWeight = FontWeight.SemiBold, color = Color.White)
                     Text(if (tab == 0) "Simpan komik favoritmu dari halaman detail" else "Komik yang kamu baca akan muncul di sini", fontSize = 13.sp, color = Ui.Text2)

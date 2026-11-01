@@ -13,25 +13,25 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
 
-private val Bg = Color.Black
-private val Surface = Color(0xFF0A0A0A)
-private val Surface2 = Color(0xFF141414)
-private val Primary = Color(0xFF8B7CFF)
+private val Bg = Color(0xFF0F1417)
+private val Surface = Color(0xFF151D20)
+private val Surface2 = Color(0xFF1B2529)
+private val Primary = Color(0xFF90CCE8)
 private val Text1 = Color.White
-private val Text2 = Color(0xFFBDBDBD)
-private val Text3 = Color(0xFF888888)
+private val Text2 = Color(0xFFB4BDC1)
+private val Text3 = Color(0xFF797C81)
 
 private val Scheme = darkColorScheme(
     primary = Primary,
-    onPrimary = Color.White,
-    secondary = Color(0xFFB9AFFF),
+    onPrimary = Color(0xFF0F1417),
+    secondary = Color(0xFFB7D2DD),
     background = Bg,
     onBackground = Text1,
     surface = Surface,
     onSurface = Text1,
     surfaceVariant = Surface2,
     onSurfaceVariant = Text2,
-    outline = Color(0xFF2A2A30)
+    outline = Color(0xFF263136)
 )
 
 private val Poppins = FontFamily(
@@ -54,18 +54,20 @@ private val Type = Typography(
 )
 
 object Ui {
-    val Bg = Color(0xFF050507)
-    val Bar = Color(0xFF0C0C10)
-    val Card = Color(0xFF14141A)
-    val Chip = Color(0xFF1C1C24)
-    val Line = Color(0xFF24242C)
-    val Badge = Color(0xB3000000)
-    val Text2 = Color(0xFFA8A8B3)
-    val Text3 = Color(0xFF6C6C78)
-    val Accent = Color(0xFF8B7CFF)
-    val AccentSoft = Color(0x268B7CFF)
-    val Star = Color(0xFFFFC857)
-    val Scrim = Brush.verticalGradient(listOf(Color.Transparent, Color(0xE6000000)))
+    val Bg = Color(0xFF0F1417)
+    val Bar = Color(0xFF121A1D)
+    val Card = Color(0xFF151D20)
+    val Chip = Color(0xFF1C262A)
+    val Line = Color(0xFF243035)
+    val Badge = Color(0xB30F1417)
+    val Text2 = Color(0xFFA3ADB2)
+    val Text3 = Color(0xFF6F7A80)
+    val Accent = Color(0xFF90CCE8)
+    val AccentSoft = Color(0x2690CCE8)
+    val OnAccent = Color(0xFF0F1417)
+    val Star = Color(0xFFE8EDEF)
+    val AccentBrush = Brush.linearGradient(listOf(Color(0xFF90CCE8), Color(0xFFCCD0D1)))
+    val Scrim = Brush.verticalGradient(listOf(Color.Transparent, Color(0xE60F1417)))
 }
 
 @Composable

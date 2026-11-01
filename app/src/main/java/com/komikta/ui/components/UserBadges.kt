@@ -25,9 +25,9 @@ private val BadgeShape = RoundedCornerShape(5.dp)
 fun RoleBadge(role: String, modifier: Modifier = Modifier) {
     val base = modifier.clip(BadgeShape)
     when (role) {
-        "OWNER" -> Text("OWNER", fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = Color.White, modifier = base.background(Ui.Accent).padding(horizontal = 6.dp, vertical = 2.dp))
+        "OWNER" -> Text("OWNER", fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = Ui.OnAccent, modifier = base.background(Ui.Accent).padding(horizontal = 6.dp, vertical = 2.dp))
         "MODERATOR" -> Text("MOD", fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = Ui.Accent, modifier = base.border(1.dp, Ui.Accent, BadgeShape).padding(horizontal = 6.dp, vertical = 1.dp))
-        "PREMIUM" -> Text("PREMIUM", fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = Ui.Star, modifier = base.background(Color(0xFF3A3320)).padding(horizontal = 6.dp, vertical = 2.dp))
+        "PREMIUM" -> Text("PREMIUM", fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = Ui.Star, modifier = base.background(Color(0xFF263136)).padding(horizontal = 6.dp, vertical = 2.dp))
         else -> Text("USER", fontSize = 9.sp, fontWeight = FontWeight.Medium, color = Ui.Text2, modifier = base.background(Ui.Chip).padding(horizontal = 6.dp, vertical = 2.dp))
     }
 }

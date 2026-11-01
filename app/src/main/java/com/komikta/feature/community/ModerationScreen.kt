@@ -40,7 +40,7 @@ import com.komikta.ui.components.relativeTime
 import com.komikta.ui.theme.Ui
 import kotlinx.coroutines.delay
 
-private val Soft = Color(0xFFC4C4C8)
+private val Soft = Color(0xFFC3CBCE)
 private val ReasonLabel = mapOf("spam" to "Spam", "abuse" to "Kasar / pelecehan", "hate" to "SARA / kebencian", "spoiler" to "Spoiler", "other" to "Lainnya")
 
 @Composable

@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -85,8 +86,7 @@ fun HomeScreen(
         }
         else -> {
             val latest = uiState.latestComics
-            val featured = uiState.popularComics.firstOrNull()
-            val popular = remember(uiState.popularComics) { uiState.popularComics.drop(1).take(10) }
+            val popular = remember(uiState.popularComics) { uiState.popularComics.take(12) }
             val updateRows = remember(latest) { latest.take(12).chunked(3) }
             val forYou = remember(latest) { latest.drop(12).sortedByDescending { it.rating ?: 0.0 }.take(10) }
             val now = remember { System.currentTimeMillis() }
@@ -97,12 +97,6 @@ fun HomeScreen(
                 contentPadding = PaddingValues(bottom = 16.dp)
             ) {
                 item(key = "header", contentType = "header") { HomeHeader(onSearchClick) }
-
-                if (featured != null) {
-                    item(key = "banner", contentType = "banner") {
-                        Banner(featured) { onComicClick(featured.source, featured.slug) }
-                    }
-                }
 
                 if (history.isNotEmpty()) {
                     item(key = "continue-title", contentType = "title") { SectionHeader("Lanjut baca", onContinueViewAll) }
@@ -167,91 +161,18 @@ private fun HomeHeader(onSearch: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = Pad, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(start = Pad, end = 6.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
             painter = painterResource(R.drawable.ic_logo),
             contentDescription = "Komikta",
             contentScale = ContentScale.Fit,
-            modifier = Modifier.size(width = 92.dp, height = 30.dp)
+            modifier = Modifier.size(width = 96.dp, height = 32.dp)
         )
-        Row(
-            Modifier
-                .weight(1f)
-                .height(40.dp)
-                .clip(RoundedCornerShape(50))
-                .background(Ui.Card)
-                .border(1.dp, Ui.Line, RoundedCornerShape(50))
-                .clickable(onClick = onSearch)
-                .padding(horizontal = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(AppIcons.search, null, tint = Ui.Text2, modifier = Modifier.size(18.dp))
-            Text("Cari komik", fontSize = 13.sp, color = Ui.Text3, modifier = Modifier.padding(start = 8.dp))
-        }
-    }
-}
-
-@Composable
-private fun Banner(comic: Comic, onClick: () -> Unit) {
-    val info = remember(comic) {
-        listOfNotNull(
-            comic.type?.trim()?.takeIf { it.isNotEmpty() }?.replaceFirstChar { it.uppercase() },
-            comic.status?.takeIf { it.isNotBlank() }
-        ).joinToString(" · ")
-    }
-    val rating = remember(comic) { comic.rating?.takeIf { it > 0.0 }?.let { "★ ${fmtRating(it)}" } }
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Pad, vertical = 6.dp)
-            .aspectRatio(16f / 9f)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Ui.Card)
-            .border(1.dp, Ui.Line, RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-    ) {
-        CoverImage(
-            url = comic.coverUrl,
-            contentDescription = comic.title,
-            modifier = Modifier.fillMaxSize(),
-            widthPx = 720,
-            heightPx = 405,
-            alignment = Alignment.TopCenter
-        )
-        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.7f).background(Ui.Scrim))
-        Text(
-            "Populer",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(10.dp)
-                .background(Ui.Accent, RoundedCornerShape(6.dp))
-                .padding(horizontal = 8.dp, vertical = 3.dp)
-        )
-        Column(
-            Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp)
-        ) {
-            Text(
-                comic.title,
-                fontSize = 18.sp,
-                lineHeight = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (rating != null) Text(rating, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Ui.Star)
-                if (info.isNotEmpty()) Text(info, fontSize = 12.sp, color = Ui.Text2, maxLines = 1)
-            }
+        Box(Modifier.weight(1f))
+        IconButton(onClick = onSearch) {
+            Icon(AppIcons.search, "Cari", tint = Color.White, modifier = Modifier.size(24.dp))
         }
     }
 }
@@ -259,13 +180,12 @@ private fun Banner(comic: Comic, onClick: () -> Unit) {
 @Composable
 private fun SectionHeader(title: String, onAction: (() -> Unit)?) {
     Row(
-        Modifier.fillMaxWidth().padding(start = Pad, end = Pad - 6.dp, top = 22.dp, bottom = 10.dp),
+        Modifier.fillMaxWidth().padding(start = Pad, end = Pad - 6.dp, top = 20.dp, bottom = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(width = 4.dp, height = 18.dp).background(Ui.Accent, RoundedCornerShape(2.dp)))
-            Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(start = 8.dp))
+            Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
         }
         if (onAction != null) {
             Text(
@@ -274,7 +194,7 @@ private fun SectionHeader(title: String, onAction: (() -> Unit)?) {
                 fontWeight = FontWeight.Medium,
                 color = Ui.Accent,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(4.dp))
                     .clickable(onClick = onAction)
                     .padding(horizontal = 6.dp, vertical = 4.dp)
             )

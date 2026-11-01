@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.komikta.ui.theme.Ui
 
 private val BlockShape = RoundedCornerShape(10.dp)
-private val ShimmerColors = listOf(Ui.Card, Color(0xFF22222C), Ui.Card)
+private val ShimmerColors = listOf(Ui.Card, Color(0xFF1F2A2F), Ui.Card)
 
 @Composable
 fun shimmerBrush(): Brush {

@@ -459,7 +459,7 @@ fun ReaderScreen(
             ModalBottomSheet(
                 onDismissRequest = { showSettings = false },
                 sheetState = rememberModalBottomSheetState(),
-                containerColor = Color(0xFF14141A)
+                containerColor = Color(0xFF151D20)
             ) {
                 Column(Modifier.padding(20.dp)) {
                     Text(
@@ -679,12 +679,12 @@ private fun ScrollModeOption(
     Column(
         modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(if (selected) Ui.Accent else Color(0xFF242430))
+            .background(if (selected) Ui.Accent else Color(0xFF1C262A))
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
-        Text(title, color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-        Text(subtitle, color = if (selected) Color(0xFFE6E2FF) else Color(0xFF999999), style = MaterialTheme.typography.labelSmall)
+        Text(title, color = if (selected) Ui.OnAccent else Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+        Text(subtitle, color = if (selected) Color(0xFF2B3A40) else Color(0xFF999999), style = MaterialTheme.typography.labelSmall)
     }
 }
 

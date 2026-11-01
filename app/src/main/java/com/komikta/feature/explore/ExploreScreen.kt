@@ -214,10 +214,9 @@ private fun SearchField(
             Modifier
                 .weight(1f)
                 .height(44.dp)
-                .clip(RoundedCornerShape(50))
+                .clip(RoundedCornerShape(8.dp))
                 .background(Ui.Card)
-                .border(1.dp, Ui.Line, RoundedCornerShape(50))
-                .padding(horizontal = 14.dp),
+                .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(AppIcons.search, null, tint = Ui.Text2, modifier = Modifier.size(20.dp))
@@ -239,16 +238,15 @@ private fun SearchField(
         Box(
             Modifier
                 .size(44.dp)
-                .clip(CircleShape)
+                .clip(RoundedCornerShape(8.dp))
                 .background(if (filterActive) Ui.Accent else Ui.Card)
-                .border(1.dp, if (filterActive) Ui.Accent else Ui.Line, CircleShape)
                 .clickable(onClick = onFilterClick),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 AppIcons.filter,
                 "Filter",
-                tint = Color.White,
+                tint = if (filterActive) Ui.OnAccent else Color.White,
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -340,14 +338,14 @@ private fun GenreFilterSheet(
                         draftStatus = null
                     },
                     modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Ui.Chip, contentColor = Color.White)
                 ) { Text("Reset", fontWeight = FontWeight.SemiBold) }
                 Button(
                     onClick = { onApply(draft, draftSort, draftStatus) },
                     modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Ui.Accent, contentColor = Color.White)
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Ui.Accent, contentColor = Ui.OnAccent)
                 ) { Text("Terapkan", fontWeight = FontWeight.SemiBold) }
             }
         }

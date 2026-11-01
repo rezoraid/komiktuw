@@ -55,8 +55,8 @@ import java.util.Locale
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 
-private val Soft = Color(0xFFC8C8D2)
-private val ReadColor = Color(0xFF6C6C78)
+private val Soft = Color(0xFFC3CBCE)
+private val ReadColor = Color(0xFF6F7A80)
 private val IdLocale = Locale("id", "ID")
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -124,9 +124,8 @@ fun DetailScreen(
                                 modifier = Modifier
                                     .width(110.dp)
                                     .height(154.dp)
-                                    .clip(RoundedCornerShape(14.dp))
+                                    .clip(RoundedCornerShape(6.dp))
                                     .background(Ui.Card)
-                                    .border(1.dp, Ui.Line, RoundedCornerShape(14.dp))
                             )
                             Spacer(Modifier.width(14.dp))
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -165,15 +164,15 @@ fun DetailScreen(
                                 text = (if (started) "Lanjut baca · " else "Mulai baca · ") + chapterName(target),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color.White,
+                                color = Ui.OnAccent,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 14.dp, vertical = 8.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Ui.Accent)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Ui.AccentBrush)
                                     .clickable { onChapterClick(detail.source, detail.slug, target.slug) }
                                     .padding(horizontal = 14.dp, vertical = 13.dp)
                             )
@@ -232,10 +231,9 @@ fun DetailScreen(
                                         fontSize = 12.sp,
                                         color = Soft,
                                         modifier = Modifier
-                                            .clip(RoundedCornerShape(50))
+                                            .clip(RoundedCornerShape(4.dp))
                                             .background(Ui.Chip)
-                                            .border(1.dp, Ui.Line, RoundedCornerShape(50))
-                                            .padding(horizontal = 12.dp, vertical = 5.dp)
+                                            .padding(horizontal = 10.dp, vertical = 5.dp)
                                     )
                                 }
                             }
@@ -247,9 +245,8 @@ fun DetailScreen(
                             Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 14.dp, vertical = 8.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(8.dp))
                                 .background(Ui.Card)
-                                .border(1.dp, Ui.Line, RoundedCornerShape(12.dp))
                                 .clickable { onCommentsClick(detail.source, detail.slug) }
                                 .padding(horizontal = 14.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -271,10 +268,9 @@ fun DetailScreen(
                                 Modifier
                                     .weight(1f)
                                     .height(40.dp)
-                                    .clip(RoundedCornerShape(50))
+                                    .clip(RoundedCornerShape(8.dp))
                                     .background(Ui.Card)
-                                    .border(1.dp, Ui.Line, RoundedCornerShape(50))
-                                    .padding(horizontal = 14.dp),
+                                    .padding(horizontal = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(AppIcons.search, null, tint = Ui.Text2, modifier = Modifier.size(18.dp))

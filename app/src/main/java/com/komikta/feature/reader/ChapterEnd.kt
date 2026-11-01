@@ -59,9 +59,8 @@ fun ChapterEnd(
         Column(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(8.dp))
                 .background(Ui.Card)
-                .border(1.dp, Ui.Line, RoundedCornerShape(16.dp))
                 .padding(horizontal = 20.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -107,7 +106,7 @@ fun ChapterEnd(
                 Row(
                     Modifier
                         .padding(top = 16.dp)
-                        .clip(RoundedCornerShape(50))
+                        .clip(RoundedCornerShape(6.dp))
                         .background(Ui.Chip)
                         .clickable(onClick = onComments)
                         .padding(horizontal = 14.dp, vertical = 8.dp),
