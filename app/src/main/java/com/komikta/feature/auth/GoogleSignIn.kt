@@ -10,6 +10,8 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
@@ -23,8 +25,14 @@ object GoogleSignIn {
         val clientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
         if (clientId.isBlank()) return Result.Error("Login Google belum dikonfigurasi di aplikasi ini", "NOT_CONFIGURED")
         return try {
-            val request = GetCredentialRequest.Builder().addCredentialOption(GetSignInWithGoogleOption.Builder(clientId).build()).build()
-            val credential = CredentialManager.create(context).getCredential(context, request).credential
+            val manager = CredentialManager.create(context)
+            val sheet = GetGoogleIdOption.Builder().setServerClientId(clientId).setFilterByAuthorizedAccounts(false).setAutoSelectEnabled(false).build()
+            val credential = try {
+                manager.getCredential(context, GetCredentialRequest.Builder().addCredentialOption(sheet).build()).credential
+            } catch (e: NoCredentialException) {
+                val full = GetSignInWithGoogleOption.Builder(clientId).build()
+                manager.getCredential(context, GetCredentialRequest.Builder().addCredentialOption(full).build()).credential
+            }
             if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                 Result.Success(GoogleIdTokenCredential.createFrom(credential.data).idToken)
             } else {
