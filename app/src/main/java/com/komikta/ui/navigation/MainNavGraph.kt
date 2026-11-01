@@ -92,6 +92,7 @@ fun MainNavGraph() {
             }
             composable(BottomNavItem.Profile.route) { ProfileScreen(
                     onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") },
+                    onSeeAll = { navController.goToTab(BottomNavItem.Library.route) },
                     onModeration = { navController.navigate("moderation") }
                 ) }
 

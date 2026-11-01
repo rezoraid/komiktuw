@@ -54,6 +54,14 @@ import com.komikta.data.local.entity.ReadingHistoryEntity
 import com.komikta.ui.components.CoverImage
 import com.komikta.ui.components.historyChapterLabel
 import com.komikta.ui.components.relativeTime
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import com.komikta.BuildConfig
 import com.komikta.R
 import com.komikta.data.remote.dto.CommunityUserDto
@@ -65,7 +73,7 @@ import com.komikta.ui.components.RoleBadge
 import com.komikta.ui.theme.Ui
 
 @Composable
-fun ProfileScreen(onComicClick: (String, String) -> Unit = { _, _ -> }, onModeration: () -> Unit = {}, viewModel: ProfileViewModel = hiltViewModel()) {
+fun ProfileScreen(onComicClick: (String, String) -> Unit = { _, _ -> }, onSeeAll: () -> Unit = {}, onModeration: () -> Unit = {}, viewModel: ProfileViewModel = hiltViewModel()) {
     val user by viewModel.user.collectAsStateWithLifecycle()
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
@@ -74,7 +82,7 @@ fun ProfileScreen(onComicClick: (String, String) -> Unit = { _, _ -> }, onModera
     var editing by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
-    LaunchedEffect(Unit) { viewModel.refresh() }
+    LaunchedEffect(user?.id) { viewModel.refresh() }
 
     Column(
         Modifier
@@ -98,6 +106,7 @@ fun ProfileScreen(onComicClick: (String, String) -> Unit = { _, _ -> }, onModera
                 bookmarks = bookmarks,
                 history = history,
                 onComicClick = onComicClick,
+                onSeeAll = onSeeAll,
                 onEdit = { editing = true },
                 onSignOut = viewModel::signOut,
                 onDelete = { confirmDelete = true },
@@ -213,6 +222,7 @@ private fun SignedIn(
     bookmarks: List<BookmarkEntity>,
     history: List<ReadingHistoryEntity>,
     onComicClick: (String, String) -> Unit,
+    onSeeAll: () -> Unit,
     onEdit: () -> Unit,
     onSignOut: () -> Unit,
     onDelete: () -> Unit,
@@ -228,12 +238,7 @@ private fun SignedIn(
         Text(u.name.ifBlank { u.username }, style = MaterialTheme.typography.headlineMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 14.dp))
         Text("@${u.username}", fontSize = 13.sp, color = Ui.Text2, modifier = Modifier.padding(top = 2.dp))
         Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            val staff = u.role == "OWNER" || u.role == "MODERATOR" || u.role == "PREMIUM"
-            Pill(
-                when (u.role) { "OWNER" -> "Owner"; "MODERATOR" -> "Moderator"; "PREMIUM" -> "Premium"; else -> "Member" },
-                if (staff) Ui.Accent else Ui.Chip,
-                if (staff) Ui.OnAccent else Color.White
-            )
+            RolePill(u.role)
             Pill("Lv ${u.level}", Ui.Chip, Color.White)
             Pill("${u.xp} XP", Ui.Chip, Color.White)
         }
@@ -248,14 +253,14 @@ private fun SignedIn(
         Box(Modifier.fillMaxWidth(into.toFloat() / span).height(4.dp).background(Ui.Accent))
     }
     val joined = remember(u.joinedAt) {
-        if (u.joinedAt <= 0L) "-" else {
+        if (u.joinedAt <= 0L) "0" else {
             val days = ((now - u.joinedAt) / 86_400_000L).coerceAtLeast(0)
             if (days < 30) "$days" else "${days / 30}"
         }
     }
     val joinedLabel = if (u.joinedAt > 0L && (now - u.joinedAt) / 86_400_000L >= 30) "bulan\nbergabung" else "hari\nbergabung"
     Row(Modifier.padding(top = 24.dp).fillMaxWidth()) {
-        Stat(if (u.commentCount >= 0) "${u.commentCount}" else "-", "komentar", Modifier.weight(1f))
+        Stat("${u.commentCount.coerceAtLeast(0)}", "komentar", Modifier.weight(1f))
         Stat("${bookmarks.size}", "bookmark", Modifier.weight(1f))
         Stat(joined, joinedLabel, Modifier.weight(1f))
     }
@@ -270,14 +275,16 @@ private fun SignedIn(
     Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
     if (tab == 0) {
         if (history.isEmpty()) EmptyLine("Belum ada riwayat baca")
-        history.take(20).forEach { h ->
-            ComicLine(h.comicTitle, h.coverUrl, "${historyChapterLabel(h.lastChapterNumber)} · ${relativeTime(h.lastReadAt, now)}") { onComicClick(h.source, h.comicSlug) }
+        history.take(10).forEach { h ->
+            ComicLine(h.comicTitle, h.coverUrl, historyChapterLabel(h.lastChapterNumber), relativeTime(h.lastReadAt, now)) { onComicClick(h.source, h.comicSlug) }
         }
+        if (history.size > 10) SeeAll("Lihat semua riwayat", onSeeAll)
     } else {
         if (bookmarks.isEmpty()) EmptyLine("Belum ada bookmark")
-        bookmarks.take(30).forEach { b ->
-            ComicLine(b.comicTitle, b.coverUrl, listOfNotNull(b.type?.takeIf { it.isNotBlank() }?.replaceFirstChar { it.uppercase() }, b.status?.takeIf { it.isNotBlank() }).joinToString(" · ")) { onComicClick(b.source, b.comicSlug) }
+        bookmarks.take(10).forEach { b ->
+            ComicLine(b.comicTitle, b.coverUrl, b.type?.takeIf { it.isNotBlank() }?.replaceFirstChar { it.uppercase() }, b.status.orEmpty()) { onComicClick(b.source, b.comicSlug) }
         }
+        if (bookmarks.size > 10) SeeAll("Lihat semua bookmark", onSeeAll)
     }
     Spacer(Modifier.height(20.dp))
     Text("AKUN", fontSize = 11.sp, letterSpacing = 1.sp, color = Ui.Text3, modifier = Modifier.padding(bottom = 4.dp))
@@ -305,20 +312,72 @@ private fun EmptyLine(text: String) {
 }
 
 @Composable
-private fun ComicLine(title: String, coverUrl: String?, sub: String, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun ComicLine(title: String, coverUrl: String?, tag: String?, sub: String, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         CoverImage(
             url = coverUrl,
             contentDescription = title,
-            widthPx = 140,
-            heightPx = 196,
-            modifier = Modifier.size(width = 48.dp, height = 66.dp).clip(RoundedCornerShape(4.dp)).background(Ui.Card)
+            widthPx = 168,
+            heightPx = 234,
+            modifier = Modifier.size(width = 56.dp, height = 78.dp).clip(RoundedCornerShape(6.dp)).background(Ui.Card)
         )
-        Column(Modifier.weight(1f).padding(start = 14.dp)) {
-            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (sub.isNotBlank()) Text(sub, fontSize = 12.sp, color = Ui.Text2, maxLines = 1, modifier = Modifier.padding(top = 3.dp))
+        Column(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (!tag.isNullOrBlank()) {
+                    Text(tag, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Ui.Accent, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(Ui.AccentSoft).padding(horizontal = 7.dp, vertical = 3.dp))
+                }
+                if (sub.isNotBlank()) Text(sub, fontSize = 12.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
+        Icon(AppIcons.chevronRight, null, tint = Ui.Text3, modifier = Modifier.size(18.dp))
     }
+    Box(Modifier.fillMaxWidth().padding(start = 70.dp).height(1.dp).background(Ui.Line))
+}
+
+@Composable
+private fun SeeAll(text: String, onClick: () -> Unit) {
+    Text(text, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Ui.Accent, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 14.dp))
+}
+
+@Composable
+private fun RolePill(role: String) {
+    val label: String
+    val base: Color
+    val glow: Color
+    when (role) {
+        "OWNER" -> { label = "Owner"; base = Color(0xFFB3261E); glow = Color(0xFFFF9C94) }
+        "MODERATOR" -> { label = "Moderator"; base = Color(0xFF2B88B8); glow = Color(0xFFC4EEFF) }
+        "PREMIUM" -> { label = "Premium"; base = Color(0xFF2B88B8); glow = Color(0xFFC4EEFF) }
+        else -> { label = "Member"; base = Color(0xFF1D3C4F); glow = Color(0xFF7CC4E8) }
+    }
+    val t by rememberInfiniteTransition(label = "role").animateFloat(
+        initialValue = -0.6f,
+        targetValue = 1.6f,
+        animationSpec = infiniteRepeatable(tween(2400, easing = LinearEasing), RepeatMode.Restart),
+        label = "roleShine"
+    )
+    Text(
+        label,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = Color.White,
+        maxLines = 1,
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .drawBehind {
+                drawRect(base)
+                val x = t * size.width
+                drawRect(
+                    Brush.linearGradient(
+                        listOf(Color.Transparent, glow.copy(alpha = 0.7f), Color.Transparent),
+                        start = Offset(x - size.width * 0.4f, 0f),
+                        end = Offset(x + size.width * 0.4f, size.height * 0.6f)
+                    )
+                )
+            }
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    )
 }
 
 @Composable

@@ -43,7 +43,7 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _ui.value = ProfileUiState(busy = true)
             when (val r = repo.signInWithGoogle(idToken)) {
-                is Result.Success -> _ui.value = ProfileUiState()
+                is Result.Success -> { _ui.value = ProfileUiState(); repo.refreshMe() }
                 is Result.Error -> _ui.value = ProfileUiState(message = r.message)
                 else -> _ui.value = ProfileUiState()
             }

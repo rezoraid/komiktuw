@@ -81,7 +81,10 @@ class CommunityRepository @Inject constructor(
     suspend fun replies(rootId: String, page: Int): Result<CommentPageDto> = call { api.replies(rootId, page) }
 
     suspend fun post(source: String, slug: String, chapter: String?, parentId: String?, text: String): Result<CommentResultDto> =
-        call { api.post(source, slug, chapter, parentId, text) }.map { r -> r.user?.let { session.update(it) }; r }
+        call { api.post(source, slug, chapter, parentId, text) }.map { r ->
+            r.user?.let { u -> session.update(u.copy(commentCount = (session.user.value?.commentCount ?: 0).coerceAtLeast(0) + 1)) }
+            r
+        }
 
     suspend fun edit(id: String, text: String): Result<CommentDto> = call { api.edit(id, text) }.map { it.comment }
 
