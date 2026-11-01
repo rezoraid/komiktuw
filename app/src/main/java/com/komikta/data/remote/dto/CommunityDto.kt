@@ -14,7 +14,9 @@ data class CommunityUserDto(
     val xp: Int = 0,
     val xpCurrentLevel: Int = 0,
     val xpNextLevel: Int = 0,
-    val usernameChangeableAt: Long = 0L
+    val usernameChangeableAt: Long = 0L,
+    val commentCount: Int = -1,
+    val joinedAt: Long = 0L
 )
 
 @Serializable
@@ -52,11 +54,15 @@ data class CommentPageDto(
 data class CommentResultDto(
     val comment: CommentDto,
     val xpGained: Int = 0,
+    val xpReason: String? = null,
     val user: CommunityUserDto? = null
 )
 
 @Serializable
 data class CommentEditDto(val comment: CommentDto)
+
+@Serializable
+data class ChapterCountsDto(val counts: Map<String, Int> = emptyMap())
 
 @Serializable
 data class LikeResultDto(val liked: Boolean = false, val likeCount: Int = 0)

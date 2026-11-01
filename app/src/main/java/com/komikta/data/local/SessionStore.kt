@@ -35,8 +35,10 @@ class SessionStore @Inject constructor(
         _user.value = user
     }
 
-    fun update(user: CommunityUserDto) {
+    fun update(incoming: CommunityUserDto) {
         if (token == null) return
+        val old = _user.value
+        val user = if (incoming.commentCount < 0 && old != null && old.id == incoming.id) incoming.copy(commentCount = old.commentCount) else incoming
         sp.edit().putString("user", json.encodeToString(CommunityUserDto.serializer(), user)).apply()
         _user.value = user
     }

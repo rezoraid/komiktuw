@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +49,11 @@ import androidx.compose.material3.Icon
 import com.komikta.ui.components.AppIcons
 import androidx.compose.foundation.shape.CircleShape
 import com.komikta.ui.navigation.BottomNavItem
+import com.komikta.data.local.entity.BookmarkEntity
+import com.komikta.data.local.entity.ReadingHistoryEntity
+import com.komikta.ui.components.CoverImage
+import com.komikta.ui.components.historyChapterLabel
+import com.komikta.ui.components.relativeTime
 import com.komikta.BuildConfig
 import com.komikta.R
 import com.komikta.data.remote.dto.CommunityUserDto
@@ -59,13 +65,16 @@ import com.komikta.ui.components.RoleBadge
 import com.komikta.ui.theme.Ui
 
 @Composable
-fun ProfileScreen(onModeration: () -> Unit = {}, viewModel: ProfileViewModel = hiltViewModel()) {
+fun ProfileScreen(onComicClick: (String, String) -> Unit = { _, _ -> }, onModeration: () -> Unit = {}, viewModel: ProfileViewModel = hiltViewModel()) {
     val user by viewModel.user.collectAsStateWithLifecycle()
     val ui by viewModel.ui.collectAsStateWithLifecycle()
+    val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
+    val history by viewModel.history.collectAsStateWithLifecycle()
     val signIn = rememberGoogleSignIn(onToken = viewModel::signIn, onError = viewModel::message, onStart = { viewModel.busy(true) }, onDone = { viewModel.busy(false) })
     var editing by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
+    LaunchedEffect(Unit) { viewModel.refresh() }
 
     Column(
         Modifier
@@ -84,10 +93,11 @@ fun ProfileScreen(onModeration: () -> Unit = {}, viewModel: ProfileViewModel = h
                 onPrivacy = { uriHandler.openUri("${BuildConfig.BASE_URL}/privacy") }
             )
         } else {
-            Text("Profile", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(24.dp))
             SignedIn(
                 u,
+                bookmarks = bookmarks,
+                history = history,
+                onComicClick = onComicClick,
                 onEdit = { editing = true },
                 onSignOut = viewModel::signOut,
                 onDelete = { confirmDelete = true },
@@ -198,33 +208,117 @@ private fun InfoLine(label: String, value: String?, onClick: (() -> Unit)?) {
 }
 
 @Composable
-private fun SignedIn(u: CommunityUserDto, onEdit: () -> Unit, onSignOut: () -> Unit, onDelete: () -> Unit, onModeration: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Avatar(u.picture, u.name.ifBlank { u.username }, 72.dp)
-        Spacer(Modifier.width(16.dp))
-        Column(Modifier.weight(1f)) {
-            Text(u.name.ifBlank { u.username }, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("@${u.username}", fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                RoleBadge(u.role)
-                LevelChip(u.level)
-            }
+private fun SignedIn(
+    u: CommunityUserDto,
+    bookmarks: List<BookmarkEntity>,
+    history: List<ReadingHistoryEntity>,
+    onComicClick: (String, String) -> Unit,
+    onEdit: () -> Unit,
+    onSignOut: () -> Unit,
+    onDelete: () -> Unit,
+    onModeration: () -> Unit
+) {
+    var tab by remember { mutableStateOf(0) }
+    val now = remember { System.currentTimeMillis() }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        Text("Keluar", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Ui.Text2, modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onSignOut).padding(horizontal = 8.dp, vertical = 6.dp))
+    }
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Avatar(u.picture, u.name.ifBlank { u.username }, 96.dp)
+        Text(u.name.ifBlank { u.username }, style = MaterialTheme.typography.headlineMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 14.dp))
+        Text("@${u.username}", fontSize = 13.sp, color = Ui.Text2, modifier = Modifier.padding(top = 2.dp))
+        Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            val staff = u.role == "OWNER" || u.role == "MODERATOR" || u.role == "PREMIUM"
+            Pill(
+                when (u.role) { "OWNER" -> "Owner"; "MODERATOR" -> "Moderator"; "PREMIUM" -> "Premium"; else -> "Member" },
+                if (staff) Ui.Accent else Ui.Chip,
+                if (staff) Ui.OnAccent else Color.White
+            )
+            Pill("Lv ${u.level}", Ui.Chip, Color.White)
+            Pill("${u.xp} XP", Ui.Chip, Color.White)
         }
     }
     val span = (u.xpNextLevel - u.xpCurrentLevel).coerceAtLeast(1)
     val into = (u.xp - u.xpCurrentLevel).coerceIn(0, span)
-    Row(Modifier.padding(top = 24.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text("Menuju level ${u.level + 1}", fontSize = 12.sp, color = Ui.Text2)
-        Text("${u.xp} / ${u.xpNextLevel} XP", fontSize = 12.sp, color = Ui.Text2)
+    Row(Modifier.padding(top = 20.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text("Menuju level ${u.level + 1}", fontSize = 11.sp, color = Ui.Text3)
+        Text("${u.xp} / ${u.xpNextLevel}", fontSize = 11.sp, color = Ui.Text3)
     }
-    Box(Modifier.padding(top = 8.dp).fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(Ui.Line)) {
+    Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(Ui.Line)) {
         Box(Modifier.fillMaxWidth(into.toFloat() / span).height(4.dp).background(Ui.Accent))
     }
-    Spacer(Modifier.height(24.dp))
+    val joined = remember(u.joinedAt) {
+        if (u.joinedAt <= 0L) "-" else {
+            val days = ((now - u.joinedAt) / 86_400_000L).coerceAtLeast(0)
+            if (days < 30) "$days" else "${days / 30}"
+        }
+    }
+    val joinedLabel = if (u.joinedAt > 0L && (now - u.joinedAt) / 86_400_000L >= 30) "bulan\nbergabung" else "hari\nbergabung"
+    Row(Modifier.padding(top = 24.dp).fillMaxWidth()) {
+        Stat(if (u.commentCount >= 0) "${u.commentCount}" else "-", "komentar", Modifier.weight(1f))
+        Stat("${bookmarks.size}", "bookmark", Modifier.weight(1f))
+        Stat(joined, joinedLabel, Modifier.weight(1f))
+    }
+    Row(Modifier.padding(top = 24.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+        listOf("Riwayat", "Bookmark").forEachIndexed { i, label ->
+            Column(Modifier.clickable { tab = i }.padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(label, fontSize = 14.sp, fontWeight = if (tab == i) FontWeight.SemiBold else FontWeight.Normal, color = if (tab == i) Color.White else Ui.Text2)
+                Box(Modifier.padding(top = 8.dp).size(width = 24.dp, height = 2.dp).background(if (tab == i) Ui.Accent else Color.Transparent))
+            }
+        }
+    }
+    Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
+    if (tab == 0) {
+        if (history.isEmpty()) EmptyLine("Belum ada riwayat baca")
+        history.take(20).forEach { h ->
+            ComicLine(h.comicTitle, h.coverUrl, "${historyChapterLabel(h.lastChapterNumber)} · ${relativeTime(h.lastReadAt, now)}") { onComicClick(h.source, h.comicSlug) }
+        }
+    } else {
+        if (bookmarks.isEmpty()) EmptyLine("Belum ada bookmark")
+        bookmarks.take(30).forEach { b ->
+            ComicLine(b.comicTitle, b.coverUrl, listOfNotNull(b.type?.takeIf { it.isNotBlank() }?.replaceFirstChar { it.uppercase() }, b.status?.takeIf { it.isNotBlank() }).joinToString(" · ")) { onComicClick(b.source, b.comicSlug) }
+        }
+    }
+    Spacer(Modifier.height(20.dp))
+    Text("AKUN", fontSize = 11.sp, letterSpacing = 1.sp, color = Ui.Text3, modifier = Modifier.padding(bottom = 4.dp))
     MenuRow("Ganti username", onEdit)
     if (u.role == "MODERATOR" || u.role == "OWNER") MenuRow("Moderasi", onModeration)
-    MenuRow("Keluar", onSignOut)
     MenuRow("Hapus akun", onDelete, Color(0xFFE08F8F), last = true)
+}
+
+@Composable
+private fun Pill(text: String, bg: Color, fg: Color) {
+    Text(text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = fg, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(bg).padding(horizontal = 12.dp, vertical = 6.dp))
+}
+
+@Composable
+private fun Stat(value: String, label: String, modifier: Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text(label, fontSize = 12.sp, lineHeight = 16.sp, color = Ui.Text2, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 2.dp))
+    }
+}
+
+@Composable
+private fun EmptyLine(text: String) {
+    Text(text, fontSize = 13.sp, color = Ui.Text3, modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp), textAlign = TextAlign.Center)
+}
+
+@Composable
+private fun ComicLine(title: String, coverUrl: String?, sub: String, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        CoverImage(
+            url = coverUrl,
+            contentDescription = title,
+            widthPx = 140,
+            heightPx = 196,
+            modifier = Modifier.size(width = 48.dp, height = 66.dp).clip(RoundedCornerShape(4.dp)).background(Ui.Card)
+        )
+        Column(Modifier.weight(1f).padding(start = 14.dp)) {
+            Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (sub.isNotBlank()) Text(sub, fontSize = 12.sp, color = Ui.Text2, maxLines = 1, modifier = Modifier.padding(top = 3.dp))
+        }
+    }
 }
 
 @Composable

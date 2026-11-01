@@ -75,6 +75,9 @@ class CommunityRepository @Inject constructor(
     suspend fun comments(source: String, slug: String, chapter: String?, sort: String, page: Int): Result<CommentPageDto> =
         call { api.comments(source, slug, chapter, sort, page) }
 
+    suspend fun chapterCounts(source: String, slug: String): Result<Map<String, Int>> =
+        call { api.counts(source, slug) }.map { it.counts }
+
     suspend fun replies(rootId: String, page: Int): Result<CommentPageDto> = call { api.replies(rootId, page) }
 
     suspend fun post(source: String, slug: String, chapter: String?, parentId: String?, text: String): Result<CommentResultDto> =

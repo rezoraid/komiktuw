@@ -207,7 +207,14 @@ class CommentsViewModel @Inject constructor(
                 is Result.Success -> {
                     val c = r.data.comment
                     mapAll(tmp.id) { c }
-                    notice(if (r.data.xpGained > 0) "Terkirim · +${r.data.xpGained} XP" else "Terkirim")
+                    notice(
+                        when {
+                            r.data.xpGained > 0 -> "Terkirim · +${r.data.xpGained} XP"
+                            r.data.xpReason == "LOW_QUALITY" -> "Terkirim · komentar terlalu singkat, tidak dapat XP"
+                            r.data.xpReason == "DAILY_CAP" -> "Terkirim · batas XP harian tercapai"
+                            else -> "Terkirim"
+                        }
+                    )
                     if (c.parentId != null && (_ui.value.replies[c.parentId]?.page ?: 0) == 0) loadReplies(c.parentId)
                 }
                 is Result.Error -> {

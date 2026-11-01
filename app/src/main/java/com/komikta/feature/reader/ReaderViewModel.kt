@@ -9,6 +9,8 @@ import com.komikta.data.local.dao.ReadChapterDao
 import com.komikta.data.local.dao.ReadingHistoryDao
 import com.komikta.data.local.entity.ReadChapterEntity
 import com.komikta.data.local.entity.ReadingHistoryEntity
+import com.komikta.data.remote.dto.CommentPageDto
+import com.komikta.data.repository.CommunityRepository
 import com.komikta.domain.model.Chapter
 import com.komikta.domain.model.ChapterContent
 import com.komikta.domain.usecase.GetChapterContentUseCase
@@ -43,6 +45,7 @@ class ReaderViewModel @Inject constructor(
     private val prefs: ReaderPrefs,
     private val historyDao: ReadingHistoryDao,
     private val readChapterDao: ReadChapterDao,
+    private val community: CommunityRepository,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -64,6 +67,17 @@ class ReaderViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     fun setAutoNext(value: Boolean) = prefs.setAutoNext(value)
+
+    private val commentCache = HashMap<String, Pair<Long, CommentPageDto>>()
+
+    suspend fun commentPreview(chapter: String): CommentPageDto? {
+        val hit = commentCache[chapter]
+        if (hit != null && System.currentTimeMillis() - hit.first < 20_000) return hit.second
+        return when (val r = community.comments(source, comicSlug, chapter, "top", 1)) {
+            is Result.Success -> r.data.also { commentCache[chapter] = System.currentTimeMillis() to it }
+            else -> null
+        }
+    }
 
     init {
         loadChapter()

@@ -8,6 +8,7 @@ import com.komikta.data.local.ReaderPrefs
 import com.komikta.data.local.dao.BookmarkDao
 import com.komikta.data.local.dao.ReadChapterDao
 import com.komikta.data.local.entity.BookmarkEntity
+import com.komikta.data.repository.CommunityRepository
 import com.komikta.domain.model.ComicDetail
 import com.komikta.domain.usecase.GetComicDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,6 +35,7 @@ class DetailViewModel @Inject constructor(
     private val bookmarkDao: BookmarkDao,
     readChapterDao: ReadChapterDao,
     private val prefs: ReaderPrefs,
+    private val community: CommunityRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -43,6 +45,17 @@ class DetailViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(DetailUiState(chaptersNewestFirst = prefs.chaptersNewestFirst.value))
     val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
+
+    private val _chapterComments = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val chapterComments: StateFlow<Map<String, Int>> = _chapterComments.asStateFlow()
+
+    fun loadChapterComments() {
+        if (slug.isBlank()) return
+        viewModelScope.launch {
+            val r = community.chapterCounts(source, slug)
+            if (r is Result.Success) _chapterComments.value = r.data
+        }
+    }
 
     val isBookmarked: StateFlow<Boolean> = bookmarkDao.isBookmarked(bookmarkId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)

@@ -90,7 +90,10 @@ fun MainNavGraph() {
             composable(BottomNavItem.Library.route) {
                 LibraryScreen(onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") })
             }
-            composable(BottomNavItem.Profile.route) { ProfileScreen(onModeration = { navController.navigate("moderation") }) }
+            composable(BottomNavItem.Profile.route) { ProfileScreen(
+                    onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") },
+                    onModeration = { navController.navigate("moderation") }
+                ) }
 
             composable("moderation") { ModerationScreen(onBack = { navController.popBackStack() }) }
 

@@ -6,6 +6,7 @@ import com.komikta.core.network.HttpException
 import com.komikta.data.local.SessionStore
 import com.komikta.data.remote.dto.ApiResponse
 import com.komikta.data.remote.dto.AuthResponse
+import com.komikta.data.remote.dto.ChapterCountsDto
 import com.komikta.data.remote.dto.CommentEditDto
 import com.komikta.data.remote.dto.CommentPageDto
 import com.komikta.data.remote.dto.CommentResultDto
@@ -78,6 +79,9 @@ class CommunityApi @Inject constructor(
                 put("page", page.toString())
             }
         )
+
+    suspend fun counts(source: String, slug: String): ApiResponse<ChapterCountsDto> =
+        call("GET", listOf("comments", "counts"), query = mapOf("source" to source, "slug" to slug))
 
     suspend fun replies(rootId: String, page: Int): ApiResponse<CommentPageDto> =
         call("GET", listOf("comments", rootId, "replies"), query = mapOf("page" to page.toString()))

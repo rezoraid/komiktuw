@@ -3,7 +3,13 @@ package com.komikta.feature.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.komikta.core.common.Result
+import com.komikta.data.local.dao.BookmarkDao
+import com.komikta.data.local.dao.ReadingHistoryDao
+import com.komikta.data.local.entity.BookmarkEntity
+import com.komikta.data.local.entity.ReadingHistoryEntity
 import com.komikta.data.repository.CommunityRepository
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,12 +20,20 @@ import javax.inject.Inject
 data class ProfileUiState(val busy: Boolean = false, val message: String? = null)
 
 @HiltViewModel
-class ProfileViewModel @Inject constructor(private val repo: CommunityRepository) : ViewModel() {
+class ProfileViewModel @Inject constructor(
+    private val repo: CommunityRepository,
+    bookmarkDao: BookmarkDao,
+    historyDao: ReadingHistoryDao
+) : ViewModel() {
     val user = repo.user
+    val bookmarks: StateFlow<List<BookmarkEntity>> = bookmarkDao.getAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val history: StateFlow<List<ReadingHistoryEntity>> = historyDao.getRecentHistory(30).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     private val _ui = MutableStateFlow(ProfileUiState())
     val ui: StateFlow<ProfileUiState> = _ui.asStateFlow()
 
     init { if (repo.user.value != null) viewModelScope.launch { repo.refreshMe() } }
+
+    fun refresh() { if (repo.user.value != null) viewModelScope.launch { repo.refreshMe() } }
 
     fun busy(b: Boolean) { _ui.value = _ui.value.copy(busy = b) }
 

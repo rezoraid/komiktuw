@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -70,6 +71,8 @@ fun DetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isBookmarked by viewModel.isBookmarked.collectAsStateWithLifecycle()
     val readChapters by viewModel.readChapters.collectAsStateWithLifecycle()
+    val chapterComments by viewModel.chapterComments.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { viewModel.loadChapterComments() }
     val detail = uiState.detail
     var query by remember { mutableStateOf("") }
     var synopsisExpanded by remember { mutableStateOf(false) }
@@ -301,6 +304,7 @@ fun DetailScreen(
                         ChapterRow(
                             chapter = chapter,
                             isRead = chapter.slug in readChapters,
+                            comments = chapterComments[chapter.slug] ?: 0,
                             onClick = { onChapterClick(detail.source, detail.slug, chapter.slug) }
                         )
                     }
@@ -319,7 +323,7 @@ private fun MetaLine(label: String, value: String) {
 }
 
 @Composable
-private fun ChapterRow(chapter: Chapter, isRead: Boolean, onClick: () -> Unit) {
+private fun ChapterRow(chapter: Chapter, isRead: Boolean, comments: Int, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -340,6 +344,10 @@ private fun ChapterRow(chapter: Chapter, isRead: Boolean, onClick: () -> Unit) {
             if (!ago.isNullOrBlank()) {
                 Text(ago, fontSize = 12.sp, color = Ui.Text3, modifier = Modifier.padding(top = 2.dp))
             }
+        }
+        if (comments > 0) {
+            Icon(AppIcons.comment, null, tint = Ui.Text3, modifier = Modifier.padding(start = 10.dp).size(14.dp))
+            Text("$comments", fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.padding(start = 4.dp))
         }
         if (!isRead) Box(Modifier.padding(start = 10.dp).size(8.dp).background(Ui.Accent, CircleShape))
     }
