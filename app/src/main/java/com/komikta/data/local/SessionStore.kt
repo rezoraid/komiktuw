@@ -16,6 +16,8 @@ class SessionStore @Inject constructor(
     private val json: Json
 ) {
     private val sp = context.getSharedPreferences("komikta_session", Context.MODE_PRIVATE)
+    @Volatile
+    private var avatarRev = sp.getLong("avatarRev", 0L)
     private val _user = MutableStateFlow(readUser())
     val user: StateFlow<CommunityUserDto?> = _user.asStateFlow()
 
@@ -29,7 +31,19 @@ class SessionStore @Inject constructor(
         return runCatching { json.decodeFromString(CommunityUserDto.serializer(), raw) }.getOrNull()
     }
 
-    fun save(token: String, user: CommunityUserDto) {
+    private fun busted(u: CommunityUserDto): CommunityUserDto {
+        val p = u.picture
+        if (avatarRev <= 0L || p.isBlank() || p.startsWith("data:")) return u
+        return u.copy(picture = p + (if ('?' in p) "&" else "?") + "rev=$avatarRev")
+    }
+
+    fun bumpAvatar() {
+        avatarRev = System.currentTimeMillis()
+        sp.edit().putLong("avatarRev", avatarRev).apply()
+    }
+
+    fun save(token: String, incoming: CommunityUserDto) {
+        val user = busted(incoming)
         this.token = token
         sp.edit().putString("token", token).putString("user", json.encodeToString(CommunityUserDto.serializer(), user)).apply()
         _user.value = user
@@ -38,7 +52,7 @@ class SessionStore @Inject constructor(
     fun update(incoming: CommunityUserDto) {
         if (token == null) return
         val old = _user.value
-        val user = if (incoming.commentCount < 0 && old != null && old.id == incoming.id) incoming.copy(commentCount = old.commentCount) else incoming
+        val user = busted(if (incoming.commentCount < 0 && old != null && old.id == incoming.id) incoming.copy(commentCount = old.commentCount) else incoming)
         sp.edit().putString("user", json.encodeToString(CommunityUserDto.serializer(), user)).apply()
         _user.value = user
     }

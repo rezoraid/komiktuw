@@ -1,5 +1,8 @@
 package com.komikta.ui.components
 
+import kotlin.math.cos
+import kotlin.math.sin
+
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.komikta.ui.navigation.circle
 import com.komikta.ui.navigation.navIcon
@@ -67,6 +70,28 @@ object AppIcons {
         navIcon("CheckCircle", false, strokeWidth = 1.6f) {
             circle(12f, 12f, 9f)
             moveTo(8f, 12.4f); lineTo(10.8f, 15.2f); lineTo(16.2f, 9.2f)
+        }
+    }
+
+    val settings: ImageVector by lazy {
+        navIcon("Settings", false, strokeWidth = 1.8f) {
+            var first = true
+            for (k in 0 until 8) for ((r, d) in listOf(7.3f to -14.0, 9.8f to -9.0, 9.8f to 9.0, 7.3f to 14.0)) {
+                val a = Math.toRadians(k * 45.0 + d)
+                val x = 12f + r * cos(a).toFloat()
+                val y = 12f + r * sin(a).toFloat()
+                if (first) { moveTo(x, y); first = false } else lineTo(x, y)
+            }
+            close()
+            circle(12f, 12f, 3.2f)
+        }
+    }
+
+    val camera: ImageVector by lazy {
+        navIcon("Camera", false, strokeWidth = 1.8f) {
+            moveTo(4f, 8f); lineTo(7.5f, 8f); lineTo(9f, 5.5f); lineTo(15f, 5.5f); lineTo(16.5f, 8f); lineTo(20f, 8f)
+            lineTo(20f, 18.5f); lineTo(4f, 18.5f); close()
+            circle(12f, 13f, 3.4f)
         }
     }
 

@@ -21,6 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -88,6 +91,7 @@ fun ProfileScreen(onComicClick: (String, String) -> Unit = { _, _ -> }, onSeeAll
     val signIn = rememberGoogleSignIn(onToken = viewModel::signIn, onError = viewModel::message, onStart = { viewModel.busy(true) }, onDone = { viewModel.busy(false) })
     var editing by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var confirmLogout by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -140,9 +144,10 @@ fun ProfileScreen(onComicClick: (String, String) -> Unit = { _, _ -> }, onSeeAll
                 onEdit = { editing = true },
                 onPickAvatar = { avatarPicker.launch("image/*") },
                 onHistoryVisibility = viewModel::setHistoryVisibility,
-                onSignOut = viewModel::signOut,
+                onSignOut = { confirmLogout = true },
                 onDelete = { confirmDelete = true },
-                onModeration = onModeration
+                onModeration = onModeration,
+                busy = ui.busy
             )
             ui.message?.let { Text(it, fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.padding(top = 14.dp)) }
             Spacer(Modifier.height(28.dp))
@@ -154,6 +159,17 @@ fun ProfileScreen(onComicClick: (String, String) -> Unit = { _, _ -> }, onSeeAll
             Text("Komikta ${BuildConfig.VERSION_NAME}", fontSize = 12.sp, color = Ui.Text3)
             Text("Sumber: Lumos · Manta · Shinigami", fontSize = 12.sp, color = Ui.Text3, modifier = Modifier.padding(top = 2.dp))
         }
+    }
+
+    if (confirmLogout) {
+        AlertDialog(
+            onDismissRequest = { confirmLogout = false },
+            containerColor = Ui.Card,
+            title = { Text("Keluar dari akun?", style = MaterialTheme.typography.titleMedium) },
+            text = { Text("Kamu perlu masuk lagi dengan Google untuk berkomentar dan mengumpulkan XP.", color = Ui.Text2, fontSize = 14.sp) },
+            confirmButton = { TextButton(onClick = { viewModel.signOut(); confirmLogout = false }) { Text("Keluar", color = Color(0xFFE08F8F)) } },
+            dismissButton = { TextButton(onClick = { confirmLogout = false }) { Text("Batal", color = Ui.Text2) } }
+        )
     }
 
     if (confirmDelete) {
@@ -260,18 +276,33 @@ private fun SignedIn(
     onHistoryVisibility: (Boolean) -> Unit,
     onSignOut: () -> Unit,
     onDelete: () -> Unit,
-    onModeration: () -> Unit
+    onModeration: () -> Unit,
+    busy: Boolean = false
 ) {
     var tab by remember { mutableStateOf(0) }
     val now = remember { System.currentTimeMillis() }
+    var menu by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-        Text("Keluar", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Ui.Text2, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onSignOut).padding(horizontal = 8.dp, vertical = 6.dp))
+        Box {
+            Box(Modifier.size(40.dp).clip(CircleShape).clickable { menu = true }, contentAlignment = Alignment.Center) {
+                Icon(AppIcons.settings, "Pengaturan", tint = Color.White, modifier = Modifier.size(24.dp))
+            }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, modifier = Modifier.background(Ui.Card)) {
+                DropdownMenuItem(text = { Text("Ganti username", fontSize = 14.sp, color = Color.White) }, onClick = { menu = false; onEdit() })
+                if (u.role == "MODERATOR" || u.role == "OWNER") DropdownMenuItem(text = { Text("Moderasi", fontSize = 14.sp, color = Color.White) }, onClick = { menu = false; onModeration() })
+                DropdownMenuItem(text = { Text("Hapus akun", fontSize = 14.sp, color = Color(0xFFE08F8F)) }, onClick = { menu = false; onDelete() })
+                DropdownMenuItem(text = { Text("Keluar", fontSize = 14.sp, color = Color(0xFFE08F8F)) }, onClick = { menu = false; onSignOut() })
+            }
+        }
     }
     Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(contentAlignment = Alignment.BottomEnd) {
             Avatar(u.picture, u.name.ifBlank { u.username }, 76.dp)
-            Box(Modifier.size(26.dp).clip(CircleShape).background(Ui.Accent).clickable(onClick = onPickAvatar), contentAlignment = Alignment.Center) {
-                Icon(AppIcons.edit, contentDescription = "Ganti foto profil", tint = Ui.OnAccent, modifier = Modifier.size(14.dp))
+            if (busy) Box(Modifier.size(76.dp).clip(CircleShape).background(Color(0x99000000)), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Ui.Accent, strokeWidth = 2.dp, modifier = Modifier.size(26.dp))
+            }
+            Box(Modifier.size(30.dp).clip(CircleShape).background(Ui.Accent).border(2.dp, Ui.Bg, CircleShape).clickable(enabled = !busy, onClick = onPickAvatar), contentAlignment = Alignment.Center) {
+                Icon(AppIcons.camera, contentDescription = "Ganti foto profil", tint = Ui.OnAccent, modifier = Modifier.size(16.dp))
             }
         }
         Text(u.name.ifBlank { u.username }, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 14.dp))
@@ -333,11 +364,6 @@ private fun SignedIn(
         }
         if (bookmarks.size > 10) SeeAll("Lihat semua bookmark", onSeeAll)
     }
-    Spacer(Modifier.height(20.dp))
-    Text("AKUN", fontSize = 11.sp, letterSpacing = 1.sp, color = Ui.Text3, modifier = Modifier.padding(bottom = 4.dp))
-    MenuRow("Ganti username", onEdit)
-    if (u.role == "MODERATOR" || u.role == "OWNER") MenuRow("Moderasi", onModeration)
-    MenuRow("Hapus akun", onDelete, Color(0xFFE08F8F), last = true)
 }
 
 @Composable
@@ -385,17 +411,4 @@ private fun RolePill(role: String) {
     val owner = role == "OWNER" || role == "MODERATOR" || role == "PREMIUM"
     val label = when (role) { "OWNER" -> "Owner"; "MODERATOR" -> "Moderator"; "PREMIUM" -> "Premium"; else -> "Member" }
     Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (owner) Ui.OnAccent else Color.White, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(if (owner) Ui.Accent else Ui.Card).padding(horizontal = 14.dp, vertical = 7.dp))
-}
-
-@Composable
-private fun MenuRow(label: String, onClick: () -> Unit, color: Color = Color.White, last: Boolean = false) {
-    Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 15.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label, fontSize = 14.sp, color = color, modifier = Modifier.weight(1f))
-        Icon(AppIcons.chevronRight, null, tint = Ui.Text3, modifier = Modifier.size(18.dp))
-    }
-    if (last) Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
 }

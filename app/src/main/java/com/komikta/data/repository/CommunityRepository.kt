@@ -66,7 +66,7 @@ class CommunityRepository @Inject constructor(
         call { api.updateUsername(username) }.map { session.update(it.user); it.user }
 
     suspend fun updateAvatar(imageData: String): Result<CommunityUserDto> =
-        call { api.updateAvatar(imageData) }.map { session.update(it.user); it.user }
+        call { api.updateAvatar(imageData) }.map { session.bumpAvatar(); session.update(it.user); it.user }
 
     suspend fun setReadingHistoryPublic(isPublic: Boolean): Result<Unit> =
         call { api.setReadingHistoryPublic(isPublic) }.map {
