@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+data class LikeUi(val liked: Boolean = false, val count: Int = 0, val busy: Boolean = false)
+
 data class DetailUiState(
     val isLoading: Boolean = true,
     val detail: ComicDetail? = null,
@@ -64,7 +66,45 @@ class DetailViewModel @Inject constructor(
         .map { it.toSet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
-    init { loadDetail() }
+    private val _like = MutableStateFlow(LikeUi())
+    val like: StateFlow<LikeUi> = _like.asStateFlow()
+
+    private val _likeMessage = MutableStateFlow<String?>(null)
+    val likeMessage: StateFlow<String?> = _likeMessage.asStateFlow()
+
+    init {
+        loadDetail()
+        loadLike()
+    }
+
+    fun loadLike() {
+        if (slug.isBlank()) return
+        viewModelScope.launch {
+            val r = community.likeState(source, slug, null)
+            if (r is Result.Success) _like.value = LikeUi(r.data.liked, r.data.count)
+        }
+    }
+
+    fun toggleLike() {
+        val detail = _uiState.value.detail ?: return
+        if (community.user.value == null) {
+            _likeMessage.value = "Masuk dulu di tab Profil untuk menyukai komik"
+            return
+        }
+        val before = _like.value
+        if (before.busy) return
+        val want = !before.liked
+        _like.value = LikeUi(want, (before.count + if (want) 1 else -1).coerceAtLeast(0), busy = true)
+        viewModelScope.launch {
+            when (val r = community.setLike(want, source, slug, null, detail.title, "", detail.coverUrl.orEmpty())) {
+                is Result.Success -> _like.value = LikeUi(r.data.liked, r.data.count)
+                is Result.Error -> { _like.value = before; _likeMessage.value = r.message }
+                else -> _like.value = before
+            }
+        }
+    }
+
+    fun clearLikeMessage() { _likeMessage.value = null }
 
     fun loadDetail() {
         if (slug.isBlank()) {

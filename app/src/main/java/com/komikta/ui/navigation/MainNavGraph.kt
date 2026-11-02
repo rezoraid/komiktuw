@@ -92,8 +92,9 @@ fun MainNavGraph() {
                 LibraryScreen(onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") })
             }
             composable(BottomNavItem.Profile.route) { ProfileScreen(
-                    onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") },
-                    onSeeAll = { navController.goToTab(BottomNavItem.Library.route) },
+                    onOpen = { s, slug, chapter ->
+                        if (chapter != null) navController.navigate("reader/$s/$slug/$chapter") else navController.navigate("detail/$s/$slug")
+                    },
                     onModeration = { navController.navigate("moderation") }
                 ) }
 
@@ -106,7 +107,9 @@ fun MainNavGraph() {
                 PublicProfileScreen(
                     userId = entry.arguments?.getString("userId").orEmpty(),
                     onBack = { navController.popBackStack() },
-                    onComicClick = { source, slug, chapter -> navController.navigate("reader/$source/$slug/$chapter") }
+                    onOpen = { source, slug, chapter ->
+                        if (chapter != null) navController.navigate("reader/$source/$slug/$chapter") else navController.navigate("detail/$source/$slug")
+                    }
                 )
             }
 

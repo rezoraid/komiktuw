@@ -1,5 +1,6 @@
 package com.komikta.feature.reader
 
+import android.os.SystemClock
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,6 +18,7 @@ import com.komikta.domain.usecase.GetChapterContentUseCase
 import com.komikta.domain.usecase.GetComicDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
@@ -68,6 +70,38 @@ class ReaderViewModel @Inject constructor(
 
     fun setAutoNext(value: Boolean) = prefs.setAutoNext(value)
 
+    // ---- Waktu baca aktif: hanya dihitung saat layar reader terlihat (RESUMED), dikirim tiap 30 dtk dan saat berhenti.
+    private var activeSince = 0L
+    private var tickJob: Job? = null
+
+    fun setActive(active: Boolean) {
+        if (active) {
+            if (activeSince != 0L) return
+            activeSince = SystemClock.elapsedRealtime()
+            tickJob?.cancel()
+            tickJob = viewModelScope.launch {
+                while (true) {
+                    delay(READ_FLUSH_MS)
+                    flushReadingTime()
+                }
+            }
+        } else {
+            flushReadingTime()
+            activeSince = 0L
+            tickJob?.cancel()
+        }
+    }
+
+    private fun flushReadingTime() {
+        if (activeSince == 0L) return
+        val chapter = _uiState.value.content?.chapterSlug ?: return
+        val now = SystemClock.elapsedRealtime()
+        val seconds = ((now - activeSince) / 1000).toInt()
+        if (seconds < 5) return
+        activeSince = now
+        community.trackReadingTime(source, comicSlug, chapter, seconds)
+    }
+
     private val commentCache = HashMap<String, Pair<Long, CommentPageDto>>()
 
     suspend fun commentPreview(chapter: String): CommentPageDto? {
@@ -103,6 +137,7 @@ class ReaderViewModel @Inject constructor(
     }
 
     private fun open(content: ChapterContent) {
+        flushReadingTime()
         chapterSlug = content.chapterSlug
         _uiState.update {
             it.copy(isLoading = false, errorMessage = null, content = content, loaded = listOf(content), upcoming = null)
@@ -140,6 +175,7 @@ class ReaderViewModel @Inject constructor(
         val st = _uiState.value
         if (st.content?.chapterSlug == slug) return
         val target = st.loaded.firstOrNull { it.chapterSlug == slug } ?: return
+        flushReadingTime()
         chapterSlug = slug
         _uiState.update { it.copy(content = target) }
         viewModelScope.launch { saveHistory(target) }
@@ -191,5 +227,9 @@ class ReaderViewModel @Inject constructor(
 
     fun goNext() {
         _uiState.value.content?.nextChapterSlug?.let { loadChapter(it) }
+    }
+
+    private companion object {
+        const val READ_FLUSH_MS = 30_000L
     }
 }

@@ -67,6 +67,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -137,6 +140,24 @@ fun ReaderScreen(
     val readSlugs by viewModel.readSlugs.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+
+    // Hitung waktu baca hanya saat reader benar-benar tampil di depan.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> viewModel.setActive(true)
+                Lifecycle.Event.ON_PAUSE -> viewModel.setActive(false)
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) viewModel.setActive(true)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.setActive(false)
+        }
+    }
 
     var controlsVisible by remember { mutableStateOf(true) }
     var showSettings by remember { mutableStateOf(false) }

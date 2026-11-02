@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -72,6 +73,14 @@ fun DetailScreen(
     val isBookmarked by viewModel.isBookmarked.collectAsStateWithLifecycle()
     val readChapters by viewModel.readChapters.collectAsStateWithLifecycle()
     val chapterComments by viewModel.chapterComments.collectAsStateWithLifecycle()
+    val like by viewModel.like.collectAsStateWithLifecycle()
+    val likeMessage by viewModel.likeMessage.collectAsStateWithLifecycle()
+    LaunchedEffect(likeMessage) {
+        if (likeMessage != null) {
+            delay(2500)
+            viewModel.clearLikeMessage()
+        }
+    }
     LaunchedEffect(Unit) { viewModel.loadChapterComments() }
     val detail = uiState.detail
     var query by remember { mutableStateOf("") }
@@ -92,11 +101,18 @@ fun DetailScreen(
                 Icon(AppIcons.chevronLeft, "Back", tint = Color.White, modifier = Modifier.size(24.dp))
             }
             if (detail != null) {
-                IconButton(onClick = viewModel::toggleBookmark) {
-                    Icon(AppIcons.bookmark(isBookmarked), "Bookmark", tint = if (isBookmarked) Ui.Accent else Color.White, modifier = Modifier.size(24.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = viewModel::toggleLike) {
+                        Icon(AppIcons.heart(like.liked), "Suka", tint = if (like.liked) Color(0xFFE5484D) else Color.White, modifier = Modifier.size(24.dp))
+                    }
+                    if (like.count > 0) Text("${like.count}", fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.padding(end = 6.dp))
+                    IconButton(onClick = viewModel::toggleBookmark) {
+                        Icon(AppIcons.bookmark(isBookmarked), "Bookmark", tint = if (isBookmarked) Ui.Accent else Color.White, modifier = Modifier.size(24.dp))
+                    }
                 }
             }
         }
+        likeMessage?.let { Text(it, fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp)) }
 
         when {
             uiState.isLoading && detail == null -> DetailSkeleton()

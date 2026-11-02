@@ -4,7 +4,10 @@ import com.komikta.BuildConfig
 import com.komikta.core.network.ApiConfig
 import com.komikta.core.network.HttpException
 import com.komikta.data.local.SessionStore
+import com.komikta.data.remote.dto.ActivityPageDto
 import com.komikta.data.remote.dto.ApiResponse
+import com.komikta.data.remote.dto.LikeStateDto
+import com.komikta.data.remote.dto.ProfileResponseDto
 import com.komikta.data.remote.dto.AuthResponse
 import com.komikta.data.remote.dto.ChapterCountsDto
 import com.komikta.data.remote.dto.CommentEditDto
@@ -73,6 +76,38 @@ class CommunityApi @Inject constructor(
             put("source", source); put("slug", slug); put("chapter", chapter)
             put("comicTitle", comicTitle); put("chapterTitle", chapterTitle); put("coverUrl", coverUrl)
         })
+
+ suspend fun profile(userId: String): ApiResponse<ProfileResponseDto> =
+        call("GET", listOf("users", userId, "profile"))
+
+    suspend fun activity(userId: String, tab: String, page: Int): ApiResponse<ActivityPageDto> =
+        call("GET", listOf("users", userId, "activity"), query = mapOf("tab" to tab, "page" to page.toString()))
+
+    suspend fun readingTime(source: String, slug: String, chapter: String, seconds: Int): ApiResponse<OkDto> =
+        call("PUT", listOf("me", "reading-time"), body = buildJsonObject {
+            put("source", source); put("slug", slug); put("chapter", chapter); put("seconds", seconds)
+        })
+
+    suspend fun likeState(source: String, slug: String, chapter: String?): ApiResponse<LikeStateDto> =
+        call("GET", listOf("likes", "status"), query = likeQuery(source, slug, chapter))
+
+    suspend fun putLike(source: String, slug: String, chapter: String?, comicTitle: String, chapterTitle: String, coverUrl: String): ApiResponse<LikeStateDto> =
+        call("PUT", listOf("likes"), body = buildJsonObject {
+            put("type", if (chapter == null) "comic" else "chapter")
+            put("source", source); put("slug", slug)
+            if (chapter != null) put("chapter", chapter)
+            put("comicTitle", comicTitle); put("chapterTitle", chapterTitle); put("coverUrl", coverUrl)
+        })
+
+    suspend fun deleteLike(source: String, slug: String, chapter: String?): ApiResponse<LikeStateDto> =
+        call("DELETE", listOf("likes"), query = likeQuery(source, slug, chapter))
+
+    private fun likeQuery(source: String, slug: String, chapter: String?): Map<String, String> = buildMap {
+        put("type", if (chapter == null) "comic" else "chapter")
+        put("source", source)
+        put("slug", slug)
+        if (chapter != null) put("chapter", chapter)
+    }
 
     suspend fun publicReadingHistory(userId: String): ApiResponse<PublicReadingHistoryDto> =
         call("GET", listOf("users", userId, "history"))

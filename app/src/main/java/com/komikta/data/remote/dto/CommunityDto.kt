@@ -17,7 +17,10 @@ data class CommunityUserDto(
     val xpNextLevel: Int = 0,
     val usernameChangeableAt: Long = 0L,
     val commentCount: Int = -1,
-    val joinedAt: Long = 0L
+    val joinedAt: Long = 0L,
+    val publicNo: Long = 0L,
+    val readMinutes: Long = -1L,
+    val monthsJoined: Int = -1
 )
 
 @Serializable
@@ -118,3 +121,40 @@ data class PublicReadingProgressDto(
     val coverUrl: String = "",
     val updatedAt: Long = 0L
 )
+
+@Serializable
+data class ProfileResponseDto(
+    val user: CommunityUserDto = CommunityUserDto(),
+    val self: Boolean = false,
+    val activityVisible: Boolean = false
+)
+
+/** Satu baris aktivitas profil. kind: history | comment | like. */
+@Serializable
+data class ActivityItemDto(
+    val kind: String = "",
+    val source: String = "",
+    val slug: String = "",
+    val chapter: String? = null,
+    val comicTitle: String = "",
+    val chapterTitle: String = "",
+    val coverUrl: String = "",
+    val type: String? = null,
+    val id: String? = null,
+    val body: String = "",
+    val isReply: Boolean = false,
+    val likeCount: Int = 0,
+    val replyCount: Int = 0,
+    val at: Long = 0L,
+    val readMinutes: Int = 0
+)
+
+@Serializable
+data class ActivityPageDto(
+    val items: List<ActivityItemDto> = emptyList(),
+    val hasMore: Boolean = false,
+    val page: Int = 1
+)
+
+@Serializable
+data class LikeStateDto(val liked: Boolean = false, val count: Int = 0)

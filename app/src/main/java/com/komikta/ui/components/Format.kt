@@ -47,3 +47,18 @@ fun fmtViews(v: Double): String {
 private val Fresh = Regex("""(?i)^\s*(just now|baru|\d+\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|menit|jam|detik|s|m|h)\b)""")
 
 fun isFresh(ago: String?): Boolean = ago != null && Fresh.containsMatchIn(ago)
+
+/** Waktu relatif bergaya referensi profil: "kemarin", "3 jam lalu", "2 bulan lalu". */
+fun agoId(thenMs: Long, nowMs: Long): String {
+    val s = ((nowMs - thenMs) / 1000).coerceAtLeast(0)
+    val days = s / 86_400
+    return when {
+        s < 60 -> "baru saja"
+        s < 3_600 -> "${s / 60} menit lalu"
+        s < 86_400 -> "${s / 3_600} jam lalu"
+        days == 1L -> "kemarin"
+        days < 30 -> "$days hari lalu"
+        days < 365 -> "${days / 30} bulan lalu"
+        else -> "${days / 365} tahun lalu"
+    }
+}

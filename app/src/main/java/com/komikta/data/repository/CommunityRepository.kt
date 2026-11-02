@@ -4,7 +4,14 @@ import com.komikta.core.common.Result
 import com.komikta.core.network.HttpException
 import com.komikta.data.local.SessionStore
 import com.komikta.data.remote.api.CommunityApi
+import com.komikta.data.remote.dto.ActivityPageDto
 import com.komikta.data.remote.dto.ApiResponse
+import com.komikta.data.remote.dto.LikeStateDto
+import com.komikta.data.remote.dto.ProfileResponseDto
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import com.komikta.data.remote.dto.CommentDto
 import com.komikta.data.remote.dto.CommentPageDto
 import com.komikta.data.remote.dto.CommentResultDto
@@ -26,6 +33,9 @@ class CommunityRepository @Inject constructor(
     private val session: SessionStore
 ) {
     val user: StateFlow<CommunityUserDto?> get() = session.user
+
+    // Scope milik singleton: pengiriman waktu baca tetap selesai walau layar reader sudah ditutup.
+    private val background = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private suspend fun <T> call(block: suspend () -> ApiResponse<T>): Result<T> = try {
         val r = block()
@@ -75,6 +85,28 @@ class CommunityRepository @Inject constructor(
 
     suspend fun saveReadingProgress(source: String, slug: String, chapter: String, comicTitle: String, chapterTitle: String, coverUrl: String): Result<Unit> =
         call { api.saveReadingProgress(source, slug, chapter, comicTitle, chapterTitle, coverUrl) }.map { }
+
+    suspend fun profile(userId: String): Result<ProfileResponseDto> = call { api.profile(userId) }
+
+    suspend fun activity(userId: String, tab: String, page: Int): Result<ActivityPageDto> = call { api.activity(userId, tab, page) }
+
+    /** Kirim durasi baca aktif (detik). Fire-and-forget; server membatasi kredit berdasarkan waktu nyata. */
+    fun trackReadingTime(source: String, slug: String, chapter: String, seconds: Int) {
+        if (session.token == null || seconds < 1) return
+        background.launch {
+            var left = seconds
+            while (left > 0) {
+                val part = minOf(left, 300)
+                if (call { api.readingTime(source, slug, chapter, part) } is Result.Error) return@launch
+                left -= part
+            }
+        }
+    }
+
+    suspend fun likeState(source: String, slug: String, chapter: String?): Result<LikeStateDto> = call { api.likeState(source, slug, chapter) }
+
+    suspend fun setLike(on: Boolean, source: String, slug: String, chapter: String?, comicTitle: String, chapterTitle: String, coverUrl: String): Result<LikeStateDto> =
+        call { if (on) api.putLike(source, slug, chapter, comicTitle, chapterTitle, coverUrl) else api.deleteLike(source, slug, chapter) }
 
     fun signOut() = session.clear()
 

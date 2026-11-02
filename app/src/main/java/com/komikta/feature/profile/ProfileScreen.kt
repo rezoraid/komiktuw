@@ -1,29 +1,30 @@
 package com.komikta.feature.profile
 
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.foundation.border
-import androidx.compose.foundation.Image
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,60 +39,39 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalContext
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.util.Base64
-import java.io.ByteArrayOutputStream
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.material3.Icon
-import com.komikta.ui.components.AppIcons
-import androidx.compose.foundation.shape.CircleShape
-import com.komikta.ui.navigation.BottomNavItem
-import com.komikta.data.local.entity.BookmarkEntity
-import com.komikta.data.local.entity.ReadingHistoryEntity
-import com.komikta.ui.components.CoverImage
-import com.komikta.ui.components.historyChapterLabel
-import com.komikta.ui.components.relativeTime
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import com.komikta.BuildConfig
-import com.komikta.R
 import com.komikta.data.remote.dto.CommunityUserDto
 import com.komikta.feature.auth.rememberGoogleSignIn
-import com.komikta.ui.components.Avatar
-import com.komikta.ui.components.Chip
-import com.komikta.ui.components.LevelChip
-import com.komikta.ui.components.RoleBadge
+import com.komikta.ui.components.AppIcons
+import com.komikta.ui.navigation.BottomNavItem
 import com.komikta.ui.theme.Ui
+import kotlinx.coroutines.delay
+import java.io.ByteArrayOutputStream
 
+/** Profil sendiri. Tab Comments/Likes/All memakai data backend; pengaturan akun ada di menu ikon gerigi. */
 @Composable
-fun ProfileScreen(onComicClick: (String, String) -> Unit = { _, _ -> }, onSeeAll: () -> Unit = {}, onModeration: () -> Unit = {}, viewModel: ProfileViewModel = hiltViewModel()) {
+fun ProfileScreen(
+    onOpen: (source: String, slug: String, chapter: String?) -> Unit = { _, _, _ -> },
+    onModeration: () -> Unit = {},
+    viewModel: ProfileViewModel = hiltViewModel(),
+    pageModel: ProfilePageViewModel = hiltViewModel()
+) {
     val user by viewModel.user.collectAsStateWithLifecycle()
     val ui by viewModel.ui.collectAsStateWithLifecycle()
-    val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
-    val history by viewModel.history.collectAsStateWithLifecycle()
+    val page by pageModel.state.collectAsStateWithLifecycle()
     val signIn = rememberGoogleSignIn(onToken = viewModel::signIn, onError = viewModel::message, onStart = { viewModel.busy(true) }, onDone = { viewModel.busy(false) })
     var editing by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var confirmLogout by remember { mutableStateOf(false) }
+    var showXp by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -116,17 +96,22 @@ fun ProfileScreen(onComicClick: (String, String) -> Unit = { _, _ -> }, onSeeAll
             }.onSuccess(viewModel::changeAvatar).onFailure { viewModel.message(it.message ?: "Gagal membaca foto") }
         }
     }
-    LaunchedEffect(user?.id) { viewModel.refresh() }
+    LaunchedEffect(user?.id) {
+        viewModel.refresh()
+        user?.id?.let { pageModel.load(it) }
+    }
+    LaunchedEffect(ui.message) {
+        if (ui.message != null) {
+            delay(3000)
+            viewModel.message(null)
+        }
+    }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(Ui.Bg)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp, vertical = 12.dp)
-    ) {
-        val u = user
-        if (u == null) {
+    val u = user
+    if (u == null) {
+        Column(
+            Modifier.fillMaxSize().background(Ui.Bg).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp)
+        ) {
             GuestContent(
                 busy = ui.busy,
                 message = ui.message,
@@ -134,31 +119,71 @@ fun ProfileScreen(onComicClick: (String, String) -> Unit = { _, _ -> }, onSeeAll
                 onTerms = { uriHandler.openUri("${BuildConfig.BASE_URL}/terms") },
                 onPrivacy = { uriHandler.openUri("${BuildConfig.BASE_URL}/privacy") }
             )
-        } else {
-            SignedIn(
-                u,
-                bookmarks = bookmarks,
-                history = history,
-                onComicClick = onComicClick,
-                onSeeAll = onSeeAll,
-                onEdit = { editing = true },
-                onPickAvatar = { avatarPicker.launch("image/*") },
-                onHistoryVisibility = viewModel::setHistoryVisibility,
-                onSignOut = { confirmLogout = true },
-                onDelete = { confirmDelete = true },
-                onModeration = onModeration,
-                busy = ui.busy
-            )
-            ui.message?.let { Text(it, fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.padding(top = 14.dp)) }
-            Spacer(Modifier.height(28.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Ketentuan", fontSize = 12.sp, color = Ui.Accent, modifier = Modifier.clickable { uriHandler.openUri("${BuildConfig.BASE_URL}/terms") }.padding(vertical = 6.dp))
-                Text("Kebijakan Privasi", fontSize = 12.sp, color = Ui.Accent, modifier = Modifier.clickable { uriHandler.openUri("${BuildConfig.BASE_URL}/privacy") }.padding(vertical = 6.dp))
-            }
-            Spacer(Modifier.height(16.dp))
-            Text("Komikta ${BuildConfig.VERSION_NAME}", fontSize = 12.sp, color = Ui.Text3)
-            Text("Sumber: Lumos · Manta · Shinigami", fontSize = 12.sp, color = Ui.Text3, modifier = Modifier.padding(top = 2.dp))
         }
+    } else {
+        // Identitas (nama, foto, peran, level) selalu dari sesi terbaru; angka statistik dari backend.
+        val shown = remember(page, u) {
+            page.copy(stats = page.stats?.copy(name = u.name, username = u.username, picture = u.picture, role = u.role, level = u.level))
+        }
+        Box(Modifier.fillMaxSize().background(P.Content)) {
+            ProfilePage(
+                state = shown,
+                fallbackUser = u,
+                busy = ui.busy,
+                onTab = pageModel::selectTab,
+                onLoadMore = pageModel::loadMore,
+                onRetry = pageModel::retry,
+                onItemClick = { onOpen(it.source, it.slug, it.chapter) },
+                onAvatarClick = { avatarPicker.launch("image/*") },
+                onLevelClick = { showXp = true },
+                topLeft = {
+                    SettingsMenu(
+                        u,
+                        onPhoto = { avatarPicker.launch("image/*") },
+                        onEdit = { editing = true },
+                        onVisibility = { viewModel.setHistoryVisibility(!u.publicHistory) },
+                        onModeration = onModeration,
+                        onTerms = { uriHandler.openUri("${BuildConfig.BASE_URL}/terms") },
+                        onPrivacy = { uriHandler.openUri("${BuildConfig.BASE_URL}/privacy") },
+                        onDelete = { confirmDelete = true }
+                    )
+                },
+                topRight = {
+                    Text(
+                        "Logout", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White,
+                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { confirmLogout = true }.padding(horizontal = 12.dp, vertical = 10.dp)
+                    )
+                }
+            )
+            ui.message?.let {
+                Text(
+                    it, fontSize = 13.sp, color = Color.White,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF2B2C31)).padding(horizontal = 16.dp, vertical = 10.dp)
+                )
+            }
+        }
+    }
+
+    if (showXp && u != null) {
+        val span = (u.xpNextLevel - u.xpCurrentLevel).coerceAtLeast(1)
+        val into = (u.xp - u.xpCurrentLevel).coerceIn(0, span)
+        AlertDialog(
+            onDismissRequest = { showXp = false },
+            containerColor = Ui.Card,
+            title = { Text("Level ${u.level}", style = MaterialTheme.typography.titleMedium) },
+            text = {
+                Column {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Menuju level ${u.level + 1}", fontSize = 13.sp, color = Ui.Text2)
+                        Text("${u.xp} / ${u.xpNextLevel} XP", fontSize = 13.sp, color = Ui.Text2)
+                    }
+                    Box(Modifier.padding(top = 10.dp).fillMaxWidth().height(6.dp).clip(CircleShape).background(Ui.Line)) {
+                        Box(Modifier.fillMaxWidth(into.toFloat() / span).height(6.dp).background(P.Blue))
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showXp = false }) { Text("Tutup", color = Ui.Accent) } }
+        )
     }
 
     if (confirmLogout) {
@@ -209,6 +234,38 @@ fun ProfileScreen(onComicClick: (String, String) -> Unit = { _, _ -> }, onSeeAll
             },
             dismissButton = { TextButton(onClick = { editing = false }) { Text("Batal", color = Ui.Text2) } }
         )
+    }
+}
+
+@Composable
+private fun SettingsMenu(
+    u: CommunityUserDto,
+    onPhoto: () -> Unit,
+    onEdit: () -> Unit,
+    onVisibility: () -> Unit,
+    onModeration: () -> Unit,
+    onTerms: () -> Unit,
+    onPrivacy: () -> Unit,
+    onDelete: () -> Unit
+) {
+    var open by remember { mutableStateOf(false) }
+    val item: @Composable (String, Color, () -> Unit) -> Unit = { label, color, action ->
+        DropdownMenuItem(text = { Text(label, fontSize = 14.sp, color = color) }, onClick = { open = false; action() })
+    }
+    Box {
+        Box(Modifier.size(44.dp).clip(CircleShape).clickable { open = true }, contentAlignment = Alignment.Center) {
+            Icon(AppIcons.settings, "Pengaturan", tint = Color.White, modifier = Modifier.size(24.dp))
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(Ui.Card)) {
+            item("Ganti foto profil", Color.White, onPhoto)
+            item("Ganti username", Color.White, onEdit)
+            item(if (u.publicHistory) "Riwayat & Likes: publik" else "Riwayat & Likes: privat", Color.White, onVisibility)
+            if (u.role == "MODERATOR" || u.role == "OWNER") item("Moderasi", Color.White, onModeration)
+            item("Ketentuan", Color.White, onTerms)
+            item("Kebijakan Privasi", Color.White, onPrivacy)
+            item("Hapus akun", Color(0xFFE08F8F), onDelete)
+            DropdownMenuItem(text = { Text("Komikta ${BuildConfig.VERSION_NAME}", fontSize = 12.sp, color = Ui.Text3) }, onClick = {}, enabled = false)
+        }
     }
 }
 
@@ -264,151 +321,3 @@ private fun InfoLine(label: String, value: String?, onClick: (() -> Unit)?) {
     }
 }
 
-@Composable
-private fun SignedIn(
-    u: CommunityUserDto,
-    bookmarks: List<BookmarkEntity>,
-    history: List<ReadingHistoryEntity>,
-    onComicClick: (String, String) -> Unit,
-    onSeeAll: () -> Unit,
-    onEdit: () -> Unit,
-    onPickAvatar: () -> Unit,
-    onHistoryVisibility: (Boolean) -> Unit,
-    onSignOut: () -> Unit,
-    onDelete: () -> Unit,
-    onModeration: () -> Unit,
-    busy: Boolean = false
-) {
-    var tab by remember { mutableStateOf(0) }
-    val now = remember { System.currentTimeMillis() }
-    var menu by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-        Box {
-            Box(Modifier.size(40.dp).clip(CircleShape).clickable { menu = true }, contentAlignment = Alignment.Center) {
-                Icon(AppIcons.settings, "Pengaturan", tint = Color.White, modifier = Modifier.size(24.dp))
-            }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, modifier = Modifier.background(Ui.Card)) {
-                DropdownMenuItem(text = { Text("Ganti username", fontSize = 14.sp, color = Color.White) }, onClick = { menu = false; onEdit() })
-                if (u.role == "MODERATOR" || u.role == "OWNER") DropdownMenuItem(text = { Text("Moderasi", fontSize = 14.sp, color = Color.White) }, onClick = { menu = false; onModeration() })
-                DropdownMenuItem(text = { Text("Hapus akun", fontSize = 14.sp, color = Color(0xFFE08F8F)) }, onClick = { menu = false; onDelete() })
-                DropdownMenuItem(text = { Text("Keluar", fontSize = 14.sp, color = Color(0xFFE08F8F)) }, onClick = { menu = false; onSignOut() })
-            }
-        }
-    }
-    Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(contentAlignment = Alignment.BottomEnd) {
-            Avatar(u.picture, u.name.ifBlank { u.username }, 76.dp)
-            if (busy) Box(Modifier.size(76.dp).clip(CircleShape).background(Color(0x99000000)), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Ui.Accent, strokeWidth = 2.dp, modifier = Modifier.size(26.dp))
-            }
-            Box(Modifier.size(30.dp).clip(CircleShape).background(Ui.Accent).border(2.dp, Ui.Bg, CircleShape).clickable(enabled = !busy, onClick = onPickAvatar), contentAlignment = Alignment.Center) {
-                Icon(AppIcons.camera, contentDescription = "Ganti foto profil", tint = Ui.OnAccent, modifier = Modifier.size(16.dp))
-            }
-        }
-        Text(u.name.ifBlank { u.username }, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 14.dp))
-        Text("@${u.username}", fontSize = 14.sp, color = Ui.Text2, modifier = Modifier.padding(top = 2.dp))
-        Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            RolePill(u.role)
-            Pill("Lv ${u.level}", Ui.Card, Color.White)
-            Pill("${u.xp} XP", Ui.Card, Color.White)
-        }
-    }
-    val span = (u.xpNextLevel - u.xpCurrentLevel).coerceAtLeast(1)
-    val into = (u.xp - u.xpCurrentLevel).coerceIn(0, span)
-    Row(Modifier.padding(top = 22.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text("Menuju level ${u.level + 1}", fontSize = 13.sp, color = Ui.Text2)
-        Text("${u.xp} / ${u.xpNextLevel}", fontSize = 13.sp, color = Ui.Text2)
-    }
-    Box(Modifier.padding(top = 8.dp).fillMaxWidth().height(6.dp).clip(CircleShape).background(Ui.Card)) {
-        Box(Modifier.fillMaxWidth(into.toFloat() / span).height(6.dp).background(Ui.Accent))
-    }
-    val joined = remember(u.joinedAt) {
-        if (u.joinedAt <= 0L) "0" else {
-            val days = ((now - u.joinedAt) / 86_400_000L).coerceAtLeast(0)
-            if (days < 30) "$days" else "${days / 30}"
-        }
-    }
-    val joinedLabel = if (u.joinedAt > 0L && (now - u.joinedAt) / 86_400_000L >= 30) "bulan\nbergabung" else "hari\nbergabung"
-    Row(Modifier.padding(top = 26.dp).fillMaxWidth()) {
-        Stat("${u.commentCount.coerceAtLeast(0)}", "komentar", Modifier.weight(1f))
-        Stat("${bookmarks.size}", "bookmark", Modifier.weight(1f))
-        Stat(joined, joinedLabel, Modifier.weight(1f))
-    }
-    Row(Modifier.padding(top = 20.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ui.Card).clickable { onHistoryVisibility(!u.publicHistory) }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text("Riwayat baca publik", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            Text(if (u.publicHistory) "Pengguna lain bisa melihat riwayatmu" else "Hanya kamu yang bisa melihat riwayatmu", fontSize = 11.sp, color = Ui.Text2, modifier = Modifier.padding(top = 3.dp))
-        }
-        Text(if (u.publicHistory) "Publik" else "Privat", fontSize = 12.sp, color = if (u.publicHistory) Ui.Accent else Ui.Text2, fontWeight = FontWeight.SemiBold)
-    }
-    Row(Modifier.padding(top = 26.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-        listOf("Riwayat", "Bookmark").forEachIndexed { i, label ->
-            Column(Modifier.clickable { tab = i }.padding(top = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(label, fontSize = 17.sp, fontWeight = if (tab == i) FontWeight.SemiBold else FontWeight.Normal, color = if (tab == i) Color.White else Ui.Text2)
-                Box(Modifier.padding(top = 8.dp).size(width = 28.dp, height = 3.dp).clip(CircleShape).background(if (tab == i) Ui.Accent else Color.Transparent))
-            }
-        }
-    }
-    Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
-    Spacer(Modifier.height(6.dp))
-    if (tab == 0) {
-        if (history.isEmpty()) EmptyLine("Belum ada riwayat baca")
-        history.take(10).forEach { h ->
-            ComicLine(h.comicTitle, h.coverUrl, historyChapterLabel(h.lastChapterNumber), relativeTime(h.lastReadAt, now)) { onComicClick(h.source, h.comicSlug) }
-        }
-        if (history.size > 10) SeeAll("Lihat semua riwayat", onSeeAll)
-    } else {
-        if (bookmarks.isEmpty()) EmptyLine("Belum ada bookmark")
-        bookmarks.take(10).forEach { b ->
-            ComicLine(b.comicTitle, b.coverUrl, b.type?.takeIf { it.isNotBlank() }?.replaceFirstChar { it.uppercase() }, b.status.orEmpty()) { onComicClick(b.source, b.comicSlug) }
-        }
-        if (bookmarks.size > 10) SeeAll("Lihat semua bookmark", onSeeAll)
-    }
-}
-
-@Composable
-private fun Pill(text: String, bg: Color, fg: Color) {
-    Text(text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = fg, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(bg).padding(horizontal = 14.dp, vertical = 7.dp))
-}
-
-@Composable
-private fun Stat(value: String, label: String, modifier: Modifier) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        Text(label, fontSize = 13.sp, lineHeight = 17.sp, color = Ui.Text2, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 2.dp))
-    }
-}
-
-@Composable
-private fun EmptyLine(text: String) {
-    Text(text, fontSize = 13.sp, color = Ui.Text3, modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp), textAlign = TextAlign.Center)
-}
-
-@Composable
-private fun ComicLine(title: String, coverUrl: String?, tag: String?, sub: String, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        CoverImage(
-            url = coverUrl,
-            contentDescription = title,
-            widthPx = 168,
-            heightPx = 250,
-            modifier = Modifier.size(width = 46.dp, height = 68.dp).clip(RoundedCornerShape(8.dp)).background(Ui.Card)
-        )
-        Column(Modifier.weight(1f).padding(start = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(listOfNotNull(tag?.takeIf { it.isNotBlank() }, sub.takeIf { it.isNotBlank() }).joinToString(" · "), fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
-}
-
-@Composable
-private fun SeeAll(text: String, onClick: () -> Unit) {
-    Text(text, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Ui.Accent, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 14.dp))
-}
-
-@Composable
-private fun RolePill(role: String) {
-    val owner = role == "OWNER" || role == "MODERATOR" || role == "PREMIUM"
-    val label = when (role) { "OWNER" -> "Owner"; "MODERATOR" -> "Moderator"; "PREMIUM" -> "Premium"; else -> "Member" }
-    Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (owner) Ui.OnAccent else Color.White, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(if (owner) Ui.Accent else Ui.Card).padding(horizontal = 14.dp, vertical = 7.dp))
-}
