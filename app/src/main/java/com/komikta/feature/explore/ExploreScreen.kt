@@ -62,12 +62,16 @@ import com.komikta.ui.components.AppIcons
 import com.komikta.ui.components.Chip
 import com.komikta.ui.components.ComicCard
 import com.komikta.ui.components.PosterRowSkeleton
+import com.komikta.ui.components.SegmentedTabs
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import com.komikta.ui.theme.Ui
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 
 private val Types = listOf("All", "Manhwa", "Manhua", "Manga")
+private val SortOptions = listOf("Latest update" to "latest", "Popular" to "popular", "Top rated" to "rating", "A-Z" to "az")
 
 @Composable
 fun ExploreScreen(
@@ -103,51 +107,44 @@ fun ExploreScreen(
 
     Column(Modifier.fillMaxSize().background(Ui.Bg)) {
         val activeCount = uiState.selectedGenres.size + listOf(uiState.sort, uiState.status).count { it != null }
-        SearchField(
-            value = uiState.query,
-            onChange = viewModel::onQueryChange,
-            focus = searchFocus,
-            filterActive = activeCount > 0,
-            onFilterClick = { showFilter = true }
+        var sortMenu by remember { mutableStateOf(false) }
+        SearchField(value = uiState.query, onChange = viewModel::onQueryChange, focus = searchFocus)
+        SegmentedTabs(
+            options = Types,
+            selected = Types.indexOfFirst { if (it == "All") uiState.type == null else it.lowercase() == uiState.type }.coerceAtLeast(0),
+            onSelect = { viewModel.setType(if (it == 0) null else Types[it].lowercase()) },
+            modifier = Modifier.padding(horizontal = 14.dp)
         )
-
-        Row(
-            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Types.forEach { type ->
-                val value = if (type == "All") null else type.lowercase()
-                Chip(type, uiState.type == value, { viewModel.setType(value) })
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        val quickGenres = remember(uiState.selectedGenres, uiState.genres) {
-            (uiState.selectedGenres + uiState.genres.take(6)).toList()
-        }
+        Spacer(Modifier.height(14.dp))
+        val quickGenres = remember(uiState.selectedGenres, uiState.genres) { (uiState.selectedGenres + uiState.genres.take(10)).toList() }
         Row(
             Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            FilterButton(activeCount) { showFilter = true }
             quickGenres.forEach { genre ->
                 val on = genre in uiState.selectedGenres
-                Chip(
-                    text = genre,
-                    selected = on,
-                    onClick = {
-                        viewModel.applyFilters(
-                            if (on) uiState.selectedGenres - genre else uiState.selectedGenres + genre,
-                            uiState.sort,
-                            uiState.status
-                        )
-                    }
-                )
+                Chip(genre, on, { viewModel.applyFilters(if (on) uiState.selectedGenres - genre else uiState.selectedGenres + genre, uiState.sort, uiState.status) })
             }
         }
-
-        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 8.dp, top = 14.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(uiState.type?.replaceFirstChar { it.uppercase() } ?: "All types", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color.White, modifier = Modifier.weight(1f))
+            Box {
+                Row(Modifier.clip(CircleShape).clickable { sortMenu = true }.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(AppIcons.sort, null, tint = Ui.Accent, modifier = Modifier.size(18.dp))
+                    Text(SortOptions.firstOrNull { it.second == uiState.sort }?.first ?: SortOptions.first().first, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Ui.Accent)
+                }
+                DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }, modifier = Modifier.background(Ui.Card)) {
+                    SortOptions.forEach { (label, value) ->
+                        DropdownMenuItem(
+                            text = { Text(label, color = if (uiState.sort == value || (uiState.sort == null && value == "latest")) Ui.Accent else Color.White, fontSize = 14.sp) },
+                            onClick = { sortMenu = false; viewModel.applyFilters(uiState.selectedGenres, value, uiState.status) }
+                        )
+                    }
+                }
+            }
+        }
 
         when {
             uiState.isLoading && uiState.comics.isEmpty() -> PosterRowSkeleton(rows = 4)
@@ -160,7 +157,7 @@ fun ExploreScreen(
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
                     state = gridState,
-                    contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 16.dp),
+                    contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.fillMaxSize()
@@ -196,65 +193,41 @@ fun ExploreScreen(
 }
 
 @Composable
-private fun SearchField(
-    value: String,
-    onChange: (String) -> Unit,
-    focus: FocusRequester,
-    filterActive: Boolean,
-    onFilterClick: () -> Unit
-) {
+private fun SearchField(value: String, onChange: (String) -> Unit, focus: FocusRequester) {
     Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 12.dp).height(46.dp).clip(CircleShape).background(Ui.Card).padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            Modifier
-                .weight(1f)
-                .height(44.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Ui.Card)
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(AppIcons.search, null, tint = Ui.Text2, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(10.dp))
-            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                if (value.isEmpty()) {
-                    Text("Cari manga, manhwa, manhua", color = Ui.Text3, fontSize = 14.sp, maxLines = 1)
-                }
-                BasicTextField(
-                    value = value,
-                    onValueChange = onChange,
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyLarge,
-                    cursorBrush = SolidColor(Ui.Accent),
-                    modifier = Modifier.fillMaxWidth().focusRequester(focus)
-                )
-            }
-            if (value.isNotEmpty()) {
-                IconButton(onClick = { onChange("") }, modifier = Modifier.size(28.dp)) {
-                    Icon(AppIcons.close, "Hapus pencarian", tint = Ui.Text3, modifier = Modifier.size(17.dp))
-                }
-            }
-        }
-        Box(
-            Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(if (filterActive) Ui.Accent else Ui.Card)
-                .clickable(onClick = onFilterClick),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                AppIcons.filter,
-                "Filter",
-                tint = if (filterActive) Ui.OnAccent else Color.White,
-                modifier = Modifier.size(22.dp)
+        Icon(AppIcons.search, null, tint = Ui.Text2, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(12.dp))
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            if (value.isEmpty()) Text("Search manga, manhwa, manhua", color = Ui.Text2, fontSize = 14.sp, maxLines = 1)
+            BasicTextField(
+                value = value,
+                onValueChange = onChange,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge,
+                cursorBrush = SolidColor(Ui.Accent),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus)
             )
         }
+        if (value.isNotEmpty()) {
+            IconButton(onClick = { onChange("") }, modifier = Modifier.size(28.dp)) {
+                Icon(AppIcons.close, "Hapus pencarian", tint = Ui.Text2, modifier = Modifier.size(17.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterButton(active: Int, onClick: () -> Unit) {
+    Row(
+        Modifier.height(34.dp).clip(CircleShape).border(1.dp, if (active > 0) Ui.Accent else Ui.Outline, CircleShape).clickable(onClick = onClick).padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        Icon(AppIcons.tune, null, tint = if (active > 0) Ui.Accent else Color.White, modifier = Modifier.size(17.dp))
+        Text(if (active > 0) "Filters · $active" else "Filters", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (active > 0) Ui.Accent else Color.White, maxLines = 1)
     }
 }
 
@@ -301,7 +274,7 @@ private fun GenreFilterSheet(
             ) {
                 SheetLabel("Urutkan")
                 OptionRow(
-                    options = listOf("Terbaru" to "latest", "Populer" to "popular", "Rating" to "rating", "A-Z" to "az"),
+                    options = SortOptions,
                     selected = draftSort,
                     onSelect = { draftSort = if (draftSort == it) null else it }
                 )

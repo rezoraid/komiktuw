@@ -29,7 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.komikta.domain.model.Comic
-import com.komikta.ui.components.Chip
+import com.komikta.ui.components.SegmentedTabs
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import com.komikta.ui.components.ComicCard
 import com.komikta.ui.theme.Ui
 import androidx.compose.runtime.setValue
@@ -45,19 +47,9 @@ fun LibraryScreen(
     var tab by remember { mutableIntStateOf(0) }
 
     Column(Modifier.fillMaxSize().background(Ui.Bg)) {
-        Text(
-            "Library",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = 14.dp, top = 20.dp, bottom = 12.dp)
-        )
-        Row(
-            Modifier.padding(horizontal = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Chip("Bookmarks (${bookmarks.size})", tab == 0, { tab = 0 })
-            Chip("History (${history.size})", tab == 1, { tab = 1 })
-        }
+        Text("Library", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(start = 14.dp, top = 18.dp, bottom = 14.dp))
+        SegmentedTabs(listOf("Bookmarks (${bookmarks.size})", "History (${history.size})"), tab, { tab = it }, Modifier.padding(horizontal = 14.dp))
+        Spacer(Modifier.height(14.dp))
 
         val list = remember(tab, bookmarks, history) {
             if (tab == 0) {
@@ -83,7 +75,7 @@ fun LibraryScreen(
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
-                contentPadding = PaddingValues(14.dp),
+                contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 2.dp, bottom = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier.fillMaxSize()

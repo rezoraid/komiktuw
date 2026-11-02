@@ -37,3 +37,13 @@ fun relativeTime(thenMs: Long, nowMs: Long): String {
         else -> "${s / (86_400 * 30)} bulan lalu"
     }
 }
+
+fun fmtViews(v: Double): String {
+    val (d, u) = when { v >= 1e9 -> 1e9 to "B"; v >= 1e6 -> 1e6 to "M"; v >= 1e3 -> 1e3 to "K"; else -> return v.toLong().toString() }
+    val n = v / d
+    return String.format(Locale.US, if (n >= 100) "%.0f%s" else "%.1f%s", n, u)
+}
+
+private val Fresh = Regex("""(?i)^\s*(just now|baru|\d+\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|menit|jam|detik|s|m|h)\b)""")
+
+fun isFresh(ago: String?): Boolean = ago != null && Fresh.containsMatchIn(ago)

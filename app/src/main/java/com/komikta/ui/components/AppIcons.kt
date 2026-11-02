@@ -70,6 +70,44 @@ object AppIcons {
         }
     }
 
+    val chevronDown: ImageVector by lazy {
+        navIcon("ChevronDown", false, strokeWidth = 2.2f) {
+            moveTo(6f, 9f); lineTo(12f, 15f); lineTo(18f, 9f)
+        }
+    }
+
+    val check: ImageVector by lazy {
+        navIcon("Check", false, strokeWidth = 2.4f) {
+            moveTo(5f, 12.5f); lineTo(10f, 17.5f); lineTo(19f, 7f)
+        }
+    }
+
+    val tune: ImageVector by lazy {
+        navIcon("Tune", false, strokeWidth = 2f) {
+            moveTo(4f, 8f); lineTo(9f, 8f); circle(12f, 8f, 2.6f); moveTo(14.6f, 8f); lineTo(20f, 8f)
+            moveTo(4f, 16f); lineTo(9.4f, 16f); circle(12f, 16f, 2.6f); moveTo(15f, 16f); lineTo(20f, 16f)
+        }
+    }
+
+    val star: ImageVector by lazy {
+        navIcon("Star", true, strokeWidth = 1.4f) {
+            moveTo(12f, 2.8f); lineTo(14.8f, 8.6f); lineTo(21.2f, 9.5f); lineTo(16.6f, 14f); lineTo(17.7f, 20.4f)
+            lineTo(12f, 17.4f); lineTo(6.3f, 20.4f); lineTo(7.4f, 14f); lineTo(2.8f, 9.5f); lineTo(9.2f, 8.6f); close()
+        }
+    }
+
+    val eye: ImageVector by lazy {
+        navIcon("Eye", false, strokeWidth = 1.8f) {
+            moveTo(2.5f, 12f)
+            curveTo(5f, 7.5f, 8.3f, 5.5f, 12f, 5.5f)
+            curveTo(15.7f, 5.5f, 19f, 7.5f, 21.5f, 12f)
+            curveTo(19f, 16.5f, 15.7f, 18.5f, 12f, 18.5f)
+            curveTo(8.3f, 18.5f, 5f, 16.5f, 2.5f, 12f)
+            close()
+            circle(12f, 12f, 3f)
+        }
+    }
+
     fun bookmark(filled: Boolean): ImageVector = if (filled) bookmarkFilled else bookmarkOutline
 
     private val bookmarkOutline: ImageVector by lazy { buildBookmark(false) }

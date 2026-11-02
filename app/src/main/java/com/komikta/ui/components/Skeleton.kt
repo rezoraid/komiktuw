@@ -28,8 +28,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.komikta.ui.theme.Ui
 
-private val BlockShape = RoundedCornerShape(10.dp)
-private val ShimmerColors = listOf(Ui.Card, Color(0xFF1F2A2F), Ui.Card)
+private val BlockShape = RoundedCornerShape(12.dp)
+private val ShimmerColors = listOf(Ui.Card, Color(0xFF32373D), Ui.Card)
 
 @Composable
 fun shimmerBrush(): Brush {
@@ -50,7 +50,7 @@ fun SkeletonBlock(modifier: Modifier = Modifier, brush: Brush = shimmerBrush()) 
 @Composable
 fun PosterSkeleton(modifier: Modifier = Modifier, brush: Brush = shimmerBrush()) {
     Column(modifier) {
-        SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(0.72f), brush)
+        SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(0.667f), brush)
         Spacer(Modifier.height(8.dp))
         SkeletonBlock(Modifier.fillMaxWidth(0.9f).height(12.dp), brush)
         Spacer(Modifier.height(5.dp))

@@ -119,7 +119,7 @@ fun ProfileScreen(onComicClick: (String, String) -> Unit = { _, _ -> }, onSeeAll
             .fillMaxSize()
             .background(Ui.Bg)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 20.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         val u = user
         if (u == null) {
@@ -205,7 +205,7 @@ private fun GuestContent(busy: Boolean, message: String?, onSignIn: () -> Unit, 
         Text("Pembaca tamu", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
         Text("Bookmark dan riwayat baca tersimpan di perangkat ini", fontSize = 13.sp, color = Ui.Text2, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
     }
-    Column(Modifier.padding(top = 28.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Ui.Card).padding(16.dp)) {
+    Column(Modifier.padding(top = 28.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ui.Card).padding(16.dp)) {
         Text("Masuk untuk ikut komunitas", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         Text("Tulis komentar, balas, beri like, dan kumpulkan XP di setiap chapter.", fontSize = 13.sp, lineHeight = 19.sp, color = Ui.Text2, modifier = Modifier.padding(top = 4.dp))
         Text(
@@ -225,7 +225,7 @@ private fun GuestContent(busy: Boolean, message: String?, onSignIn: () -> Unit, 
         message?.let { Text(it, fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.padding(top = 10.dp)) }
     }
     Text("TENTANG APLIKASI", fontSize = 11.sp, letterSpacing = 1.sp, color = Ui.Text3, modifier = Modifier.padding(top = 28.dp, bottom = 8.dp, start = 2.dp))
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Ui.Card)) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ui.Card)) {
         InfoLine("Ketentuan", null, onTerms)
         Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
         InfoLine("Kebijakan Privasi", null, onPrivacy)
@@ -265,32 +265,31 @@ private fun SignedIn(
     var tab by remember { mutableStateOf(0) }
     val now = remember { System.currentTimeMillis() }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-        Text("Keluar", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Ui.Text2, modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onSignOut).padding(horizontal = 8.dp, vertical = 6.dp))
+        Text("Keluar", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Ui.Text2, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onSignOut).padding(horizontal = 8.dp, vertical = 6.dp))
     }
-    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(contentAlignment = Alignment.BottomEnd) {
-            Avatar(u.picture, u.name.ifBlank { u.username }, 96.dp)
-            Box(Modifier.padding(2.dp).size(30.dp).clip(CircleShape).background(Ui.Accent).clickable(onClick = onPickAvatar), contentAlignment = Alignment.Center) {
-                Icon(AppIcons.edit, contentDescription = "Ganti foto profil", tint = Color.White, modifier = Modifier.size(16.dp))
+            Avatar(u.picture, u.name.ifBlank { u.username }, 76.dp)
+            Box(Modifier.size(26.dp).clip(CircleShape).background(Ui.Accent).clickable(onClick = onPickAvatar), contentAlignment = Alignment.Center) {
+                Icon(AppIcons.edit, contentDescription = "Ganti foto profil", tint = Ui.OnAccent, modifier = Modifier.size(14.dp))
             }
         }
-        Text("Ganti foto profil", fontSize = 12.sp, color = Ui.Accent, modifier = Modifier.padding(top = 6.dp).clickable(onClick = onPickAvatar))
-        Text(u.name.ifBlank { u.username }, style = MaterialTheme.typography.headlineMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 14.dp))
-        Text("@${u.username}", fontSize = 13.sp, color = Ui.Text2, modifier = Modifier.padding(top = 2.dp))
+        Text(u.name.ifBlank { u.username }, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 14.dp))
+        Text("@${u.username}", fontSize = 14.sp, color = Ui.Text2, modifier = Modifier.padding(top = 2.dp))
         Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             RolePill(u.role)
-            Pill("Lv ${u.level}", Ui.Chip, Color.White)
-            Pill("${u.xp} XP", Ui.Chip, Color.White)
+            Pill("Lv ${u.level}", Ui.Card, Color.White)
+            Pill("${u.xp} XP", Ui.Card, Color.White)
         }
     }
     val span = (u.xpNextLevel - u.xpCurrentLevel).coerceAtLeast(1)
     val into = (u.xp - u.xpCurrentLevel).coerceIn(0, span)
-    Row(Modifier.padding(top = 20.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text("Menuju level ${u.level + 1}", fontSize = 11.sp, color = Ui.Text3)
-        Text("${u.xp} / ${u.xpNextLevel}", fontSize = 11.sp, color = Ui.Text3)
+    Row(Modifier.padding(top = 22.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text("Menuju level ${u.level + 1}", fontSize = 13.sp, color = Ui.Text2)
+        Text("${u.xp} / ${u.xpNextLevel}", fontSize = 13.sp, color = Ui.Text2)
     }
-    Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(Ui.Line)) {
-        Box(Modifier.fillMaxWidth(into.toFloat() / span).height(4.dp).background(Ui.Accent))
+    Box(Modifier.padding(top = 8.dp).fillMaxWidth().height(6.dp).clip(CircleShape).background(Ui.Card)) {
+        Box(Modifier.fillMaxWidth(into.toFloat() / span).height(6.dp).background(Ui.Accent))
     }
     val joined = remember(u.joinedAt) {
         if (u.joinedAt <= 0L) "0" else {
@@ -299,27 +298,28 @@ private fun SignedIn(
         }
     }
     val joinedLabel = if (u.joinedAt > 0L && (now - u.joinedAt) / 86_400_000L >= 30) "bulan\nbergabung" else "hari\nbergabung"
-    Row(Modifier.padding(top = 24.dp).fillMaxWidth()) {
+    Row(Modifier.padding(top = 26.dp).fillMaxWidth()) {
         Stat("${u.commentCount.coerceAtLeast(0)}", "komentar", Modifier.weight(1f))
         Stat("${bookmarks.size}", "bookmark", Modifier.weight(1f))
         Stat(joined, joinedLabel, Modifier.weight(1f))
     }
-    Row(Modifier.padding(top = 18.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Ui.Card).clickable { onHistoryVisibility(!u.publicHistory) }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.padding(top = 20.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ui.Card).clickable { onHistoryVisibility(!u.publicHistory) }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text("Riwayat baca publik", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             Text(if (u.publicHistory) "Pengguna lain bisa melihat riwayatmu" else "Hanya kamu yang bisa melihat riwayatmu", fontSize = 11.sp, color = Ui.Text2, modifier = Modifier.padding(top = 3.dp))
         }
         Text(if (u.publicHistory) "Publik" else "Privat", fontSize = 12.sp, color = if (u.publicHistory) Ui.Accent else Ui.Text2, fontWeight = FontWeight.SemiBold)
     }
-    Row(Modifier.padding(top = 24.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+    Row(Modifier.padding(top = 26.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
         listOf("Riwayat", "Bookmark").forEachIndexed { i, label ->
-            Column(Modifier.clickable { tab = i }.padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(label, fontSize = 14.sp, fontWeight = if (tab == i) FontWeight.SemiBold else FontWeight.Normal, color = if (tab == i) Color.White else Ui.Text2)
-                Box(Modifier.padding(top = 8.dp).size(width = 24.dp, height = 2.dp).background(if (tab == i) Ui.Accent else Color.Transparent))
+            Column(Modifier.clickable { tab = i }.padding(top = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(label, fontSize = 17.sp, fontWeight = if (tab == i) FontWeight.SemiBold else FontWeight.Normal, color = if (tab == i) Color.White else Ui.Text2)
+                Box(Modifier.padding(top = 8.dp).size(width = 28.dp, height = 3.dp).clip(CircleShape).background(if (tab == i) Ui.Accent else Color.Transparent))
             }
         }
     }
     Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
+    Spacer(Modifier.height(6.dp))
     if (tab == 0) {
         if (history.isEmpty()) EmptyLine("Belum ada riwayat baca")
         history.take(10).forEach { h ->
@@ -342,14 +342,14 @@ private fun SignedIn(
 
 @Composable
 private fun Pill(text: String, bg: Color, fg: Color) {
-    Text(text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = fg, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(bg).padding(horizontal = 12.dp, vertical = 6.dp))
+    Text(text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = fg, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(bg).padding(horizontal = 14.dp, vertical = 7.dp))
 }
 
 @Composable
 private fun Stat(value: String, label: String, modifier: Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        Text(label, fontSize = 12.sp, lineHeight = 16.sp, color = Ui.Text2, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 2.dp))
+        Text(value, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text(label, fontSize = 13.sp, lineHeight = 17.sp, color = Ui.Text2, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 2.dp))
     }
 }
 
@@ -360,26 +360,19 @@ private fun EmptyLine(text: String) {
 
 @Composable
 private fun ComicLine(title: String, coverUrl: String?, tag: String?, sub: String, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         CoverImage(
             url = coverUrl,
             contentDescription = title,
             widthPx = 168,
-            heightPx = 234,
-            modifier = Modifier.size(width = 56.dp, height = 78.dp).clip(RoundedCornerShape(6.dp)).background(Ui.Card)
+            heightPx = 250,
+            modifier = Modifier.size(width = 46.dp, height = 68.dp).clip(RoundedCornerShape(8.dp)).background(Ui.Card)
         )
-        Column(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (!tag.isNullOrBlank()) {
-                    Text(tag, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Ui.Accent, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(Ui.AccentSoft).padding(horizontal = 7.dp, vertical = 3.dp))
-                }
-                if (sub.isNotBlank()) Text(sub, fontSize = 12.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+        Column(Modifier.weight(1f).padding(start = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(listOfNotNull(tag?.takeIf { it.isNotBlank() }, sub.takeIf { it.isNotBlank() }).joinToString(" · "), fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Icon(AppIcons.chevronRight, null, tint = Ui.Text3, modifier = Modifier.size(18.dp))
     }
-    Box(Modifier.fillMaxWidth().padding(start = 70.dp).height(1.dp).background(Ui.Line))
 }
 
 @Composable
@@ -389,42 +382,9 @@ private fun SeeAll(text: String, onClick: () -> Unit) {
 
 @Composable
 private fun RolePill(role: String) {
-    val label: String
-    val base: Color
-    val glow: Color
-    when (role) {
-        "OWNER" -> { label = "Owner"; base = Color(0xFFB3261E); glow = Color(0xFFFF9C94) }
-        "MODERATOR" -> { label = "Moderator"; base = Color(0xFF2B88B8); glow = Color(0xFFC4EEFF) }
-        "PREMIUM" -> { label = "Premium"; base = Color(0xFF2B88B8); glow = Color(0xFFC4EEFF) }
-        else -> { label = "Member"; base = Color(0xFF1D3C4F); glow = Color(0xFF7CC4E8) }
-    }
-    val t by rememberInfiniteTransition(label = "role").animateFloat(
-        initialValue = -0.6f,
-        targetValue = 1.6f,
-        animationSpec = infiniteRepeatable(tween(2400, easing = LinearEasing), RepeatMode.Restart),
-        label = "roleShine"
-    )
-    Text(
-        label,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = Color.White,
-        maxLines = 1,
-        modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .drawBehind {
-                drawRect(base)
-                val x = t * size.width
-                drawRect(
-                    Brush.linearGradient(
-                        listOf(Color.Transparent, glow.copy(alpha = 0.7f), Color.Transparent),
-                        start = Offset(x - size.width * 0.4f, 0f),
-                        end = Offset(x + size.width * 0.4f, size.height * 0.6f)
-                    )
-                )
-            }
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    )
+    val owner = role == "OWNER" || role == "MODERATOR" || role == "PREMIUM"
+    val label = when (role) { "OWNER" -> "Owner"; "MODERATOR" -> "Moderator"; "PREMIUM" -> "Premium"; else -> "Member" }
+    Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (owner) Ui.OnAccent else Color.White, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(if (owner) Ui.Accent else Ui.Card).padding(horizontal = 14.dp, vertical = 7.dp))
 }
 
 @Composable
