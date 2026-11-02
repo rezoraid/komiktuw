@@ -1,6 +1,7 @@
 package com.komikta.data.local
 
 import android.content.Context
+import com.komikta.core.common.AvatarBust
 import com.komikta.data.remote.dto.CommunityUserDto
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +26,8 @@ class SessionStore @Inject constructor(
     var token: String? = sp.getString("token", null)
         private set
 
+    init { AvatarBust.set(_user.value?.picture, avatarRev) }
+
     private fun readUser(): CommunityUserDto? {
         if (sp.getString("token", null).isNullOrBlank()) return null
         val raw = sp.getString("user", null) ?: return null
@@ -40,6 +43,7 @@ class SessionStore @Inject constructor(
     fun bumpAvatar() {
         avatarRev = System.currentTimeMillis()
         sp.edit().putLong("avatarRev", avatarRev).apply()
+        AvatarBust.set(_user.value?.picture, avatarRev)
     }
 
     fun save(token: String, incoming: CommunityUserDto) {
@@ -47,6 +51,7 @@ class SessionStore @Inject constructor(
         this.token = token
         sp.edit().putString("token", token).putString("user", json.encodeToString(CommunityUserDto.serializer(), user)).apply()
         _user.value = user
+        AvatarBust.set(user.picture, avatarRev)
     }
 
     fun update(incoming: CommunityUserDto) {
@@ -55,6 +60,7 @@ class SessionStore @Inject constructor(
         val user = busted(if (incoming.commentCount < 0 && old != null && old.id == incoming.id) incoming.copy(commentCount = old.commentCount) else incoming)
         sp.edit().putString("user", json.encodeToString(CommunityUserDto.serializer(), user)).apply()
         _user.value = user
+        AvatarBust.set(user.picture, avatarRev)
     }
 
     /** Ganti user di sesi apa adanya (tanpa cache-bust): untuk tampilan optimistic dan pengembaliannya. */
@@ -62,6 +68,7 @@ class SessionStore @Inject constructor(
         if (token == null) return
         sp.edit().putString("user", json.encodeToString(CommunityUserDto.serializer(), user)).apply()
         _user.value = user
+        AvatarBust.set(user.picture, avatarRev)
     }
 
     fun updateToken(value: String) {
@@ -74,5 +81,6 @@ class SessionStore @Inject constructor(
         token = null
         sp.edit().clear().apply()
         _user.value = null
+        AvatarBust.set(null, 0L)
     }
 }

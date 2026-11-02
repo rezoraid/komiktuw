@@ -61,7 +61,7 @@ fun ModerationScreen(onBack: () -> Unit, viewModel: ModerationViewModel = hiltVi
             IconButton(onClick = onBack) { Icon(AppIcons.chevronLeft, "Back", tint = Color.White, modifier = Modifier.size(24.dp)) }
             Text("Moderasi", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
         }
-        ui.notice?.let { Text(it, fontSize = 14.sp, color = Soft, modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)) }
+        ui.notice?.let { Text(it, fontSize = 13.sp, color = Soft, modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)) }
         when {
             ui.loading && ui.items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { Text("Memuat…", color = Ui.Text2) }
             ui.error != null && ui.items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -74,7 +74,7 @@ fun ModerationScreen(onBack: () -> Unit, viewModel: ModerationViewModel = hiltVi
                 items(ui.items, key = { it.id }, contentType = { "report" }) { r -> ReportCard(r, viewModel) }
                 if (ui.hasMore) item(key = "more") {
                     LaunchedEffect(ui.page) { viewModel.loadMore() }
-                    Text(if (ui.loadingMore) "Memuat…" else "Muat lagi", fontSize = 15.sp, color = Ui.Text2, modifier = Modifier.padding(8.dp))
+                    Text(if (ui.loadingMore) "Memuat…" else "Muat lagi", fontSize = 14.sp, color = Ui.Text2, modifier = Modifier.padding(8.dp))
                 }
             }
         }
@@ -86,22 +86,22 @@ private fun ReportCard(r: ReportDto, vm: ModerationViewModel) {
     val c = r.comment
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Ui.Card).padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(ReasonLabel[r.reason] ?: r.reason, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            Text("${c?.reportCount ?: 1} laporan", fontSize = 13.sp, color = Ui.Text3)
-            Text(relativeTime(r.createdAt, System.currentTimeMillis()), fontSize = 13.sp, color = Ui.Text3)
+            Text(ReasonLabel[r.reason] ?: r.reason, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text("${c?.reportCount ?: 1} laporan", fontSize = 12.sp, color = Ui.Text3)
+            Text(relativeTime(r.createdAt, System.currentTimeMillis()), fontSize = 12.sp, color = Ui.Text3)
         }
         if (c == null || c.deleted) {
-            Text("Komentar sudah dihapus", fontSize = 15.sp, fontStyle = FontStyle.Italic, color = Ui.Text3)
+            Text("Komentar sudah dihapus", fontSize = 14.sp, fontStyle = FontStyle.Italic, color = Ui.Text3)
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("@${c.user?.username ?: "?"}", fontSize = 14.sp, color = Ui.Text2)
+                Text("@${c.user?.username ?: "?"}", fontSize = 13.sp, color = Ui.Text2)
                 c.user?.let { if (it.role != "USER") RoleBadge(it.role) }
             }
-            Text(c.body, fontSize = 16.sp, lineHeight = 23.sp, color = Soft)
-            Text(c.targetKey, fontSize = 13.sp, color = Ui.Text3, maxLines = 1)
+            Text(c.body, fontSize = 15.sp, lineHeight = 21.sp, color = Soft)
+            Text(c.targetKey, fontSize = 12.sp, color = Ui.Text3, maxLines = 1)
         }
-        if (r.note.isNotBlank()) Text("Catatan: ${r.note}", fontSize = 14.sp, color = Ui.Text2)
-        r.reporter?.let { Text("Pelapor: @${it.username}", fontSize = 13.sp, color = Ui.Text3) }
+        if (r.note.isNotBlank()) Text("Catatan: ${r.note}", fontSize = 13.sp, color = Ui.Text2)
+        r.reporter?.let { Text("Pelapor: @${it.username}", fontSize = 12.sp, color = Ui.Text3) }
         Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (c != null && !c.deleted) Chip("Hapus komentar", selected = true, onClick = { vm.resolve(r, "delete") })
             Chip("Abaikan", selected = false, onClick = { vm.resolve(r, "dismiss") })

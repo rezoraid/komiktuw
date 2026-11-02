@@ -388,7 +388,7 @@ fun ReaderScreen(
                     .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Top))
             ) {
                 Row(
-                    Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 4.dp),
+                    Modifier.fillMaxWidth().height(50.dp).padding(horizontal = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onBack) {
@@ -775,7 +775,7 @@ private fun ChapterListSheet(
                     TextButton(onClick = { oldestFirst = !oldestFirst }) {
                         Icon(com.komikta.ui.components.AppIcons.chevronsDown, contentDescription = "Ubah urutan chapter", tint = Ui.Accent, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text(if (oldestFirst) "Terlama" else "Terbaru", color = Ui.Accent, fontSize = 14.sp)
+                        Text(if (oldestFirst) "Terlama" else "Terbaru", color = Ui.Accent, fontSize = 13.sp)
                     }
                 }
                 IconButton(

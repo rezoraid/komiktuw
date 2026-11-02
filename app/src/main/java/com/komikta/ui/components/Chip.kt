@@ -31,12 +31,12 @@ fun Chip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifie
     val bg by animateColorAsState(if (selected) Ui.Pill else Color.Transparent, tween(140), label = "chipBg")
     val line by animateColorAsState(if (selected) Ui.Pill else Ui.Outline, tween(140), label = "chipLine")
     Row(
-        modifier.height(40.dp).clip(CircleShape).background(bg).border(1.dp, line, CircleShape).clickable(onClick = onClick).padding(horizontal = 17.dp),
+        modifier.height(37.dp).clip(CircleShape).background(bg).border(1.dp, line, CircleShape).clickable(onClick = onClick).padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(7.dp)
     ) {
-        if (selected) Icon(AppIcons.check, null, tint = Ui.Bg, modifier = Modifier.size(17.dp))
-        Text(text, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = if (selected) Ui.Bg else Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (selected) Icon(AppIcons.check, null, tint = Ui.Bg, modifier = Modifier.size(16.dp))
+        Text(text, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = if (selected) Ui.Bg else Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -47,10 +47,10 @@ fun SegmentedTabs(options: List<String>, selected: Int, onSelect: (Int) -> Unit,
             val on = i == selected
             val bg by animateColorAsState(if (on) Ui.Bg else Color.Transparent, tween(140), label = "segBg")
             Box(
-                (if (fill) Modifier.weight(1f) else Modifier).height(40.dp).clip(CircleShape).background(bg).clickable { onSelect(i) }.padding(horizontal = if (fill) 0.dp else 20.dp),
+                (if (fill) Modifier.weight(1f) else Modifier).height(37.dp).clip(CircleShape).background(bg).clickable { onSelect(i) }.padding(horizontal = if (fill) 0.dp else 20.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(label, fontSize = 16.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, color = if (on) Color.White else Ui.Text2, maxLines = 1)
+                Text(label, fontSize = 15.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, color = if (on) Color.White else Ui.Text2, maxLines = 1)
             }
         }
     }

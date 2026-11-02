@@ -125,14 +125,14 @@ fun ProfileScreen(
                 },
                 topRight = {
                     Text(
-                        "Logout", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Color.White,
+                        "Logout", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White,
                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { confirmLogout = true }.padding(horizontal = 12.dp, vertical = 10.dp)
                     )
                 }
             )
             ui.message?.let {
                 Text(
-                    it, fontSize = 15.sp, color = Color.White,
+                    it, fontSize = 14.sp, color = Color.White,
                     modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF2B2C31)).padding(horizontal = 16.dp, vertical = 10.dp)
                 )
             }
@@ -149,8 +149,8 @@ fun ProfileScreen(
             text = {
                 Column {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Menuju level ${u.level + 1}", fontSize = 15.sp, color = Ui.Text2)
-                        Text("${u.xp} / ${u.xpNextLevel} XP", fontSize = 15.sp, color = Ui.Text2)
+                        Text("Menuju level ${u.level + 1}", fontSize = 14.sp, color = Ui.Text2)
+                        Text("${u.xp} / ${u.xpNextLevel} XP", fontSize = 14.sp, color = Ui.Text2)
                     }
                     Box(Modifier.padding(top = 10.dp).fillMaxWidth().height(6.dp).clip(CircleShape).background(Ui.Line)) {
                         Box(Modifier.fillMaxWidth(into.toFloat() / span).height(6.dp).background(P.Blue))
@@ -166,7 +166,7 @@ fun ProfileScreen(
             onDismissRequest = { confirmLogout = false },
             containerColor = Ui.Card,
             title = { Text("Keluar dari akun?", style = MaterialTheme.typography.titleMedium) },
-            text = { Text("Kamu perlu masuk lagi dengan Google untuk berkomentar dan mengumpulkan XP.", color = Ui.Text2, fontSize = 16.sp) },
+            text = { Text("Kamu perlu masuk lagi dengan Google untuk berkomentar dan mengumpulkan XP.", color = Ui.Text2, fontSize = 15.sp) },
             confirmButton = { TextButton(onClick = { viewModel.signOut(); confirmLogout = false }) { Text("Keluar", color = Color(0xFFE08F8F)) } },
             dismissButton = { TextButton(onClick = { confirmLogout = false }) { Text("Batal", color = Ui.Text2) } }
         )
@@ -177,7 +177,7 @@ fun ProfileScreen(
             onDismissRequest = { confirmDelete = false },
             containerColor = Ui.Card,
             title = { Text("Hapus akun?", style = MaterialTheme.typography.titleMedium) },
-            text = { Text("Akun dan semua komentarmu akan dihapus permanen. XP dan level hilang. Tindakan ini tidak bisa dibatalkan.", color = Ui.Text2, fontSize = 16.sp) },
+            text = { Text("Akun dan semua komentarmu akan dihapus permanen. XP dan level hilang. Tindakan ini tidak bisa dibatalkan.", color = Ui.Text2, fontSize = 15.sp) },
             confirmButton = { TextButton(onClick = { viewModel.deleteAccount(); confirmDelete = false }) { Text("Hapus", color = Ui.Accent) } },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Batal", color = Ui.Text2) } }
         )
@@ -201,7 +201,7 @@ fun ProfileScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-                    Text("3-20 karakter: huruf kecil, angka, underscore. Bisa diganti sekali per 7 hari.", fontSize = 14.sp, color = Ui.Text3, modifier = Modifier.padding(top = 8.dp))
+                    Text("3-20 karakter: huruf kecil, angka, underscore. Bisa diganti sekali per 7 hari.", fontSize = 13.sp, color = Ui.Text3, modifier = Modifier.padding(top = 8.dp))
                 }
             },
             confirmButton = {
@@ -225,7 +225,7 @@ private fun SettingsMenu(
 ) {
     var open by remember { mutableStateOf(false) }
     val item: @Composable (String, Color, () -> Unit) -> Unit = { label, color, action ->
-        DropdownMenuItem(text = { Text(label, fontSize = 16.sp, color = color) }, onClick = { open = false; action() })
+        DropdownMenuItem(text = { Text(label, fontSize = 15.sp, color = color) }, onClick = { open = false; action() })
     }
     Box {
         Box(Modifier.size(44.dp).clip(CircleShape).clickable { open = true }, contentAlignment = Alignment.Center) {
@@ -239,7 +239,7 @@ private fun SettingsMenu(
             item("Ketentuan", Color.White, onTerms)
             item("Kebijakan Privasi", Color.White, onPrivacy)
             item("Hapus akun", Color(0xFFE08F8F), onDelete)
-            DropdownMenuItem(text = { Text("Komikta ${BuildConfig.VERSION_NAME}", fontSize = 14.sp, color = Ui.Text3) }, onClick = {}, enabled = false)
+            DropdownMenuItem(text = { Text("Komikta ${BuildConfig.VERSION_NAME}", fontSize = 13.sp, color = Ui.Text3) }, onClick = {}, enabled = false)
         }
     }
 }
@@ -251,14 +251,14 @@ private fun GuestContent(busy: Boolean, message: String?, onSignIn: () -> Unit, 
             Icon(BottomNavItem.Profile.unselectedIcon, null, tint = Ui.Text2, modifier = Modifier.size(38.dp))
         }
         Text("Pembaca tamu", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
-        Text("Bookmark dan riwayat baca tersimpan di perangkat ini", fontSize = 15.sp, color = Ui.Text2, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+        Text("Bookmark dan riwayat baca tersimpan di perangkat ini", fontSize = 14.sp, color = Ui.Text2, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
     }
     Column(Modifier.padding(top = 28.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ui.Card).padding(16.dp)) {
-        Text("Masuk untuk ikut komunitas", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-        Text("Tulis komentar, balas, beri like, dan kumpulkan XP di setiap chapter.", fontSize = 15.sp, lineHeight = 22.sp, color = Ui.Text2, modifier = Modifier.padding(top = 4.dp))
+        Text("Masuk untuk ikut komunitas", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text("Tulis komentar, balas, beri like, dan kumpulkan XP di setiap chapter.", fontSize = 14.sp, lineHeight = 20.sp, color = Ui.Text2, modifier = Modifier.padding(top = 4.dp))
         Text(
             if (busy) "Memproses…" else "Masuk dengan Google",
-            fontSize = 16.sp,
+            fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
             color = Ui.OnAccent,
             textAlign = TextAlign.Center,
@@ -270,9 +270,9 @@ private fun GuestContent(busy: Boolean, message: String?, onSignIn: () -> Unit, 
                 .clickable(enabled = !busy, onClick = onSignIn)
                 .padding(vertical = 13.dp)
         )
-        message?.let { Text(it, fontSize = 14.sp, color = Ui.Text2, modifier = Modifier.padding(top = 10.dp)) }
+        message?.let { Text(it, fontSize = 13.sp, color = Ui.Text2, modifier = Modifier.padding(top = 10.dp)) }
     }
-    Text("TENTANG APLIKASI", fontSize = 13.sp, letterSpacing = 1.sp, color = Ui.Text3, modifier = Modifier.padding(top = 28.dp, bottom = 8.dp, start = 2.dp))
+    Text("TENTANG APLIKASI", fontSize = 12.sp, letterSpacing = 1.sp, color = Ui.Text3, modifier = Modifier.padding(top = 28.dp, bottom = 8.dp, start = 2.dp))
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ui.Card)) {
         InfoLine("Ketentuan", null, onTerms)
         Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
@@ -290,8 +290,8 @@ private fun InfoLine(label: String, value: String?, onClick: (() -> Unit)?) {
         Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 16.dp, vertical = 15.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, fontSize = 16.sp, modifier = Modifier.weight(1f))
-        if (value != null) Text(value, fontSize = 15.sp, color = Ui.Text2)
+        Text(label, fontSize = 15.sp, modifier = Modifier.weight(1f))
+        if (value != null) Text(value, fontSize = 14.sp, color = Ui.Text2)
         if (onClick != null) Icon(AppIcons.chevronRight, null, tint = Ui.Text3, modifier = Modifier.size(18.dp))
     }
 }

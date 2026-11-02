@@ -28,7 +28,7 @@ private val CoverShape = RoundedCornerShape(12.dp)
 @Composable
 fun TypeBadge(text: String, modifier: Modifier = Modifier, small: Boolean = false) {
     Text(
-        text, fontSize = if (small) 11.sp else 13.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 1,
+        text, fontSize = if (small) 10.sp else 12.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 1,
         modifier = modifier.background(Ui.Badge, RoundedCornerShape(if (small) 5.dp else 7.dp)).padding(horizontal = if (small) 4.dp else 7.dp, vertical = if (small) 2.dp else 3.dp)
     )
 }
@@ -36,7 +36,7 @@ fun TypeBadge(text: String, modifier: Modifier = Modifier, small: Boolean = fals
 @Composable
 fun NewBadge(modifier: Modifier = Modifier, small: Boolean = false) {
     Text(
-        "NEW", fontSize = if (small) 11.sp else 13.sp, fontWeight = FontWeight.Bold, color = Ui.OnAccent, maxLines = 1,
+        "NEW", fontSize = if (small) 10.sp else 12.sp, fontWeight = FontWeight.Bold, color = Ui.OnAccent, maxLines = 1,
         modifier = modifier.background(Ui.Accent, RoundedCornerShape(if (small) 5.dp else 6.dp)).padding(horizontal = if (small) 5.dp else 7.dp, vertical = if (small) 1.dp else 3.dp)
     )
 }
@@ -57,8 +57,8 @@ fun PosterCard(
             if (badge != null) TypeBadge(badge, Modifier.align(Alignment.TopStart).padding(5.dp), small = true)
             if (isNew) NewBadge(Modifier.align(Alignment.TopEnd).padding(5.dp), small = true)
         }
-        Text(title, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
-        if (!meta.isNullOrBlank()) Text(meta, fontSize = 14.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 1.dp))
+        Text(title, fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+        if (!meta.isNullOrBlank()) Text(meta, fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 1.dp))
     }
 }
 

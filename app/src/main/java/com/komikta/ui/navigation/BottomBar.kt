@@ -32,7 +32,7 @@ import com.komikta.ui.theme.Ui
 
 @Composable
 fun BottomBar(items: List<BottomNavItem>, selectedRoute: String?, onSelect: (String) -> Unit) {
-    Row(Modifier.fillMaxWidth().background(Ui.Bar).navigationBarsPadding().height(76.dp)) {
+    Row(Modifier.fillMaxWidth().background(Ui.Bar).navigationBarsPadding().height(72.dp)) {
         items.forEach { item ->
             val selected = item.route == selectedRoute
             val pill by animateColorAsState(if (selected) Ui.NavPill else Color.Transparent, tween(180), label = "navPill")
@@ -42,10 +42,10 @@ fun BottomBar(items: List<BottomNavItem>, selectedRoute: String?, onSelect: (Str
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Box(Modifier.size(width = 64.dp, height = 34.dp).clip(CircleShape).background(pill), contentAlignment = Alignment.Center) {
-                    Icon(if (selected) item.selectedIcon else item.unselectedIcon, item.title, tint = tint, modifier = Modifier.size(26.dp))
+                Box(Modifier.size(width = 60.dp, height = 32.dp).clip(CircleShape).background(pill), contentAlignment = Alignment.Center) {
+                    Icon(if (selected) item.selectedIcon else item.unselectedIcon, item.title, tint = tint, modifier = Modifier.size(24.dp))
                 }
-                Text(item.title, fontSize = 14.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, color = if (selected) Color.White else Ui.Text2, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
+                Text(item.title, fontSize = 13.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, color = if (selected) Color.White else Ui.Text2, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
             }
         }
     }

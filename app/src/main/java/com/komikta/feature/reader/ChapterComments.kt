@@ -51,22 +51,22 @@ fun ChapterCommentsSection(chapterSlug: String, load: suspend (String) -> Commen
     ) {
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Ui.Card).padding(16.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Icon(AppIcons.comment, null, tint = Ui.Accent, modifier = Modifier.size(22.dp))
-                Text("Komentar chapter", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Color.White, modifier = Modifier.padding(start = 8.dp).weight(1f))
+                Icon(AppIcons.comment, null, tint = Ui.Accent, modifier = Modifier.size(20.dp))
+                Text("Komentar chapter", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White, modifier = Modifier.padding(start = 8.dp).weight(1f))
                 val total = page?.total ?: 0
-                if (total > 0) Text("$total", fontSize = 15.sp, color = Ui.Text2)
+                if (total > 0) Text("$total", fontSize = 14.sp, color = Ui.Text2)
             }
             when {
-                !done -> Text("Memuat komentar…", fontSize = 15.sp, color = Ui.Text3, modifier = Modifier.padding(top = 14.dp))
-                page == null -> Text("Komentar belum bisa dimuat", fontSize = 15.sp, color = Ui.Text3, modifier = Modifier.padding(top = 14.dp))
-                items.isEmpty() -> Text("Belum ada komentar. Jadilah yang pertama menanggapi chapter ini.", fontSize = 15.sp, lineHeight = 22.sp, color = Ui.Text2, modifier = Modifier.padding(top = 14.dp))
+                !done -> Text("Memuat komentar…", fontSize = 14.sp, color = Ui.Text3, modifier = Modifier.padding(top = 14.dp))
+                page == null -> Text("Komentar belum bisa dimuat", fontSize = 14.sp, color = Ui.Text3, modifier = Modifier.padding(top = 14.dp))
+                items.isEmpty() -> Text("Belum ada komentar. Jadilah yang pertama menanggapi chapter ini.", fontSize = 14.sp, lineHeight = 20.sp, color = Ui.Text2, modifier = Modifier.padding(top = 14.dp))
                 else -> Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     items.forEach { CommentLine(it, onOpen) }
                 }
             }
             Text(
                 if ((page?.total ?: 0) > items.size) "Lihat semua komentar" else "Tulis komentar",
-                fontSize = 15.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Ui.OnAccent,
                 textAlign = TextAlign.Center,
@@ -76,7 +76,7 @@ fun ChapterCommentsSection(chapterSlug: String, load: suspend (String) -> Commen
                     .clip(RoundedCornerShape(8.dp))
                     .background(Ui.AccentBrush)
                     .clickable(onClick = onOpen)
-                    .padding(vertical = 14.dp)
+                    .padding(vertical = 12.dp)
             )
         }
     }
@@ -85,17 +85,17 @@ fun ChapterCommentsSection(chapterSlug: String, load: suspend (String) -> Commen
 @Composable
 private fun CommentLine(c: CommentDto, onOpen: () -> Unit) {
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp)).clickable(onClick = onOpen).padding(vertical = 8.dp)) {
-        Avatar(c.user.picture, c.user.name.ifBlank { c.user.username }, 36.dp)
+        Avatar(c.user.picture, c.user.name.ifBlank { c.user.username }, 33.dp)
         Column(Modifier.weight(1f).padding(start = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(c.user.username, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                Text(relativeTime(c.createdAt, System.currentTimeMillis()), fontSize = 13.sp, color = Ui.Text3, maxLines = 1)
+                Text(c.user.username, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(relativeTime(c.createdAt, System.currentTimeMillis()), fontSize = 12.sp, color = Ui.Text3, maxLines = 1)
             }
-            Text(c.body, fontSize = 15.sp, lineHeight = 21.sp, color = Color(0xFFC3CBCE), maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+            Text(c.body, fontSize = 14.sp, lineHeight = 19.sp, color = Color(0xFFC3CBCE), maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
             if (c.likeCount > 0 || c.replyCount > 0) {
                 Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (c.likeCount > 0) Text("♥ ${c.likeCount}", fontSize = 13.sp, color = Ui.Text2)
-                    if (c.replyCount > 0) Text("${c.replyCount} balasan", fontSize = 13.sp, color = Ui.Text2)
+                    if (c.likeCount > 0) Text("♥ ${c.likeCount}", fontSize = 12.sp, color = Ui.Text2)
+                    if (c.replyCount > 0) Text("${c.replyCount} balasan", fontSize = 12.sp, color = Ui.Text2)
                 }
             }
         }
