@@ -1,5 +1,7 @@
 package com.komikta.feature.explore
 
+import com.komikta.ui.components.ErrorState
+import com.komikta.ui.components.EmptyState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
@@ -129,16 +131,16 @@ fun ExploreScreen(
             }
         }
         Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 8.dp, top = 14.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(uiState.type?.replaceFirstChar { it.uppercase() } ?: "All types", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color.White, modifier = Modifier.weight(1f))
+            Text(uiState.type?.replaceFirstChar { it.uppercase() } ?: "All types", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White, modifier = Modifier.weight(1f))
             Box {
                 Row(Modifier.clip(CircleShape).clickable { sortMenu = true }.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(AppIcons.sort, null, tint = Ui.Accent, modifier = Modifier.size(18.dp))
-                    Text(SortOptions.firstOrNull { it.second == uiState.sort }?.first ?: SortOptions.first().first, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Ui.Accent)
+                    Text(SortOptions.firstOrNull { it.second == uiState.sort }?.first ?: SortOptions.first().first, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Ui.Accent)
                 }
                 DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }, modifier = Modifier.background(Ui.Card)) {
                     SortOptions.forEach { (label, value) ->
                         DropdownMenuItem(
-                            text = { Text(label, color = if (uiState.sort == value || (uiState.sort == null && value == "latest")) Ui.Accent else Color.White, fontSize = 14.sp) },
+                            text = { Text(label, color = if (uiState.sort == value || (uiState.sort == null && value == "latest")) Ui.Accent else Color.White, fontSize = 16.sp) },
                             onClick = { sortMenu = false; viewModel.applyFilters(uiState.selectedGenres, value, uiState.status) }
                         )
                     }
@@ -148,10 +150,17 @@ fun ExploreScreen(
 
         when {
             uiState.isLoading && uiState.comics.isEmpty() -> PosterRowSkeleton(rows = 4)
-            uiState.errorMessage != null && uiState.comics.isEmpty() -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(uiState.errorMessage ?: "Error", color = Ui.Text2)
-                }
+            uiState.errorMessage != null && uiState.comics.isEmpty() && uiState.errorMessage != NO_COMICS_MESSAGE -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                ErrorState(uiState.errorMessage ?: "Terjadi kesalahan", viewModel::retry)
+            }
+            !uiState.isLoading && uiState.comics.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                EmptyState(
+                    AppIcons.search,
+                    "Komik tidak ditemukan",
+                    "Coba kata kunci lain atau reset filter.",
+                    actionLabel = "Reset pencarian",
+                    onAction = viewModel::resetAll
+                )
             }
             else -> {
                 LazyVerticalGrid(
@@ -195,13 +204,13 @@ fun ExploreScreen(
 @Composable
 private fun SearchField(value: String, onChange: (String) -> Unit, focus: FocusRequester) {
     Row(
-        Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 12.dp).height(46.dp).clip(CircleShape).background(Ui.Card).padding(horizontal = 16.dp),
+        Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 12.dp).height(52.dp).clip(CircleShape).background(Ui.Card).padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(AppIcons.search, null, tint = Ui.Text2, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-            if (value.isEmpty()) Text("Search manga, manhwa, manhua", color = Ui.Text2, fontSize = 14.sp, maxLines = 1)
+            if (value.isEmpty()) Text("Search manga, manhwa, manhua", color = Ui.Text2, fontSize = 16.sp, maxLines = 1)
             BasicTextField(
                 value = value,
                 onValueChange = onChange,
@@ -222,12 +231,12 @@ private fun SearchField(value: String, onChange: (String) -> Unit, focus: FocusR
 @Composable
 private fun FilterButton(active: Int, onClick: () -> Unit) {
     Row(
-        Modifier.height(34.dp).clip(CircleShape).border(1.dp, if (active > 0) Ui.Accent else Ui.Outline, CircleShape).clickable(onClick = onClick).padding(horizontal = 14.dp),
+        Modifier.height(40.dp).clip(CircleShape).border(1.dp, if (active > 0) Ui.Accent else Ui.Outline, CircleShape).clickable(onClick = onClick).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         Icon(AppIcons.tune, null, tint = if (active > 0) Ui.Accent else Color.White, modifier = Modifier.size(17.dp))
-        Text(if (active > 0) "Filters · $active" else "Filters", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (active > 0) Ui.Accent else Color.White, maxLines = 1)
+        Text(if (active > 0) "Filters · $active" else "Filters", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = if (active > 0) Ui.Accent else Color.White, maxLines = 1)
     }
 }
 
@@ -261,7 +270,7 @@ private fun GenreFilterSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Filter komik", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Filter komik", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 IconButton(onClick = onDismiss) {
                     Icon(AppIcons.close, "Close", tint = Color.White)
                 }
@@ -315,13 +324,13 @@ private fun GenreFilterSheet(
                         draftSort = null
                         draftStatus = null
                     },
-                    modifier = Modifier.weight(1f).height(48.dp),
+                    modifier = Modifier.weight(1f).height(52.dp),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Ui.Chip, contentColor = Color.White)
                 ) { Text("Reset", fontWeight = FontWeight.SemiBold) }
                 Button(
                     onClick = { onApply(draft, draftSort, draftStatus) },
-                    modifier = Modifier.weight(1f).height(48.dp),
+                    modifier = Modifier.weight(1f).height(52.dp),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Ui.Accent, contentColor = Ui.OnAccent)
                 ) { Text("Terapkan", fontWeight = FontWeight.SemiBold) }
@@ -332,7 +341,7 @@ private fun GenreFilterSheet(
 
 @Composable
 private fun SheetLabel(text: String) {
-    Text(text, color = Ui.Text2, fontSize = 13.sp, modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
+    Text(text, color = Ui.Text2, fontSize = 15.sp, modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
 }
 
 @OptIn(ExperimentalLayoutApi::class)

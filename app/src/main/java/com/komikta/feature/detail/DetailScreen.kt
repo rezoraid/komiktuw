@@ -1,5 +1,6 @@
 package com.komikta.feature.detail
 
+import com.komikta.ui.components.ErrorState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
@@ -105,23 +106,20 @@ fun DetailScreen(
                     IconButton(onClick = viewModel::toggleLike) {
                         Icon(AppIcons.heart(like.liked), "Suka", tint = if (like.liked) Color(0xFFE5484D) else Color.White, modifier = Modifier.size(24.dp))
                     }
-                    if (like.count > 0) Text("${like.count}", fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.padding(end = 6.dp))
+                    if (like.count > 0) Text("${like.count}", fontSize = 14.sp, color = Ui.Text2, modifier = Modifier.padding(end = 6.dp))
                     IconButton(onClick = viewModel::toggleBookmark) {
                         Icon(AppIcons.bookmark(isBookmarked), "Bookmark", tint = if (isBookmarked) Ui.Accent else Color.White, modifier = Modifier.size(24.dp))
                     }
                 }
             }
         }
-        likeMessage?.let { Text(it, fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp)) }
+        likeMessage?.let { Text(it, fontSize = 14.sp, color = Ui.Text2, modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp)) }
 
         when {
             uiState.isLoading && detail == null -> DetailSkeleton()
             uiState.errorMessage != null && detail == null -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(uiState.errorMessage ?: "Error", color = Ui.Text2)
-                        TextButton(onClick = viewModel::loadDetail) { Text("Coba lagi", color = Ui.Accent) }
-                    }
+                    ErrorState(uiState.errorMessage ?: "Terjadi kesalahan", viewModel::loadDetail)
                 }
             }
             detail != null -> {
@@ -151,22 +149,22 @@ fun DetailScreen(
                                 Text(
                                     text = detail.title,
                                     style = MaterialTheme.typography.headlineMedium,
-                                    fontSize = 20.sp,
-                                    lineHeight = 26.sp,
+                                    fontSize = 22.sp,
+                                    lineHeight = 29.sp,
                                     maxLines = 4,
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 detail.alternativeTitles.firstOrNull()?.takeIf { it.isNotBlank() }?.let {
-                                    Text(it, fontSize = 12.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                    Text(it, fontSize = 14.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                 }
                                 val line = listOfNotNull(
                                     detail.status?.takeIf { it.isNotBlank() },
                                     detail.type?.takeIf { it.isNotBlank() },
                                     detail.year?.takeIf { it.isNotBlank() }
                                 ).joinToString(" · ")
-                                if (line.isNotEmpty()) Text(line, fontSize = 12.sp, color = Soft)
+                                if (line.isNotEmpty()) Text(line, fontSize = 14.sp, color = Soft)
                                 detail.rating?.takeIf { it > 0.0 }?.let {
-                                    Text("★ ${fmtRating(it)}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ui.Star)
+                                    Text("★ ${fmtRating(it)}", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Ui.Star)
                                 }
                             }
                         }
@@ -181,7 +179,7 @@ fun DetailScreen(
                             val started = readChapters.isNotEmpty()
                             Text(
                                 text = (if (started) "Lanjut baca · " else "Mulai baca · ") + chapterName(target),
-                                fontSize = 14.sp,
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Ui.OnAccent,
                                 maxLines = 1,
@@ -220,15 +218,15 @@ fun DetailScreen(
                             ) {
                                 Text(
                                     text = detail.synopsis.orEmpty(),
-                                    fontSize = 14.sp,
-                                    lineHeight = 22.sp,
+                                    fontSize = 16.sp,
+                                    lineHeight = 25.sp,
                                     color = Soft,
                                     maxLines = if (synopsisExpanded) Int.MAX_VALUE else 4,
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
                                     if (synopsisExpanded) "Tutup" else "Selengkapnya",
-                                    fontSize = 12.sp,
+                                    fontSize = 14.sp,
                                     color = Ui.Accent,
                                     fontWeight = FontWeight.Medium,
                                     modifier = Modifier.padding(top = 4.dp)
@@ -247,7 +245,7 @@ fun DetailScreen(
                                 detail.genres.forEach { genre ->
                                     Text(
                                         text = genre,
-                                        fontSize = 12.sp,
+                                        fontSize = 14.sp,
                                         color = Soft,
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(4.dp))
@@ -272,7 +270,7 @@ fun DetailScreen(
                         ) {
                             Icon(AppIcons.comment, null, tint = Ui.Accent, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(10.dp))
-                            Text("Komentar", fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                            Text("Komentar", fontSize = 16.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
                             Icon(AppIcons.chevronRight, null, tint = Ui.Text2, modifier = Modifier.size(20.dp))
                         }
                     }
@@ -286,7 +284,7 @@ fun DetailScreen(
                             Row(
                                 Modifier
                                     .weight(1f)
-                                    .height(40.dp)
+                                    .height(46.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(Ui.Card)
                                     .padding(horizontal = 12.dp),
@@ -296,7 +294,7 @@ fun DetailScreen(
                                 Spacer(Modifier.width(8.dp))
                                 Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                                     if (query.isEmpty()) {
-                                        Text("Cari chapter (${detail.chapters.size})", fontSize = 14.sp, color = Ui.Text3, maxLines = 1)
+                                        Text("Cari chapter (${detail.chapters.size})", fontSize = 16.sp, color = Ui.Text3, maxLines = 1)
                                     }
                                     BasicTextField(
                                         value = query,
@@ -336,8 +334,8 @@ fun DetailScreen(
 @Composable
 private fun MetaLine(label: String, value: String) {
     Row {
-        Text(label, fontSize = 13.sp, color = Ui.Text3, modifier = Modifier.width(64.dp))
-        Text(value, fontSize = 13.sp, color = Soft, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(label, fontSize = 15.sp, color = Ui.Text3, modifier = Modifier.width(64.dp))
+        Text(value, fontSize = 15.sp, color = Soft, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -353,7 +351,7 @@ private fun ChapterRow(chapter: Chapter, isRead: Boolean, comments: Int, onClick
         Column(Modifier.weight(1f)) {
             Text(
                 text = chapterName(chapter),
-                fontSize = 15.sp,
+                fontSize = 17.sp,
                 fontWeight = FontWeight.Medium,
                 color = if (isRead) ReadColor else Color.White,
                 maxLines = 2,
@@ -361,12 +359,12 @@ private fun ChapterRow(chapter: Chapter, isRead: Boolean, comments: Int, onClick
             )
             val ago = chapter.timeAgo
             if (!ago.isNullOrBlank()) {
-                Text(ago, fontSize = 12.sp, color = Ui.Text3, modifier = Modifier.padding(top = 2.dp))
+                Text(ago, fontSize = 14.sp, color = Ui.Text3, modifier = Modifier.padding(top = 2.dp))
             }
         }
         if (comments > 0) {
             Icon(AppIcons.comment, null, tint = Ui.Text3, modifier = Modifier.padding(start = 10.dp).size(14.dp))
-            Text("$comments", fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.padding(start = 4.dp))
+            Text("$comments", fontSize = 14.sp, color = Ui.Text2, modifier = Modifier.padding(start = 4.dp))
         }
         if (!isRead) Box(Modifier.padding(start = 10.dp).size(8.dp).background(Ui.Accent, CircleShape))
     }

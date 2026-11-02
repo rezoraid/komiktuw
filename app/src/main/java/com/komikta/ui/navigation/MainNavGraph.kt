@@ -1,5 +1,7 @@
 package com.komikta.ui.navigation
 
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -64,10 +66,14 @@ fun MainNavGraph() {
             navController = navController,
             startDestination = BottomNavItem.Home.route,
             modifier = if (isDetail) Modifier else Modifier.padding(innerPadding),
-            enterTransition = { fadeIn(tween(160)) },
-            exitTransition = { fadeOut(tween(90)) },
-            popEnterTransition = { fadeIn(tween(160)) },
-            popExitTransition = { fadeOut(tween(90)) }
+            // Pindah antar tab: fade halus. Buka layar lain (detail, reader, komentar): geser tipis + fade.
+            enterTransition = {
+                if (initialState.destination.route in tabRoutes && targetState.destination.route in tabRoutes) fadeIn(tween(180))
+                else slideInHorizontally(tween(240)) { it / 10 } + fadeIn(tween(240))
+            },
+            exitTransition = { fadeOut(tween(120)) },
+            popEnterTransition = { fadeIn(tween(200)) },
+            popExitTransition = { slideOutHorizontally(tween(220)) { it / 10 } + fadeOut(tween(200)) }
         ) {
             composable(BottomNavItem.Home.route) {
                 HomeScreen(
@@ -89,7 +95,10 @@ fun MainNavGraph() {
                 )
             }
             composable(BottomNavItem.Library.route) {
-                LibraryScreen(onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") })
+                LibraryScreen(
+                    onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") },
+                    onExplore = { navController.goToTab(BottomNavItem.Explore.route) }
+                )
             }
             composable(BottomNavItem.Profile.route) { ProfileScreen(
                     onOpen = { s, slug, chapter ->

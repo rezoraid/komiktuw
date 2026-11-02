@@ -106,7 +106,7 @@ class ReaderViewModel @Inject constructor(
 
     suspend fun commentPreview(chapter: String): CommentPageDto? {
         val hit = commentCache[chapter]
-        if (hit != null && System.currentTimeMillis() - hit.first < 20_000) return hit.second
+        if (hit != null && System.currentTimeMillis() - hit.first < 60_000) return hit.second
         return when (val r = community.comments(source, comicSlug, chapter, "top", 1)) {
             is Result.Success -> r.data.also { commentCache[chapter] = System.currentTimeMillis() to it }
             else -> null
@@ -144,6 +144,9 @@ class ReaderViewModel @Inject constructor(
         }
         viewModelScope.launch { saveHistory(content) }
         prefetchNext(content)
+        // Komentar chapter dimuat di latar belakang: bagian komentar di akhir chapter dan layar komentar langsung terisi.
+        viewModelScope.launch { commentPreview(content.chapterSlug) }
+        community.prefetchComments(source, comicSlug, content.chapterSlug)
     }
 
     private fun prefetchNext(from: ChapterContent) {

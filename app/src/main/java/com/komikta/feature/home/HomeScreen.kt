@@ -1,5 +1,7 @@
 package com.komikta.feature.home
 
+import com.komikta.ui.components.ErrorState
+import com.komikta.ui.components.EmptyState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -88,10 +90,7 @@ fun HomeScreen(
             PosterRowSkeleton(rows = 3)
         }
         uiState.errorMessage != null && uiState.latestComics.isEmpty() -> Box(Modifier.fillMaxSize().background(Ui.Bg), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(uiState.errorMessage ?: "Error", color = Ui.Text2)
-                TextButton(onClick = viewModel::loadHome) { Text("Coba lagi", color = Ui.Accent) }
-            }
+            ErrorState(uiState.errorMessage ?: "Terjadi kesalahan", viewModel::loadHome)
         }
         else -> {
             val latest = uiState.latestComics
@@ -165,6 +164,9 @@ fun HomeScreen(
                 item(key = "origin-title") { SectionHeader("By origin", null, "See all", onUpdateViewAll) }
                 item(key = "origin-tabs") { SegmentedTabs(Origins, origin, { origin = it }, Modifier.padding(horizontal = Pad), fill = false) }
                 item(key = "origin-gap") { Box(Modifier.height(16.dp)) }
+                if (byOrigin.isEmpty()) item(key = "origin-empty") {
+                    EmptyState(AppIcons.search, "Belum ada ${Origins[origin]}", "Coba pilih jenis lain di atas.", compact = true)
+                }
                 item(key = "origin-row") {
                     LazyRow(contentPadding = PaddingValues(horizontal = Pad), horizontalArrangement = Arrangement.spacedBy(Gap)) {
                         items(byOrigin, key = { "o:${it.source}:${it.slug}" }) { c -> ComicCard(c, { open(c) }, Modifier.width(92.dp)) }
@@ -188,11 +190,15 @@ private fun HomeHeader(onSearch: () -> Unit) {
 private fun SectionHeader(title: String, subtitle: String?, action: String, onAction: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = Pad, end = Pad, top = 26.dp, bottom = 14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(title, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1)
-            if (subtitle != null) Text(subtitle, fontSize = 13.sp, color = Ui.Text2, maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(width = 4.dp, height = 22.dp).clip(CircleShape).background(Ui.Accent))
+                Box(Modifier.width(10.dp))
+                Text(title, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1)
+            }
+            if (subtitle != null) Text(subtitle, fontSize = 15.sp, color = Ui.Text2, maxLines = 1, modifier = Modifier.padding(start = 14.dp))
         }
         Row(Modifier.clip(CircleShape).clickable(onClick = onAction).padding(start = 8.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(action, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Ui.Accent)
+            Text(action, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Ui.Accent)
             Icon(AppIcons.chevronRight, null, tint = Ui.Accent, modifier = Modifier.size(18.dp))
         }
     }
@@ -205,19 +211,19 @@ private fun Hero(comic: Comic, onClick: () -> Unit) {
         Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Color(0xFA181C21), 0.6f to Color(0xE6181C21), 1f to Color(0x4D181C21))))
         Column(Modifier.align(Alignment.CenterStart).fillMaxWidth(0.68f).padding(start = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                comic.type?.takeIf { it.isNotBlank() }?.let { Text(it.uppercase(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color.White) }
-                comic.rating?.takeIf { it > 0 }?.let { Rating(it, 12.sp) }
+                comic.type?.takeIf { it.isNotBlank() }?.let { Text(it.uppercase(), fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color.White) }
+                comic.rating?.takeIf { it > 0 }?.let { Rating(it, 14.sp) }
             }
-            Text(comic.title, fontSize = 20.sp, lineHeight = 25.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(comic.title, fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
             val desc = listOfNotNull(comic.genres.take(3).joinToString(", ").ifBlank { null }, comic.status?.takeIf { it.isNotBlank() }).joinToString(" · ")
-            if (desc.isNotEmpty()) Text(desc, fontSize = 12.sp, lineHeight = 17.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text("Read now", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ui.OnAccent, modifier = Modifier.padding(top = 4.dp).clip(CircleShape).background(Ui.Accent).padding(horizontal = 22.dp, vertical = 9.dp))
+            if (desc.isNotEmpty()) Text(desc, fontSize = 14.sp, lineHeight = 20.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text("Read now", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Ui.OnAccent, modifier = Modifier.padding(top = 4.dp).clip(CircleShape).background(Ui.Accent).padding(horizontal = 22.dp, vertical = 9.dp))
         }
     }
 }
 
 @Composable
-private fun Rating(value: Double, size: androidx.compose.ui.unit.TextUnit = 12.sp) {
+private fun Rating(value: Double, size: androidx.compose.ui.unit.TextUnit = 14.sp) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(AppIcons.star, null, tint = Ui.Star, modifier = Modifier.size(14.dp))
         Text(fmtRating(value), fontSize = size, fontWeight = FontWeight.Medium, color = Color.White, modifier = Modifier.padding(start = 4.dp))
@@ -227,18 +233,18 @@ private fun Rating(value: Double, size: androidx.compose.ui.unit.TextUnit = 12.s
 @Composable
 private fun Views(value: Double) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(AppIcons.eye, null, tint = Ui.Text2, modifier = Modifier.size(15.dp))
-        Text(fmtViews(value), fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.padding(start = 4.dp))
+        Icon(AppIcons.eye, null, tint = Ui.Text2, modifier = Modifier.size(17.dp))
+        Text(fmtViews(value), fontSize = 14.sp, color = Ui.Text2, modifier = Modifier.padding(start = 4.dp))
     }
 }
 
 @Composable
 private fun ContinueCard(h: ReadingHistoryEntity, now: Long, onClick: () -> Unit) {
-    Row(Modifier.width(250.dp).clip(RoundedCornerShape(16.dp)).background(Ui.Card).clickable(onClick = onClick).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        CoverImage(h.coverUrl, h.comicTitle, Modifier.size(width = 46.dp, height = 68.dp).clip(RoundedCornerShape(8.dp)).background(Ui.Bg), 140, 210)
-        Column(Modifier.weight(1f).height(68.dp).padding(start = 12.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Text(h.comicTitle, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text("${historyChapterLabel(h.lastChapterNumber)} · ${relativeTime(h.lastReadAt, now)}", fontSize = 12.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    Row(Modifier.width(280.dp).clip(RoundedCornerShape(16.dp)).background(Ui.Card).clickable(onClick = onClick).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        CoverImage(h.coverUrl, h.comicTitle, Modifier.size(width = 52.dp, height = 78.dp).clip(RoundedCornerShape(8.dp)).background(Ui.Bg), 140, 210)
+        Column(Modifier.weight(1f).height(78.dp).padding(start = 12.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Text(h.comicTitle, fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text("${historyChapterLabel(h.lastChapterNumber)} · ${relativeTime(h.lastReadAt, now)}", fontSize = 14.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -250,12 +256,12 @@ private fun WideCard(c: Comic, width: Dp, onClick: () -> Unit) {
             CoverImage(c.coverUrl, c.title, Modifier.fillMaxSize(), 640, 360, Alignment.TopCenter)
             c.type?.takeIf { it.isNotBlank() }?.let { TypeBadge(it.replaceFirstChar { x -> x.uppercase() }, Modifier.align(Alignment.TopStart).padding(10.dp)) }
         }
-        Text(c.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
+        Text(c.title, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
         Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             c.rating?.takeIf { it > 0 }?.let { Rating(it) }
-            c.status?.takeIf { it.isNotBlank() }?.let { Text(it, fontSize = 12.sp, color = Ui.Text2, maxLines = 1) }
+            c.status?.takeIf { it.isNotBlank() }?.let { Text(it, fontSize = 14.sp, color = Ui.Text2, maxLines = 1) }
         }
-        if (c.genres.isNotEmpty()) Text(c.genres.take(4).joinToString(", "), fontSize = 12.sp, lineHeight = 17.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+        if (c.genres.isNotEmpty()) Text(c.genres.take(4).joinToString(", "), fontSize = 14.sp, lineHeight = 20.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
     }
 }
 
@@ -263,20 +269,20 @@ private fun WideCard(c: Comic, width: Dp, onClick: () -> Unit) {
 private fun UpdateRow(c: Comic, onClick: () -> Unit) {
     val ch = c.chapters.firstOrNull()
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = Pad, vertical = 7.dp)) {
-        Box(Modifier.size(width = 58.dp, height = 86.dp).clip(RoundedCornerShape(10.dp)).background(Ui.Card)) {
+        Box(Modifier.size(width = 64.dp, height = 96.dp).clip(RoundedCornerShape(10.dp)).background(Ui.Card)) {
             CoverImage(c.coverUrl, c.title, Modifier.fillMaxSize(), 174, 258)
             c.type?.takeIf { it.isNotBlank() }?.let { TypeBadge(it.replaceFirstChar { x -> x.uppercase() }, Modifier.align(Alignment.TopStart).padding(3.dp), small = true) }
         }
-        Column(Modifier.weight(1f).height(86.dp).padding(start = 12.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Text(c.title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Column(Modifier.weight(1f).height(96.dp).padding(start = 12.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Text(c.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 c.rating?.takeIf { it > 0 }?.let { Rating(it) }
                 c.views?.takeIf { it > 0 }?.let { Views(it) }
                 if (isFresh(ch?.timeAgo)) NewBadge(small = true)
             }
             if (ch != null) Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ui.Card).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(chapterShort(ch) ?: ch.title.orEmpty(), fontSize = 13.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                Text(ch.timeAgo.orEmpty(), fontSize = 12.sp, color = Ui.Text2, maxLines = 1)
+                Text(chapterShort(ch) ?: ch.title.orEmpty(), fontSize = 15.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(ch.timeAgo.orEmpty(), fontSize = 14.sp, color = Ui.Text2, maxLines = 1)
             }
         }
     }
@@ -285,10 +291,10 @@ private fun UpdateRow(c: Comic, onClick: () -> Unit) {
 @Composable
 private fun RankRow(rank: Int, c: Comic, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick), verticalAlignment = Alignment.CenterVertically) {
-        Text("$rank", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = if (rank <= 3) Ui.Accent else Ui.Rank, textAlign = TextAlign.Center, modifier = Modifier.width(40.dp))
-        CoverImage(c.coverUrl, c.title, Modifier.size(width = 46.dp, height = 68.dp).clip(RoundedCornerShape(8.dp)).background(Ui.Card), 140, 210)
+        Text("$rank", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = if (rank <= 3) Ui.Accent else Ui.Rank, textAlign = TextAlign.Center, modifier = Modifier.width(40.dp))
+        CoverImage(c.coverUrl, c.title, Modifier.size(width = 52.dp, height = 78.dp).clip(RoundedCornerShape(8.dp)).background(Ui.Card), 140, 210)
         Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(c.title, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(c.title, fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 c.rating?.takeIf { it > 0 }?.let { Rating(it) }
                 c.views?.takeIf { it > 0 }?.let { Views(it) }

@@ -1,5 +1,7 @@
 package com.komikta.feature.profile
 
+import androidx.compose.ui.graphics.Brush
+import com.komikta.ui.components.EmptyState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -113,17 +115,19 @@ internal fun ProfilePage(
             ActivityRow(item, user, now) { onItemClick(item) }
         }
         item(key = "footer", contentType = "footer") {
-            Box(Modifier.fillMaxWidth().padding(vertical = 28.dp, horizontal = 24.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 8.dp), contentAlignment = Alignment.Center) {
                 when {
-                    state.locked(state.tab) -> FooterText("Aktivitas pengguna ini bersifat privat")
-                    tab.loading -> CircularProgressIndicator(Modifier.size(22.dp), color = P.Label, strokeWidth = 2.dp)
+                    state.locked(state.tab) -> EmptyState(AppIcons.eye, "Aktivitas bersifat privat", "Pengguna ini menyembunyikan aktivitasnya.", compact = true)
+                    tab.loading && !(tab.page == 0 && tab.items.isNotEmpty()) -> CircularProgressIndicator(Modifier.size(22.dp), color = P.Label, strokeWidth = 2.dp)
                     tab.error != null -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         FooterText(tab.error)
-                        Text("Coba lagi", fontSize = 13.sp, color = P.TabOn, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable(onClick = onRetry).padding(12.dp))
+                        Text("Coba lagi", fontSize = 15.sp, color = P.TabOn, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable(onClick = onRetry).padding(12.dp))
                     }
-                    tab.items.isEmpty() && !tab.hasMore -> FooterText(
-                        when (state.tab) { 0 -> "Belum ada riwayat baca"; 1 -> "Belum ada komentar"; else -> "Belum ada yang disukai" }
-                    )
+                    tab.items.isEmpty() && !tab.hasMore -> when (state.tab) {
+                        0 -> EmptyState(AppIcons.eye, "Belum ada riwayat baca", "Komik yang dibaca akan muncul di sini.", compact = true)
+                        1 -> EmptyState(AppIcons.comment, "Belum ada komentar", "Komentar di chapter dan komik akan muncul di sini.", compact = true)
+                        else -> EmptyState(AppIcons.heart(false), "Belum ada yang disukai", "Komik dan chapter yang disukai akan muncul di sini.", compact = true)
+                    }
                 }
             }
         }
@@ -132,7 +136,7 @@ internal fun ProfilePage(
 
 @Composable
 private fun FooterText(text: String) {
-    Text(text, fontSize = 13.sp, color = P.Label, textAlign = TextAlign.Center)
+    Text(text, fontSize = 15.sp, color = P.Label, textAlign = TextAlign.Center)
 }
 
 @Composable
@@ -147,16 +151,16 @@ private fun ProfileHeader(
 ) {
     val name = user?.let { it.name.ifBlank { it.username } }.orEmpty()
     Column(Modifier.fillMaxWidth()) {
-        Box(Modifier.fillMaxWidth().background(P.Header)) {
+        Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color(0xFF303137), P.Header)))) {
             Column(Modifier.fillMaxWidth().padding(top = 43.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(contentAlignment = Alignment.Center) {
-                    Avatar(user?.picture, name, 116.dp, if (onAvatarClick != null) Modifier.clickable(onClick = onAvatarClick) else Modifier)
-                    if (busy) Box(Modifier.size(116.dp).clip(CircleShape).background(Color(0x99000000)), contentAlignment = Alignment.Center) {
+                    Avatar(user?.picture, name, 124.dp, if (onAvatarClick != null) Modifier.clickable(onClick = onAvatarClick) else Modifier)
+                    if (busy) Box(Modifier.size(124.dp).clip(CircleShape).background(Color(0x99000000)), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
                     }
                 }
                 Text(
-                    name, fontSize = 17.sp, color = P.Name, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    name, fontSize = 19.sp, color = P.Name, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 8.dp, start = 24.dp, end = 24.dp)
                 )
                 Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -170,7 +174,7 @@ private fun ProfileHeader(
                     Stat(stats?.monthsJoined?.takeIf { it >= 0 }?.toString(), "bulan\nbergabung", Modifier.weight(1f))
                 }
             }
-            Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            Row(Modifier.fillMaxWidth().height(60.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 Box { topLeft() }
                 Box { topRight() }
             }
@@ -182,19 +186,19 @@ private fun ProfileHeader(
 @Composable
 private fun Stat(value: String?, label: String, modifier: Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value ?: "—", fontSize = 18.sp, color = P.Name, maxLines = 1)
-        Text(label, fontSize = 11.sp, lineHeight = 13.sp, color = P.Label, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 2.dp))
+        Text(value ?: "—", fontSize = 20.sp, color = P.Name, maxLines = 1)
+        Text(label, fontSize = 13.sp, lineHeight = 16.sp, color = P.Label, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 2.dp))
     }
 }
 
 @Composable
 private fun Capsule(text: String, onClick: (() -> Unit)? = null) {
     Box(
-        Modifier.height(28.dp).clip(CircleShape).background(P.Capsule)
+        Modifier.height(32.dp).clip(CircleShape).background(P.Capsule)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center
-    ) { Text(text, fontSize = 12.sp, color = Color.White, maxLines = 1) }
+    ) { Text(text, fontSize = 14.sp, color = Color.White, maxLines = 1) }
 }
 
 /** Kapsul hitam "Komikta" + kata peran di atas bidang biru dengan potongan diagonal, seperti referensi. */
@@ -202,8 +206,8 @@ private fun Capsule(text: String, onClick: (() -> Unit)? = null) {
 private fun RoleCapsule(role: String) {
     val word = when (role) { "OWNER" -> "Owner"; "MODERATOR" -> "Moderator"; "PREMIUM" -> "Premium"; else -> "Member" }
     val slant = with(LocalDensity.current) { 8.dp.toPx() }
-    Row(Modifier.height(28.dp).clip(CircleShape).background(Color.Black), verticalAlignment = Alignment.CenterVertically) {
-        Text("Komikta", fontSize = 12.sp, color = Color.White, maxLines = 1, modifier = Modifier.padding(start = 12.dp, end = 4.dp))
+    Row(Modifier.height(32.dp).clip(CircleShape).background(Color.Black), verticalAlignment = Alignment.CenterVertically) {
+        Text("Komikta", fontSize = 14.sp, color = Color.White, maxLines = 1, modifier = Modifier.padding(start = 12.dp, end = 4.dp))
         Box(
             Modifier.fillMaxHeight().drawBehind {
                 val path = Path().apply {
@@ -212,21 +216,21 @@ private fun RoleCapsule(role: String) {
                 drawPath(path, P.Blue)
             }.padding(start = 14.dp, end = 12.dp),
             contentAlignment = Alignment.Center
-        ) { Text(word, fontSize = 12.sp, color = Color.White, maxLines = 1) }
+        ) { Text(word, fontSize = 14.sp, color = Color.White, maxLines = 1) }
     }
 }
 
 @Composable
 private fun ProfileTabs(selected: Int, onTab: (Int) -> Unit) {
-    Row(Modifier.fillMaxWidth().height(44.dp).background(P.Content)) {
+    Row(Modifier.fillMaxWidth().height(52.dp).background(P.Content)) {
         TabLabels.forEachIndexed { i, label ->
             val on = i == selected
             Box(
                 Modifier.weight(1f).fillMaxHeight().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onTab(i) },
                 contentAlignment = Alignment.Center
             ) {
-                Text(label, fontSize = 13.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, color = if (on) P.TabOn else P.TabOff)
-                if (on) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp).size(width = 19.dp, height = 2.dp).clip(CircleShape).background(P.TabOn))
+                Text(label, fontSize = 15.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, color = if (on) P.TabOn else P.TabOff)
+                if (on) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp).size(width = 24.dp, height = 3.dp).clip(CircleShape).background(P.TabOn))
             }
         }
     }
@@ -247,31 +251,31 @@ private fun ActivityRow(item: ActivityItemDto, owner: CommunityUserDto?, now: Lo
         }
     }
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 10.dp)) {
-        Box(Modifier.size(46.dp)) {
+        Box(Modifier.size(56.dp)) {
             CoverImage(
                 url = item.coverUrl.ifBlank { null }, contentDescription = null,
                 modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(5.dp)).background(P.Header),
                 widthPx = 140, heightPx = 140, alignment = Alignment.TopCenter
             )
             if (owner != null) Avatar(
-                owner.picture, owner.name.ifBlank { owner.username }, 22.dp,
+                owner.picture, owner.name.ifBlank { owner.username }, 26.dp,
                 Modifier.align(Alignment.BottomEnd).offset(x = 7.dp, y = 5.dp).border(1.dp, Color(0xFFCFCFD2), CircleShape)
             )
         }
         Column(Modifier.weight(1f).padding(start = 15.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(item.comicTitle, fontSize = 13.sp, color = P.Title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(sub, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(item.comicTitle, fontSize = 15.sp, color = P.Title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(sub, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             when (item.kind) {
-                "comment" -> Text(item.body, fontSize = 12.sp, lineHeight = 17.sp, color = P.Strong, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+                "comment" -> Text(item.body, fontSize = 14.sp, lineHeight = 20.sp, color = P.Strong, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
                 "like" -> Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(AppIcons.heart(true), null, tint = P.Heart, modifier = Modifier.size(14.dp))
-                    Text(if (item.type == "chapter") "Chapter" else "Komik", fontSize = 11.sp, color = P.Sub, modifier = Modifier.padding(start = 6.dp))
+                    Icon(AppIcons.heart(true), null, tint = P.Heart, modifier = Modifier.size(17.dp))
+                    Text(if (item.type == "chapter") "Chapter" else "Komik", fontSize = 13.sp, color = P.Sub, modifier = Modifier.padding(start = 6.dp))
                 }
                 else -> Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
                     PlayDot()
                     Text(
                         if (item.readMinutes > 0) "${item.readMinutes} menit membaca" else "Lanjut baca",
-                        fontSize = 11.sp, color = P.Sub, modifier = Modifier.padding(start = 8.dp)
+                        fontSize = 13.sp, color = P.Sub, modifier = Modifier.padding(start = 8.dp)
                     )
                 }
             }
@@ -282,7 +286,7 @@ private fun ActivityRow(item: ActivityItemDto, owner: CommunityUserDto?, now: Lo
 @Composable
 private fun PlayDot() {
     Box(
-        Modifier.size(16.dp).clip(CircleShape).background(Color.White).drawBehind {
+        Modifier.size(19.dp).clip(CircleShape).background(Color.White).drawBehind {
             val w = size.width
             val tri = Path().apply { moveTo(w * 0.40f, w * 0.30f); lineTo(w * 0.72f, w * 0.50f); lineTo(w * 0.40f, w * 0.70f); close() }
             drawPath(tri, Color.Black)

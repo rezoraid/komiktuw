@@ -27,10 +27,10 @@ private val BadgeShape = RoundedCornerShape(5.dp)
 fun RoleBadge(role: String, modifier: Modifier = Modifier) {
     val base = modifier.clip(BadgeShape)
     when (role) {
-        "OWNER" -> Text("OWNER", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = base.background(Color(0xFF3C9BD6)).border(1.dp, Color(0xFF7BCFFF), BadgeShape).padding(horizontal = 6.dp, vertical = 2.dp))
-        "MODERATOR" -> Text("MOD", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF7BCFFF), modifier = base.background(Color(0xFF1C3445)).border(1.dp, Color(0xFF3C9BD6), BadgeShape).padding(horizontal = 6.dp, vertical = 1.dp))
-        "PREMIUM" -> Text("PREMIUM", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = base.background(Color(0xFF3C9BD6)).border(1.dp, Color(0xFF7BCFFF), BadgeShape).padding(horizontal = 6.dp, vertical = 2.dp))
-        else -> Text("USER", fontSize = 9.sp, fontWeight = FontWeight.Medium, color = Ui.Text2, modifier = base.background(Ui.Chip).padding(horizontal = 6.dp, vertical = 2.dp))
+        "OWNER" -> Text("OWNER", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = base.background(Color(0xFF3C9BD6)).border(1.dp, Color(0xFF7BCFFF), BadgeShape).padding(horizontal = 8.dp, vertical = 3.dp))
+        "MODERATOR" -> Text("MOD", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF7BCFFF), modifier = base.background(Color(0xFF1C3445)).border(1.dp, Color(0xFF3C9BD6), BadgeShape).padding(horizontal = 8.dp, vertical = 2.dp))
+        "PREMIUM" -> Text("PREMIUM", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = base.background(Color(0xFF3C9BD6)).border(1.dp, Color(0xFF7BCFFF), BadgeShape).padding(horizontal = 8.dp, vertical = 3.dp))
+        else -> Text("USER", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Ui.Text2, modifier = base.background(Ui.Chip).padding(horizontal = 8.dp, vertical = 3.dp))
     }
 }
 
@@ -38,10 +38,10 @@ fun RoleBadge(role: String, modifier: Modifier = Modifier) {
 fun LevelChip(level: Int, modifier: Modifier = Modifier) {
     Text(
         "Lv $level",
-        fontSize = 10.sp,
+        fontSize = 12.sp,
         fontWeight = FontWeight.Medium,
         color = Color(0xFF7BCFFF),
-        modifier = modifier.clip(BadgeShape).background(Color(0xFF1C3445)).border(1.dp, Color(0xFF3C9BD6), BadgeShape).padding(horizontal = 6.dp, vertical = 2.dp)
+        modifier = modifier.clip(BadgeShape).background(Color(0xFF1C3445)).border(1.dp, Color(0xFF3C9BD6), BadgeShape).padding(horizontal = 8.dp, vertical = 3.dp)
     )
 }
 

@@ -33,7 +33,7 @@ class SessionStore @Inject constructor(
 
     private fun busted(u: CommunityUserDto): CommunityUserDto {
         val p = u.picture
-        if (avatarRev <= 0L || p.isBlank() || p.startsWith("data:")) return u
+        if (avatarRev <= 0L || p.isBlank() || p.startsWith("data:") || p.startsWith("file:")) return u
         return u.copy(picture = p + (if ('?' in p) "&" else "?") + "rev=$avatarRev")
     }
 
@@ -53,6 +53,13 @@ class SessionStore @Inject constructor(
         if (token == null) return
         val old = _user.value
         val user = busted(if (incoming.commentCount < 0 && old != null && old.id == incoming.id) incoming.copy(commentCount = old.commentCount) else incoming)
+        sp.edit().putString("user", json.encodeToString(CommunityUserDto.serializer(), user)).apply()
+        _user.value = user
+    }
+
+    /** Ganti user di sesi apa adanya (tanpa cache-bust): untuk tampilan optimistic dan pengembaliannya. */
+    fun replaceLocal(user: CommunityUserDto) {
+        if (token == null) return
         sp.edit().putString("user", json.encodeToString(CommunityUserDto.serializer(), user)).apply()
         _user.value = user
     }

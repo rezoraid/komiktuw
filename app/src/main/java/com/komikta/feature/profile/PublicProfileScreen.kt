@@ -53,7 +53,7 @@ fun PublicProfileScreen(
             topRight = {}
         )
         if (state.stats == null && state.statsError != null) {
-            Text(state.statsError.orEmpty(), color = Color(0xFF807F84), fontSize = 13.sp, modifier = Modifier.align(Alignment.Center).padding(24.dp))
+            Text(state.statsError.orEmpty(), color = Color(0xFF807F84), fontSize = 15.sp, modifier = Modifier.align(Alignment.Center).padding(24.dp))
         }
     }
 }

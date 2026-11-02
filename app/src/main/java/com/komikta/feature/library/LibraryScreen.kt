@@ -1,5 +1,6 @@
 package com.komikta.feature.library
 
+import com.komikta.ui.components.EmptyState
 import com.komikta.ui.components.AppIcons
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
@@ -40,6 +41,7 @@ import androidx.compose.runtime.getValue
 @Composable
 fun LibraryScreen(
     onComicClick: (source: String, slug: String) -> Unit,
+    onExplore: () -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
@@ -47,7 +49,10 @@ fun LibraryScreen(
     var tab by remember { mutableIntStateOf(0) }
 
     Column(Modifier.fillMaxSize().background(Ui.Bg)) {
-        Text("Library", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(start = 14.dp, top = 18.dp, bottom = 14.dp))
+        Column(Modifier.padding(start = 14.dp, end = 14.dp, top = 18.dp, bottom = 14.dp)) {
+            Text("Library", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text("${bookmarks.size} bookmark · ${history.size} riwayat baca", fontSize = 15.sp, color = Ui.Text2, modifier = Modifier.padding(top = 2.dp))
+        }
         SegmentedTabs(listOf("Bookmarks (${bookmarks.size})", "History (${history.size})"), tab, { tab = it }, Modifier.padding(horizontal = 14.dp))
         Spacer(Modifier.height(14.dp))
 
@@ -61,16 +66,13 @@ fun LibraryScreen(
 
         if (list.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(
-                        if (tab == 0) AppIcons.bookmark(false) else AppIcons.comment,
-                        null,
-                        tint = Ui.Accent,
-                        modifier = Modifier.size(48.dp)
-                    )
-                    Text(if (tab == 0) "Belum ada bookmark" else "Belum ada history", fontWeight = FontWeight.SemiBold, color = Color.White)
-                    Text(if (tab == 0) "Simpan komik favoritmu dari halaman detail" else "Komik yang kamu baca akan muncul di sini", fontSize = 13.sp, color = Ui.Text2)
-                }
+                EmptyState(
+                    icon = if (tab == 0) AppIcons.bookmark(false) else AppIcons.eye,
+                    title = if (tab == 0) "Belum ada bookmark" else "Belum ada riwayat",
+                    subtitle = if (tab == 0) "Simpan komik favoritmu dari halaman detail biar gampang dibaca lagi." else "Komik yang kamu baca akan muncul di sini.",
+                    actionLabel = "Jelajahi komik",
+                    onAction = onExplore
+                )
             }
         } else {
             LazyVerticalGrid(

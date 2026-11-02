@@ -1,5 +1,7 @@
 package com.komikta.feature.community
 
+import com.komikta.ui.components.ErrorState
+import com.komikta.ui.components.EmptyState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -95,12 +97,12 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
                 Text("Komentar", style = MaterialTheme.typography.titleLarge)
                 Text(
                     if (viewModel.chapterLabel != null) "Chapter ${viewModel.chapterLabel}" else "Halaman komik",
-                    fontSize = 12.sp,
+                    fontSize = 14.sp,
                     color = Ui.Text3,
                     maxLines = 1
                 )
             }
-            if (!ui.loading && ui.error == null) Text("${ui.total}", fontSize = 13.sp, color = Ui.Text2, modifier = Modifier.padding(end = 14.dp))
+            if (!ui.loading && ui.error == null) Text("${ui.total}", fontSize = 15.sp, color = Ui.Text2, modifier = Modifier.padding(end = 14.dp))
         }
         Row(Modifier.padding(horizontal = 14.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Chip("Terbaru", selected = ui.sort == "newest", onClick = { viewModel.setSort("newest") })
@@ -110,16 +112,13 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
 
         when {
             ui.loading && ui.items.isEmpty() -> Column(Modifier.weight(1f).padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                repeat(5) { SkeletonBlock(Modifier.fillMaxWidth().height(56.dp)) }
+                repeat(5) { SkeletonBlock(Modifier.fillMaxWidth().height(64.dp)) }
             }
             ui.error != null && ui.items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(ui.error ?: "Error", color = Ui.Text2)
-                    TextButton(onClick = viewModel::load) { Text("Coba lagi", color = Ui.Accent) }
-                }
+                ErrorState(ui.error ?: "Terjadi kesalahan", { viewModel.load() })
             }
             ui.items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("Belum ada komentar. Jadilah yang pertama.", color = Ui.Text2, fontSize = 14.sp)
+                EmptyState(AppIcons.comment, "Belum ada komentar", "Jadilah yang pertama menanggapi. Tulis komentarmu di bawah.")
             }
             else -> LazyColumn(Modifier.weight(1f)) {
                 ui.items.forEach { root ->
@@ -131,9 +130,9 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
                         item(key = "toggle-${root.id}", contentType = "toggle") {
                             Text(
                                 if (rs?.expanded == true) "Sembunyikan balasan" else "Lihat ${root.replyCount} balasan",
-                                fontSize = 12.sp,
+                                fontSize = 14.sp,
                                 color = Ui.Text2,
-                                modifier = Modifier.padding(start = 62.dp, top = 2.dp, bottom = 8.dp).clickable { viewModel.toggleReplies(root) }
+                                modifier = Modifier.padding(start = 64.dp, top = 2.dp, bottom = 8.dp).clickable { viewModel.toggleReplies(root) }
                             )
                         }
                     }
@@ -141,9 +140,9 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
                         items(rs.items, key = { it.id }, contentType = { "reply" }) { reply ->
                             CommentRow(reply, true, me?.id, viewModel, { deleteTarget = it }, { reportTarget = it }, onUserClick)
                         }
-                        if (rs.loading) item(key = "rl-${root.id}", contentType = "more") { Text("Memuat balasan…", fontSize = 12.sp, color = Ui.Text3, modifier = Modifier.padding(start = 62.dp, bottom = 8.dp)) }
+                        if (rs.loading) item(key = "rl-${root.id}", contentType = "more") { Text("Memuat balasan…", fontSize = 14.sp, color = Ui.Text3, modifier = Modifier.padding(start = 64.dp, bottom = 8.dp)) }
                         else if (rs.hasMore && rs.page > 0) item(key = "rm-${root.id}", contentType = "more") {
-                            Text("Balasan lainnya", fontSize = 12.sp, color = Ui.Text2, modifier = Modifier.padding(start = 62.dp, bottom = 10.dp).clickable { viewModel.loadReplies(root.id) })
+                            Text("Balasan lainnya", fontSize = 14.sp, color = Ui.Text2, modifier = Modifier.padding(start = 64.dp, bottom = 10.dp).clickable { viewModel.loadReplies(root.id) })
                         }
                     }
                 }
@@ -151,7 +150,7 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
                     LaunchedEffect(ui.page) { viewModel.loadMore() }
                     Text(
                         if (ui.loadingMore) "Memuat…" else "Muat komentar lainnya",
-                        fontSize = 13.sp,
+                        fontSize = 15.sp,
                         color = Ui.Text2,
                         modifier = Modifier.fillMaxWidth().clickable { viewModel.loadMore() }.padding(16.dp)
                     )
@@ -161,13 +160,13 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
 
         Column(Modifier.fillMaxWidth().background(Ui.Bar)) {
             Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
-            ui.notice?.let { Text(it, fontSize = 12.sp, color = Soft, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) }
+            ui.notice?.let { Text(it, fontSize = 14.sp, color = Soft, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) }
             val target = ui.replyingTo
             if (target != null || ui.editing != null) {
                 Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         if (ui.editing != null) "Mengedit komentar" else "Membalas @${target?.user?.username}",
-                        fontSize = 12.sp,
+                        fontSize = 14.sp,
                         color = Ui.Text2,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -179,7 +178,7 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
             if (me == null) {
                 Text(
                     "Masuk dengan Google untuk berkomentar",
-                    fontSize = 14.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = Ui.OnAccent,
                     modifier = Modifier
@@ -193,8 +192,8 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
                 )
             } else {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(Ui.Card).padding(horizontal = 14.dp, vertical = 10.dp)) {
-                        if (draft.isEmpty()) Text("Tulis komentar…", fontSize = 14.sp, color = Ui.Text3)
+                    Box(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(Ui.Card).padding(horizontal = 14.dp, vertical = 12.dp)) {
+                        if (draft.isEmpty()) Text("Tulis komentar…", fontSize = 16.sp, color = Ui.Text3)
                         BasicTextField(
                             value = draft,
                             onValueChange = viewModel::setDraft,
@@ -206,10 +205,10 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
                     }
                     val canSend = draft.isNotBlank() && !ui.sending
                     IconButton(onClick = viewModel::submit, enabled = canSend) {
-                        Icon(AppIcons.send, "Kirim", tint = if (canSend) Ui.Accent else Ui.Text3, modifier = Modifier.size(24.dp))
+                        Icon(AppIcons.send, "Kirim", tint = if (canSend) Ui.Accent else Ui.Text3, modifier = Modifier.size(28.dp))
                     }
                 }
-                if (draft.length > 800) Text("${draft.length}/${CommentsViewModel.MAX_LEN}", fontSize = 11.sp, color = Ui.Text3, modifier = Modifier.padding(start = 14.dp, bottom = 6.dp))
+                if (draft.length > 800) Text("${draft.length}/${CommentsViewModel.MAX_LEN}", fontSize = 13.sp, color = Ui.Text3, modifier = Modifier.padding(start = 14.dp, bottom = 6.dp))
             }
         }
     }
@@ -219,7 +218,7 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
             onDismissRequest = { deleteTarget = null },
             containerColor = Ui.Card,
             title = { Text("Hapus komentar?", style = MaterialTheme.typography.titleMedium) },
-            text = { Text("Komentar yang dihapus tidak bisa dikembalikan.", color = Ui.Text2, fontSize = 14.sp) },
+            text = { Text("Komentar yang dihapus tidak bisa dikembalikan.", color = Ui.Text2, fontSize = 16.sp) },
             confirmButton = { TextButton(onClick = { viewModel.delete(c); deleteTarget = null }) { Text("Hapus", color = Ui.Accent) } },
             dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text("Batal", color = Ui.Text2) } }
         )
@@ -252,42 +251,42 @@ private fun CommentRow(
     onReport: (CommentDto) -> Unit,
     onUserClick: (String) -> Unit
 ) {
-    val avatar: Dp = if (isReply) 28.dp else 36.dp
+    val avatar: Dp = if (isReply) 32.dp else 40.dp
     var menu by remember { mutableStateOf(false) }
     val canReport = !c.deleted && c.user.id != meId
-    Row(Modifier.fillMaxWidth().padding(start = if (isReply) 50.dp else 14.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)) {
+    Row(Modifier.fillMaxWidth().padding(start = if (isReply) 56.dp else 14.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)) {
         Box(Modifier.clickable { if (c.user.id.isNotBlank()) onUserClick(c.user.id) }) { Avatar(c.user.picture, c.user.name.ifBlank { c.user.username }, avatar) }
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(c.user.username, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false).clickable { if (c.user.id.isNotBlank()) onUserClick(c.user.id) })
+                Text(c.user.username, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false).clickable { if (c.user.id.isNotBlank()) onUserClick(c.user.id) })
                 if (c.user.role != "USER") RoleBadge(c.user.role)
                 LevelChip(c.user.level)
-                Text(relativeTime(c.createdAt, System.currentTimeMillis()) + if (c.edited && !c.deleted) " · diedit" else "", fontSize = 11.sp, color = Ui.Text3, maxLines = 1)
+                Text(relativeTime(c.createdAt, System.currentTimeMillis()) + if (c.edited && !c.deleted) " · diedit" else "", fontSize = 13.sp, color = Ui.Text3, maxLines = 1)
             }
             if (c.deleted) {
-                Text("Komentar telah dihapus", fontSize = 13.sp, fontStyle = FontStyle.Italic, color = Ui.Text3, modifier = Modifier.padding(top = 4.dp))
+                Text("Komentar telah dihapus", fontSize = 15.sp, fontStyle = FontStyle.Italic, color = Ui.Text3, modifier = Modifier.padding(top = 4.dp))
             } else {
                 Text(
                     text = (if (c.replyTo != null) "@${c.replyTo} " else "") + c.body,
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
+                    fontSize = 16.sp,
+                    lineHeight = 23.sp,
                     color = Soft,
                     modifier = Modifier.padding(top = 4.dp)
                 )
                 Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(Modifier.clip(RoundedCornerShape(6.dp)).clickable { vm.toggleLike(c) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Icon(AppIcons.heart(c.liked), "Suka", tint = if (c.liked) Ui.Accent else Ui.Text2, modifier = Modifier.size(17.dp))
-                        if (c.likeCount > 0) Text("${c.likeCount}", fontSize = 12.sp, color = if (c.liked) Ui.Accent else Ui.Text2)
+                        Icon(AppIcons.heart(c.liked), "Suka", tint = if (c.liked) Ui.Accent else Ui.Text2, modifier = Modifier.size(21.dp))
+                        if (c.likeCount > 0) Text("${c.likeCount}", fontSize = 14.sp, color = if (c.liked) Ui.Accent else Ui.Text2)
                     }
                     Text(
                         "Balas",
-                        fontSize = 12.sp,
+                        fontSize = 14.sp,
                         color = Ui.Text2,
                         modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { if (meId == null) vm.notice("Masuk dulu untuk membalas") else vm.startReply(c) }.padding(vertical = 6.dp)
                     )
                     if (c.canEdit || c.canDelete || canReport) Box {
-                        Icon(AppIcons.more, "Opsi", tint = Ui.Text2, modifier = Modifier.size(20.dp).clickable { menu = true })
+                        Icon(AppIcons.more, "Opsi", tint = Ui.Text2, modifier = Modifier.size(24.dp).clickable { menu = true })
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, modifier = Modifier.background(Ui.Card)) {
                             if (c.canEdit) DropdownMenuItem(text = { Text("Edit") }, onClick = { menu = false; vm.startEdit(c) })
                             if (c.canDelete) DropdownMenuItem(text = { Text("Hapus") }, onClick = { menu = false; onDelete(c) })

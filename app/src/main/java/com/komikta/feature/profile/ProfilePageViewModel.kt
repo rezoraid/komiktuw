@@ -27,6 +27,7 @@ data class TabState(
 )
 
 data class ProfilePageState(
+    val userId: String = "",
     val stats: CommunityUserDto? = null,
     val self: Boolean = false,
     val activityVisible: Boolean = true,
@@ -46,7 +47,8 @@ fun ActivityItemDto.listKey(): String = when (kind) {
 
 @HiltViewModel
 class ProfilePageViewModel @Inject constructor(
-    private val repo: CommunityRepository
+    private val repo: CommunityRepository,
+    private val cache: ProfileCache
 ) : ViewModel() {
     private val _state = MutableStateFlow(ProfilePageState())
     val state: StateFlow<ProfilePageState> = _state.asStateFlow()
@@ -56,15 +58,25 @@ class ProfilePageViewModel @Inject constructor(
     private var statsJob: Job? = null
     private val tabJobs = arrayOfNulls<Job>(ProfileTabKeys.size)
 
-    /** Muat profil. Jika masih segar (<[STALE_MS]) tidak memanggil jaringan lagi. */
+    /** Ubah state lalu simpan ke cache, supaya membuka profil ini lagi langsung tampil. */
+    private fun commit(block: (ProfilePageState) -> ProfilePageState) {
+        _state.update(block)
+        if (userId.isNotBlank()) cache.put(userId, ProfileCache.Entry(_state.value, statsAt))
+    }
+
+    /**
+     * Muat profil. Data cache langsung tampil; jika sudah lewat [STALE_MS] disegarkan diam-diam
+     * (daftar lama tetap terlihat sampai data baru datang, tanpa spinner/kosong sesaat).
+     */
     fun load(id: String, force: Boolean = false) {
         if (id.isBlank()) return
         if (id != userId) {
             tabJobs.forEach { it?.cancel() }
             statsJob?.cancel()
             userId = id
-            statsAt = 0L
-            _state.value = ProfilePageState()
+            val hit = cache.get(id)
+            statsAt = hit?.statsAt ?: 0L
+            _state.value = hit?.state?.let { st -> st.copy(tabs = st.tabs.map { it.copy(loading = false) }) } ?: ProfilePageState(userId = id)
         }
         val fresh = System.currentTimeMillis() - statsAt < STALE_MS
         if (!force && fresh) {
@@ -76,15 +88,14 @@ class ProfilePageViewModel @Inject constructor(
         statsJob = viewModelScope.launch {
             when (val r = repo.profile(id)) {
                 is Result.Success -> {
-                    val wasVisible = _state.value.activityVisible
-                    _state.update { it.copy(stats = r.data.user, self = r.data.self, activityVisible = r.data.activityVisible, statsError = null) }
-                    // Data lama (mis. setelah baca chapter) diganti, bukan ditumpuk.
-                    if (force || !wasVisible) resetTabs()
+                    commit { it.copy(stats = r.data.user, self = r.data.self, activityVisible = r.data.activityVisible, statsError = null) }
+                    // Data lama (mis. setelah baca chapter) diganti saat data baru datang, bukan dikosongkan dulu.
+                    markStale()
                     ensureTab(_state.value.tab)
                 }
                 is Result.Error -> {
                     statsAt = 0L
-                    _state.update { it.copy(statsError = r.message) }
+                    commit { it.copy(statsError = r.message) }
                     ensureTab(_state.value.tab)
                 }
                 else -> Unit
@@ -96,7 +107,7 @@ class ProfilePageViewModel @Inject constructor(
 
     fun selectTab(index: Int) {
         if (index !in ProfileTabKeys.indices) return
-        _state.update { it.copy(tab = index) }
+        commit { it.copy(tab = index) }
         ensureTab(index)
     }
 
@@ -104,13 +115,14 @@ class ProfilePageViewModel @Inject constructor(
 
     fun retry() {
         val i = _state.value.tab
-        _state.update { s -> s.copy(tabs = s.tabs.mapIndexed { n, t -> if (n == i) t.copy(error = null) else t }) }
+        commit { s -> s.copy(tabs = s.tabs.mapIndexed { n, t -> if (n == i) t.copy(error = null) else t }) }
         loadTab(i)
     }
 
-    private fun resetTabs() {
+    /** Tandai semua tab perlu dimuat ulang dari halaman 1, tetapi biarkan daftar lama tetap tampil. */
+    private fun markStale() {
         tabJobs.forEach { it?.cancel() }
-        _state.update { it.copy(tabs = List(ProfileTabKeys.size) { TabState() }) }
+        commit { s -> s.copy(tabs = s.tabs.map { it.copy(page = 0, hasMore = true, loading = false, error = null) }) }
     }
 
     private fun ensureTab(index: Int) {
@@ -123,16 +135,18 @@ class ProfilePageViewModel @Inject constructor(
         val t = s.tabs[index]
         if (userId.isBlank() || t.loading || !t.hasMore || t.error != null) return
         if (s.locked(index)) {
-            update(index) { it.copy(hasMore = false) }
+            update(index) { it.copy(items = emptyList(), hasMore = false) }
             return
         }
         val id = userId
+        val replace = t.page == 0 // halaman 1 menggantikan daftar lama, halaman berikutnya ditambahkan
         update(index) { it.copy(loading = true) }
         tabJobs[index] = viewModelScope.launch {
             when (val r = repo.activity(id, ProfileTabKeys[index], t.page + 1)) {
                 is Result.Success -> if (id == userId) update(index) { cur ->
-                    val seen = cur.items.mapTo(HashSet()) { it.listKey() }
-                    val merged = (cur.items + r.data.items.filter { seen.add(it.listKey()) }).take(MAX_ITEMS)
+                    val base = if (replace) emptyList() else cur.items
+                    val seen = base.mapTo(HashSet()) { it.listKey() }
+                    val merged = (base + r.data.items.filter { seen.add(it.listKey()) }).take(MAX_ITEMS)
                     cur.copy(items = merged, page = r.data.page, hasMore = r.data.hasMore && merged.size < MAX_ITEMS, loading = false, error = null)
                 }
                 is Result.Error -> if (id == userId) update(index) { it.copy(loading = false, error = r.message) }
@@ -142,7 +156,7 @@ class ProfilePageViewModel @Inject constructor(
     }
 
     private fun update(index: Int, block: (TabState) -> TabState) {
-        _state.update { s -> s.copy(tabs = s.tabs.mapIndexed { n, t -> if (n == index) block(t) else t }) }
+        commit { s -> s.copy(tabs = s.tabs.mapIndexed { n, t -> if (n == index) block(t) else t }) }
     }
 
     private companion object {

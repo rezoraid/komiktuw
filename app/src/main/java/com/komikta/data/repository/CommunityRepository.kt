@@ -22,6 +22,7 @@ import com.komikta.data.remote.dto.PublicReadingHistoryDto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.StateFlow
 import java.io.IOException
+import java.util.Collections
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import javax.inject.Inject
@@ -36,6 +37,27 @@ class CommunityRepository @Inject constructor(
 
     // Scope milik singleton: pengiriman waktu baca tetap selesai walau layar reader sudah ditutup.
     private val background = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // Cache halaman pertama komentar per thread+urutan: layar komentar tampil seketika, lalu disegarkan diam-diam.
+    private val commentCache: MutableMap<String, CommentPageDto> = Collections.synchronizedMap(
+        object : LinkedHashMap<String, CommentPageDto>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CommentPageDto>?) = size > 40
+        }
+    )
+
+    private fun commentKey(source: String, slug: String, chapter: String?, sort: String) = "$source|$slug|${chapter.orEmpty()}|$sort"
+
+    fun cachedComments(source: String, slug: String, chapter: String?, sort: String): CommentPageDto? =
+        commentCache[commentKey(source, slug, chapter, sort)]
+
+    fun storeComments(source: String, slug: String, chapter: String?, sort: String, page: CommentPageDto) {
+        commentCache[commentKey(source, slug, chapter, sort)] = page
+    }
+
+    /** Muat komentar di latar belakang supaya saat layar komentar dibuka datanya sudah ada. */
+    fun prefetchComments(source: String, slug: String, chapter: String?, sort: String = "newest") {
+        background.launch { comments(source, slug, chapter, sort, 1) }
+    }
 
     private suspend fun <T> call(block: suspend () -> ApiResponse<T>): Result<T> = try {
         val r = block()
@@ -72,16 +94,31 @@ class CommunityRepository @Inject constructor(
         }
     }
 
-    suspend fun updateUsername(username: String): Result<CommunityUserDto> =
-        call { api.updateUsername(username) }.map { session.update(it.user); it.user }
+    /** Optimistic: username langsung berubah di layar, dikembalikan jika server menolak. */
+    suspend fun updateUsername(username: String): Result<CommunityUserDto> {
+        val before = session.user.value
+        if (before != null) session.replaceLocal(before.copy(username = username))
+        return call { api.updateUsername(username) }
+            .map { session.update(it.user); it.user }
+            .also { if (it is Result.Error && before != null) session.replaceLocal(before) }
+    }
 
-    suspend fun updateAvatar(imageData: String): Result<CommunityUserDto> =
-        call { api.updateAvatar(imageData) }.map { session.bumpAvatar(); session.update(it.user); it.user }
+    /** Optimistic: [previewUrl] (file lokal) langsung dipakai sebagai foto, dikembalikan jika upload gagal. */
+    suspend fun updateAvatar(imageData: String, previewUrl: String? = null): Result<CommunityUserDto> {
+        val before = session.user.value
+        if (before != null && previewUrl != null) session.replaceLocal(before.copy(picture = previewUrl))
+        return call { api.updateAvatar(imageData) }
+            .map { session.bumpAvatar(); session.update(it.user); it.user }
+            .also { if (it is Result.Error && before != null) session.replaceLocal(before) }
+    }
 
-    suspend fun setReadingHistoryPublic(isPublic: Boolean): Result<Unit> =
-        call { api.setReadingHistoryPublic(isPublic) }.map {
-            session.user.value?.let { u -> session.update(u.copy(publicHistory = isPublic)) }
-        }
+    suspend fun setReadingHistoryPublic(isPublic: Boolean): Result<Unit> {
+        val before = session.user.value
+        if (before != null) session.replaceLocal(before.copy(publicHistory = isPublic))
+        return call { api.setReadingHistoryPublic(isPublic) }
+            .map { }
+            .also { if (it is Result.Error && before != null) session.replaceLocal(before) }
+    }
 
     suspend fun saveReadingProgress(source: String, slug: String, chapter: String, comicTitle: String, chapterTitle: String, coverUrl: String): Result<Unit> =
         call { api.saveReadingProgress(source, slug, chapter, comicTitle, chapterTitle, coverUrl) }.map { }
@@ -120,6 +157,7 @@ class CommunityRepository @Inject constructor(
 
     suspend fun comments(source: String, slug: String, chapter: String?, sort: String, page: Int): Result<CommentPageDto> =
         call { api.comments(source, slug, chapter, sort, page) }
+            .also { if (page == 1 && it is Result.Success) storeComments(source, slug, chapter, sort, it.data) }
 
     suspend fun chapterCounts(source: String, slug: String): Result<Map<String, Int>> =
         call { api.counts(source, slug) }.map { it.counts }

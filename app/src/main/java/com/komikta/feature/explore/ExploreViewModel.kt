@@ -20,6 +20,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** Pesan saat filter valid tetapi hasilnya kosong (bukan error jaringan). */
+internal const val NO_COMICS_MESSAGE = "Tidak ada komik untuk filter ini"
+
 data class ExploreUiState(
     val query: String = "",
     val isLoading: Boolean = false,
@@ -120,6 +123,18 @@ class ExploreViewModel @Inject constructor(
         loadInitial()
     }
 
+    /** Hapus kata kunci dan semua filter, lalu muat ulang daftar awal. */
+    fun resetAll() {
+        searchJob?.cancel()
+        _uiState.update { it.copy(query = "", selectedGenres = emptySet(), sort = null, status = null) }
+        loadInitial()
+    }
+
+    fun retry() {
+        val q = _uiState.value.query
+        if (q.isNotBlank()) doSearch(q) else loadInitial()
+    }
+
     private fun loadInitial() {
         viewModelScope.launch {
             val snapshot = _uiState.value
@@ -132,7 +147,7 @@ class ExploreViewModel @Inject constructor(
                     comics = batch.items,
                     page = 1,
                     canLoadMore = batch.canLoadMore,
-                    errorMessage = if (batch.items.isEmpty()) (batch.error ?: "Tidak ada komik untuk filter ini") else null
+                    errorMessage = if (batch.items.isEmpty()) (batch.error ?: NO_COMICS_MESSAGE) else null
                 )
             }
         }
