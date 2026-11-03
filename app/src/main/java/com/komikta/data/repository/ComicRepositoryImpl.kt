@@ -89,11 +89,6 @@ class ComicRepositoryImpl @Inject constructor(
     override fun observeDetail(source: String, slug: String, refresh: Boolean): Flow<Result<ComicDetail>> =
         cache.stream(detailKey(source, slug), ComicDetail.serializer(), TTL_DETAIL, refresh) { fetchDetail(source, slug) }
 
-    override fun observeChapter(source: String, comicSlug: String, chapterSlug: String, refresh: Boolean): Flow<Result<ChapterContent>> =
-        cache.stream(chapterKey(source, comicSlug, chapterSlug), ChapterContent.serializer(), TTL_CHAPTER, refresh) {
-            fetchChapter(source, comicSlug, chapterSlug)
-        }
-
     private fun <T> emptyAware(result: Result<List<T>>): Result<List<T>> =
         if (result is Result.Success && result.data.isEmpty()) Result.Empty else result
 

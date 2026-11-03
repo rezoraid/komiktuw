@@ -25,5 +25,4 @@ interface ComicRepository {
     fun observeSearch(params: SearchParams): Flow<Result<List<Comic>>>
     fun observeGenres(source: String): Flow<Result<List<String>>>
     fun observeDetail(source: String, slug: String, refresh: Boolean = false): Flow<Result<ComicDetail>>
-    fun observeChapter(source: String, comicSlug: String, chapterSlug: String, refresh: Boolean = false): Flow<Result<ChapterContent>>
 }

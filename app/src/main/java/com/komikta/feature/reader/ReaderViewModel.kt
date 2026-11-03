@@ -116,36 +116,14 @@ class ReaderViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = false, errorMessage = "Invalid chapter") }
             return
         }
-        val st = _uiState.value
-        // Prefetch sudah siap → buka langsung tanpa loading.
-        val ready = st.upcoming?.takeIf { it.chapterSlug == chapterSlug }
+        val ready = _uiState.value.upcoming?.takeIf { it.chapterSlug == chapterSlug }
         if (ready != null) { open(ready); return }
-        // Chapter sudah ada di stack yang dimuat → pindah tanpa request.
-        val already = st.loaded.firstOrNull { it.chapterSlug == chapterSlug }
-        if (already != null) {
-            setCurrent(chapterSlug)
-            return
-        }
-        val target = chapterSlug
         viewModelScope.launch {
-            // Loading hanya jika belum ada konten (cache hit lewat observe akan emit cepat tanpa flash).
-            val needLoading = st.content == null || st.content.chapterSlug != target
-            if (needLoading) _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            getChapterContent.observe(source, comicSlug, target).collect { result ->
-                if (chapterSlug != target) return@collect
-                when (result) {
-                    is Result.Success -> open(result.data)
-                    is Result.Error -> {
-                        if (_uiState.value.content?.chapterSlug != target) {
-                            _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
-                        }
-                    }
-                    else -> {
-                        if (_uiState.value.content?.chapterSlug != target) {
-                            _uiState.update { it.copy(isLoading = false) }
-                        }
-                    }
-                }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            when (val result = getChapterContent(source, comicSlug, chapterSlug)) {
+                is Result.Success -> open(result.data)
+                is Result.Error -> _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
+                else -> _uiState.update { it.copy(isLoading = false) }
             }
         }
     }
