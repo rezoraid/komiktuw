@@ -52,7 +52,7 @@ fun MainNavGraph() {
     var focusSearch by remember { mutableStateOf(false) }
 
     Scaffold(
-        containerColor = if (route == BottomNavItem.Profile.route) Mono.Bg else Ui.Bg,
+        containerColor = if (route == BottomNavItem.Profile.route) Mono.Header else Ui.Bg,
         bottomBar = {
             if (showBottomBar) {
                 BottomBar(
