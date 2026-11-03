@@ -26,16 +26,21 @@ android {
     }
 
     signingConfigs {
-        getByName("debug") {
-            storeFile = file("komikta-debug.jks")
-            storePassword = "komikta123"
-            keyAlias = "komikta"
-            keyPassword = "komikta123"
+        // Custom debug keystore hanya dipakai jika file ada (lokal).
+        // Di CI/GitHub Actions file sering tidak di-commit → fallback ke default Android debug keystore.
+        val debugKs = file("komikta-debug.jks")
+        if (debugKs.exists()) {
+            getByName("debug") {
+                storeFile = debugKs
+                storePassword = "komikta123"
+                keyAlias = "komikta"
+                keyPassword = "komikta123"
+            }
         }
     }
 
     val releaseStore = System.getenv("KOMIKTA_STORE_FILE") ?: (project.findProperty("KOMIKTA_STORE_FILE") as String?)
-    if (releaseStore != null) {
+    if (releaseStore != null && file(releaseStore).exists()) {
         signingConfigs.create("release") {
             storeFile = file(releaseStore)
             storePassword = System.getenv("KOMIKTA_STORE_PASSWORD") ?: (project.findProperty("KOMIKTA_STORE_PASSWORD") as String?)
@@ -46,7 +51,9 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+            // Pakai release keystore jika ada; kalau tidak, biarkan unsigned / pakai debug default.
+            signingConfigs.findByName("release")?.let { signingConfig = it }
+                ?: signingConfigs.findByName("debug")?.let { signingConfig = it }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -55,13 +62,10 @@ android {
             )
         }
         debug {
-            isDebuggable = false
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            // Jangan override signingConfig jika custom keystore tidak ada → Android memakai default debug.keystore
+            isDebuggable = true
+            isMinifyEnabled = false
+            isShrinkResources = false
             applicationIdSuffix = ".debug"
         }
     }
