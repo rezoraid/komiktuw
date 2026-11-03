@@ -26,21 +26,16 @@ android {
     }
 
     signingConfigs {
-        // Custom debug keystore hanya dipakai jika file ada (lokal).
-        // Di CI/GitHub Actions file sering tidak di-commit → fallback ke default Android debug keystore.
-        val debugKs = file("komikta-debug.jks")
-        if (debugKs.exists()) {
-            getByName("debug") {
-                storeFile = debugKs
-                storePassword = "komikta123"
-                keyAlias = "komikta"
-                keyPassword = "komikta123"
-            }
+        getByName("debug") {
+            storeFile = file("komikta-debug.jks")
+            storePassword = "komikta123"
+            keyAlias = "komikta"
+            keyPassword = "komikta123"
         }
     }
 
     val releaseStore = System.getenv("KOMIKTA_STORE_FILE") ?: (project.findProperty("KOMIKTA_STORE_FILE") as String?)
-    if (releaseStore != null && file(releaseStore).exists()) {
+    if (releaseStore != null) {
         signingConfigs.create("release") {
             storeFile = file(releaseStore)
             storePassword = System.getenv("KOMIKTA_STORE_PASSWORD") ?: (project.findProperty("KOMIKTA_STORE_PASSWORD") as String?)
@@ -51,9 +46,7 @@ android {
 
     buildTypes {
         release {
-            // Pakai release keystore jika ada; kalau tidak, biarkan unsigned / pakai debug default.
-            signingConfigs.findByName("release")?.let { signingConfig = it }
-                ?: signingConfigs.findByName("debug")?.let { signingConfig = it }
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -62,10 +55,13 @@ android {
             )
         }
         debug {
-            // Jangan override signingConfig jika custom keystore tidak ada → Android memakai default debug.keystore
-            isDebuggable = true
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             applicationIdSuffix = ".debug"
         }
     }
