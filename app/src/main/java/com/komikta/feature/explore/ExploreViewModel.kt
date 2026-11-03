@@ -141,8 +141,19 @@ class ExploreViewModel @Inject constructor(
 
     private suspend fun runInitial(refresh: Boolean) {
         val snapshot = _uiState.value
+        // Stale-while-revalidate:
+        // - Pull/retry (refresh=true): pertahankan list lama, jangan flash kosong.
+        // - Ganti filter: kosongkan agar tidak menampilkan data filter sebelumnya.
+        // - Loading skeleton hanya jika belum ada data sama sekali.
         _uiState.update {
-            it.copy(isLoading = true, isLoadingMore = false, errorMessage = null, page = 1, canLoadMore = true, comics = emptyList())
+            it.copy(
+                isLoading = it.comics.isEmpty(),
+                isLoadingMore = false,
+                errorMessage = null,
+                page = 1,
+                canLoadMore = true,
+                comics = if (refresh) it.comics else emptyList()
+            )
         }
         browseComics.observe(browseParams(snapshot, 1), refresh).collect { result -> applyFirstPage(result, true) }
     }

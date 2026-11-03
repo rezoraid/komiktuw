@@ -52,4 +52,7 @@ class GetComicDetailUseCase @Inject constructor(private val repository: ComicRep
 class GetChapterContentUseCase @Inject constructor(private val repository: ComicRepository) {
     suspend operator fun invoke(source: String, comicSlug: String, chapterSlug: String): Result<ChapterContent> =
         repository.getChapterContent(source, comicSlug, chapterSlug)
+
+    fun observe(source: String, comicSlug: String, chapterSlug: String, refresh: Boolean = false): Flow<Result<ChapterContent>> =
+        repository.observeChapter(source, comicSlug, chapterSlug, refresh)
 }

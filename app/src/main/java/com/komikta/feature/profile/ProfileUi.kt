@@ -1,5 +1,11 @@
 package com.komikta.feature.profile
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -34,6 +40,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -67,6 +75,40 @@ internal object P {
     val Sub = Mono.TextDim
     val Label = Color(0xFF8C8C93)
     val TabOff = Color(0xFFB8BAB9)
+}
+
+/** Kilau abu-hitam untuk placeholder: menggantikan tanda "—" dan spinner saat data dimuat. */
+@Composable
+private fun profileShimmer(): Brush {
+    val x by rememberInfiniteTransition(label = "profileShimmer").animateFloat(
+        initialValue = -500f, targetValue = 1300f,
+        animationSpec = infiniteRepeatable(tween(1200, easing = LinearEasing), RepeatMode.Restart),
+        label = "profileShimmerX"
+    )
+    return Brush.linearGradient(listOf(Color(0xFF2C2D31), Color(0xFF4A4B50), Color(0xFF2C2D31)), Offset(x, 0f), Offset(x + 500f, 220f))
+}
+
+@Composable
+private fun Bone(modifier: Modifier, brush: Brush, shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(6.dp)) {
+    Box(modifier.clip(shape).background(brush))
+}
+
+/** Baris aktivitas palsu (sampul + dua baris teks) yang tampil selama daftar dimuat. */
+@Composable
+private fun ActivitySkeleton(rows: Int) {
+    val brush = profileShimmer()
+    Column(Modifier.fillMaxWidth()) {
+        repeat(rows) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Bone(Modifier.size(CoverW, CoverH), brush)
+                Column(Modifier.weight(1f).padding(start = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Bone(Modifier.fillMaxWidth(0.8f).height(16.dp), brush)
+                    Bone(Modifier.fillMaxWidth(0.5f).height(13.dp), brush)
+                    Bone(Modifier.fillMaxWidth(0.35f).height(13.dp), brush)
+                }
+            }
+        }
+    }
 }
 
 private val TabLabels = listOf("All", "Comments", "Likes")
@@ -119,7 +161,7 @@ internal fun ProfilePage(
         item(key = "footer", contentType = "footer") {
             Box(Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 8.dp), contentAlignment = Alignment.Center) {
                 when {
-                    tab.loading && !(tab.page == 0 && tab.items.isNotEmpty()) -> CircularProgressIndicator(Modifier.size(22.dp), color = Mono.Icon, strokeWidth = 2.dp)
+                    tab.loading -> ActivitySkeleton(if (tab.items.isEmpty()) 4 else 1)
                     tab.error != null -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(tab.error, fontSize = 14.sp, color = P.Sub, textAlign = TextAlign.Center)
                         Text(
@@ -186,20 +228,26 @@ private fun ProfileHeader(
                 Box { topLeft() }
                 Box { topRight() }
             }
+            val brush = profileShimmer()
             Box(contentAlignment = Alignment.Center) {
-                Avatar(user?.picture, name, AvatarSize, if (onAvatarClick != null) Modifier.clickable(onClick = onAvatarClick) else Modifier)
-                if (busy) Box(Modifier.size(AvatarSize).clip(CircleShape).background(Color(0x99000000)), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(30.dp))
-                }
+                if (user == null) Bone(Modifier.size(AvatarSize), brush, CircleShape)
+                else Avatar(user.picture, name, AvatarSize, if (onAvatarClick != null) Modifier.clickable(onClick = onAvatarClick) else Modifier)
+                if (busy) Bone(Modifier.size(AvatarSize), brush, CircleShape)
             }
-            Text(
+            if (user == null) Bone(Modifier.padding(top = 18.dp).size(width = 150.dp, height = 22.dp), brush)
+            else Text(
                 name, fontSize = 22.sp, color = P.Name, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 14.dp, start = 24.dp, end = 24.dp)
             )
             Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                RoleCapsule(user?.role ?: "USER")
-                Capsule("Lvl. ${user?.level ?: 1}", onLevelClick)
-                if ((user?.publicNo ?: 0L) > 0L) Capsule("#${user?.publicNo}")
+                if (user == null) {
+                    Bone(Modifier.size(width = 190.dp, height = 34.dp), brush, CircleShape)
+                    Bone(Modifier.size(width = 70.dp, height = 34.dp), brush, CircleShape)
+                } else {
+                    RoleCapsule(user.role)
+                    Capsule("Lvl. ${user.level}", onLevelClick)
+                    if (user.publicNo > 0L) Capsule("#${user.publicNo}")
+                }
             }
             Row(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 20.dp, start = 8.dp, end = 8.dp)) {
                 Stat(stats?.chaptersRead?.takeIf { it >= 0 }?.toString(), "chapter\ndibaca", Modifier.weight(1f))
@@ -214,7 +262,8 @@ private fun ProfileHeader(
 @Composable
 private fun Stat(value: String?, label: String, modifier: Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value ?: "—", fontSize = 22.sp, color = P.Name, maxLines = 1)
+        if (value == null) Bone(Modifier.size(width = 34.dp, height = 24.dp), profileShimmer())
+        else Text(value, fontSize = 22.sp, color = P.Name, maxLines = 1)
         Text(label, fontSize = 13.sp, lineHeight = 16.sp, color = P.Label, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 3.dp))
     }
 }

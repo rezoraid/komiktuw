@@ -13,6 +13,13 @@
 - OkHttp: connection pool, retry satu kali untuk GET (error jaringan, 502/503/504), dispatcher lebih longgar. Coil memakai memory cache dan disk cache.
 - Daftar Compose memakai stable keys dan contentType.
 
+
+## Optimasi final (interaksi instan)
+- Explore: tidak lagi mengosongkan list saat pull-to-refresh; skeleton hanya jika benar-benar kosong.
+- Reader: buka chapter dari prefetch/stack tanpa request; loading hanya jika belum ada konten; chapter memakai stale-while-revalidate (`observeChapter`).
+- Chapter content punya `observeChapter` di repository (cache dulu, refresh background, TTL 6 jam).
+- Pola yang sudah ada tetap: ResponseCache + Room, request dedup, optimistic UI komentar/like/avatar/username, ProfileCache, debounce progress, prefetch chapter, startup warm-up.
+
 ## Build
 Buka folder ini melalui Android Studio dan jalankan Gradle Sync, lalu Build APK. Arsip ini tidak menyertakan `gradle-wrapper.jar`; jika Android Studio tidak dapat menjalankan wrapper, gunakan Gradle wrapper yang dibuat Android Studio atau tambahkan file wrapper resmi yang sesuai dengan Gradle 8.9.
 
