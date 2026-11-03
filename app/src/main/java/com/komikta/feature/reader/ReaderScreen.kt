@@ -98,6 +98,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.komikta.domain.model.ChapterContent
+import com.komikta.feature.community.CommentsViewModel
+import com.komikta.ui.components.AppIcons
 import com.komikta.ui.theme.Ui
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -132,7 +134,7 @@ enum class ScrollMode { Smooth, Swipe }
 @Composable
 fun ReaderScreen(
     onBack: () -> Unit,
-    onComments: (chapterSlug: String) -> Unit = {},
+    onUserClick: (userId: String) -> Unit = {},
     viewModel: ReaderViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -140,6 +142,9 @@ fun ReaderScreen(
     val readSlugs by viewModel.readSlugs.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    // Komentar chapter dibuka sebagai sheet di atas reader (bukan pindah layar), jadi posisi baca tidak reset.
+    val commentsVm: CommentsViewModel = hiltViewModel(key = "chapter-comments")
+    var commentsFor by remember { mutableStateOf<String?>(null) }
 
     // Hitung waktu baca hanya saat reader benar-benar tampil di depan.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -278,8 +283,8 @@ fun ReaderScreen(
         uiState.upcoming?.imageUrls?.take(3)?.forEach { fetchToDisk(context, it, ratios) }
     }
 
-    LaunchedEffect(autoScroll, scrollMode, scrollSpeed) {
-        if (!autoScroll) return@LaunchedEffect
+    LaunchedEffect(autoScroll, scrollMode, scrollSpeed, commentsFor) {
+        if (!autoScroll || commentsFor != null) return@LaunchedEffect
         if (scrollMode == ScrollMode.Smooth) {
             val pxPerSecond = with(density) { 70.dp.toPx() } * scrollSpeed
             var last = 0L
@@ -337,7 +342,6 @@ fun ReaderScreen(
                             is ReaderItem.Divider -> {
                                 val info = uiState.chapterInfo
                                 val nextSlug = uiState.loaded.firstOrNull { it.chapterSlug == item.chapterSlug }?.nextChapterSlug
-                                ChapterCommentsSection(item.chapterSlug, viewModel::commentPreview, viewModel::peekCommentPreview) { onComments(item.chapterSlug) }
                                 ChapterEnd(
                                     current = info[item.chapterSlug],
                                     fallbackTitle = uiState.loaded.firstOrNull { it.chapterSlug == item.chapterSlug }?.title,
@@ -345,13 +349,12 @@ fun ReaderScreen(
                                     next = nextSlug?.let { info[it] },
                                     onNext = null,
                                     compact = true,
-                                    onComments = { onComments(item.chapterSlug) }
+                                    onComments = { commentsFor = item.chapterSlug }
                                 )
                             }
                             is ReaderItem.End -> {
                                 val chapter = uiState.loaded.firstOrNull { it.chapterSlug == item.chapterSlug }
                                 val nextSlug = chapter?.nextChapterSlug
-                                ChapterCommentsSection(item.chapterSlug, viewModel::commentPreview, viewModel::peekCommentPreview) { onComments(item.chapterSlug) }
                                 if (autoNext) {
                                     val info = uiState.chapterInfo
                                     ChapterEnd(
@@ -360,7 +363,7 @@ fun ReaderScreen(
                                         nextSlug = nextSlug,
                                         next = nextSlug?.let { info[it] },
                                         onNext = { viewModel.appendNext() },
-                                        onComments = { onComments(item.chapterSlug) }
+                                        onComments = { commentsFor = item.chapterSlug }
                                     )
                                 } else {
                                     ChapterNav(
@@ -369,7 +372,7 @@ fun ReaderScreen(
                                         onPrev = { viewModel.goPrev() },
                                         onNext = { viewModel.goNext() },
                                         onDetail = onBack,
-                                        onComments = { onComments(item.chapterSlug) }
+                                        onComments = { commentsFor = item.chapterSlug }
                                     )
                                 }
                             }
@@ -458,11 +461,29 @@ fun ReaderScreen(
                     ) {
                         Icon(Icons.Default.PlayArrow, if (autoScroll) "Pause" else "Auto scroll", tint = if (autoScroll) Ui.Accent else Color.White)
                     }
+                    IconButton(
+                        onClick = { currentSlug?.let { commentsFor = it } },
+                        enabled = currentSlug != null
+                    ) {
+                        Icon(AppIcons.comment, "Komentar", tint = Color.White, modifier = Modifier.size(24.dp))
+                    }
                     IconButton(onClick = { viewModel.goNext() }, enabled = hasNext) {
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Next", tint = if (hasNext) Color.White else Ui.Text3)
                     }
                 }
             }
+        }
+
+        // Komentar chapter (setengah layar, tarik ke atas -> penuh)
+        commentsFor?.let { slug ->
+            ChapterCommentsSheet(
+                source = uiState.source,
+                comicSlug = uiState.comicSlug,
+                chapterSlug = slug,
+                viewModel = commentsVm,
+                onDismiss = { commentsFor = null },
+                onUserClick = { id -> commentsFor = null; onUserClick(id) }
+            )
         }
 
         // Daftar chapter

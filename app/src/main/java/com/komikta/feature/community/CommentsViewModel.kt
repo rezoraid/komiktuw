@@ -46,10 +46,15 @@ class CommentsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    val source: String = savedStateHandle["source"] ?: ""
-    val slug: String = savedStateHandle["slug"] ?: ""
-    val chapter: String? = savedStateHandle["chapter"]
-    val chapterLabel: String? = chapter?.let { c -> Regex("""\d+(?:[.-]\d+)?""").find(c)?.value?.replace('-', '.') ?: c }
+    // Target komentar bisa diganti lewat bind() supaya satu ViewModel di reader dipakai untuk chapter mana pun.
+    var source: String = savedStateHandle["source"] ?: ""
+        private set
+    var slug: String = savedStateHandle["slug"] ?: ""
+        private set
+    var chapter: String? = savedStateHandle["chapter"]
+        private set
+    val chapterLabel: String?
+        get() = chapter?.let { c -> Regex("""\d+(?:[.-]\d+)?""").find(c)?.value?.replace('-', '.') ?: c }
 
     val user = repo.user
     private val _ui = MutableStateFlow(CommentsUiState())
@@ -64,11 +69,31 @@ class CommentsViewModel @Inject constructor(
     private val likeSyncing = HashSet<String>()
 
     init {
+        if (slug.isNotBlank()) start()
+    }
+
+    private fun start() {
         val cached = repo.cachedComments(source, slug, chapter, "newest")
         if (cached != null) {
             _ui.value = CommentsUiState(loading = false, items = cached.items, total = cached.total, page = 1, hasMore = cached.hasMore)
         }
         load()
+    }
+
+    /** Arahkan ke komentar chapter tertentu. Target sama: cukup segarkan; target beda: reset state. */
+    fun bind(source: String, slug: String, chapter: String?) {
+        if (this.source == source && this.slug == slug && this.chapter == chapter) {
+            if (slug.isNotBlank()) load()
+            return
+        }
+        loadJob?.cancel()
+        this.source = source
+        this.slug = slug
+        this.chapter = chapter
+        confirmedIds.clear()
+        _ui.value = CommentsUiState()
+        _draft.value = ""
+        if (slug.isNotBlank()) start()
     }
 
     fun setDraft(v: String) { if (v.length <= MAX_LEN) _draft.value = v }

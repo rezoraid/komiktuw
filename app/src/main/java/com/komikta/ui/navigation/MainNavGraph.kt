@@ -146,12 +146,10 @@ fun MainNavGraph() {
                     navArgument("comicSlug") { type = NavType.StringType },
                     navArgument("chapterSlug") { type = NavType.StringType }
                 )
-            ) { entry ->
-                val source = entry.arguments?.getString("source").orEmpty()
-                val comicSlug = entry.arguments?.getString("comicSlug").orEmpty()
+            ) {
                 ReaderScreen(
                     onBack = { navController.popBackStack() },
-                    onComments = { chapter -> navController.navigate("comments/$source/$comicSlug/$chapter") }
+                    onUserClick = { id -> navController.navigate("public-profile/$id") }
                 )
             }
 

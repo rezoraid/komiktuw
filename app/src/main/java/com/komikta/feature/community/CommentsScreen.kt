@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -69,7 +70,7 @@ import com.komikta.ui.components.relativeTime
 import com.komikta.ui.theme.Mono
 import kotlinx.coroutines.delay
 
-private val ReportReasons = listOf("spam" to "Spam", "abuse" to "Kasar / pelecehan", "hate" to "SARA / kebencian", "spoiler" to "Spoiler", "other" to "Lainnya")
+internal val ReportReasons = listOf("spam" to "Spam", "abuse" to "Kasar / pelecehan", "hate" to "SARA / kebencian", "spoiler" to "Spoiler", "other" to "Lainnya")
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -121,56 +122,7 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
 
-        when {
-            ui.loading && ui.items.isEmpty() -> Column(Modifier.weight(1f).padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                repeat(5) { SkeletonBlock(Modifier.fillMaxWidth().height(60.dp)) }
-            }
-            ui.error != null && ui.items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                ErrorState(ui.error ?: "Terjadi kesalahan", { viewModel.load() })
-            }
-            ui.items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                EmptyState(AppIcons.comment, "Belum ada komentar", "Jadilah yang pertama menanggapi. Tulis komentarmu di bawah.")
-            }
-            else -> LazyColumn(Modifier.weight(1f)) {
-                ui.items.forEach { root ->
-                    item(key = root.id, contentType = "comment") {
-                        CommentRow(root, false, me, viewModel, { deleteTarget = it }, { reportTarget = it }, onUserClick)
-                    }
-                    val rs = ui.replies[root.id]
-                    if (root.replyCount > 0) {
-                        item(key = "toggle-${root.id}", contentType = "toggle") {
-                            val open = rs?.expanded == true
-                            Row(
-                                Modifier.padding(start = 56.dp, top = 2.dp, bottom = 6.dp).clip(CircleShape)
-                                    .clickable { viewModel.toggleReplies(root) }.padding(horizontal = 12.dp, vertical = 7.dp),
-                                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(AppIcons.chevronDown, null, tint = Mono.Icon, modifier = Modifier.size(16.dp).rotate(if (open) 180f else 0f))
-                                Text(if (open) "Sembunyikan balasan" else "Lihat ${root.replyCount} balasan", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Mono.Text)
-                            }
-                        }
-                    }
-                    if (rs?.expanded == true) {
-                        items(rs.items, key = { it.id }, contentType = { "reply" }) { reply ->
-                            CommentRow(reply, true, me, viewModel, { deleteTarget = it }, { reportTarget = it }, onUserClick)
-                        }
-                        if (rs.loading) item(key = "rl-${root.id}", contentType = "more") { Text("Memuat balasan…", fontSize = 13.sp, color = Mono.TextFaint, modifier = Modifier.padding(start = 62.dp, bottom = 8.dp)) }
-                        else if (rs.hasMore && rs.page > 0) item(key = "rm-${root.id}", contentType = "more") {
-                            Text("Balasan lainnya", fontSize = 13.sp, color = Mono.TextDim, modifier = Modifier.padding(start = 62.dp, bottom = 10.dp).clickable { viewModel.loadReplies(root.id) })
-                        }
-                    }
-                }
-                if (ui.hasMore) item(key = "more", contentType = "more") {
-                    LaunchedEffect(ui.page) { viewModel.loadMore() }
-                    Text(
-                        if (ui.loadingMore) "Memuat…" else "Muat komentar lainnya",
-                        fontSize = 14.sp,
-                        color = Mono.TextDim,
-                        modifier = Modifier.fillMaxWidth().clickable { viewModel.loadMore() }.padding(16.dp)
-                    )
-                }
-            }
-        }
+        CommentsBody(ui, me, viewModel, { deleteTarget = it }, { reportTarget = it }, onUserClick)
 
         Column(Modifier.fillMaxWidth().background(Mono.Bar)) {
             Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
@@ -227,21 +179,96 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
         }
     }
 
+    CommentDialogs(viewModel, deleteTarget, { deleteTarget = null }, reportTarget, { reportTarget = null })
+}
+
+/** Isi daftar komentar (loading / error / kosong / list). Dipakai layar penuh dan sheet reader. */
+@Composable
+internal fun ColumnScope.CommentsBody(
+    ui: CommentsUiState,
+    me: CommunityUserDto?,
+    viewModel: CommentsViewModel,
+    onDelete: (CommentDto) -> Unit,
+    onReport: (CommentDto) -> Unit,
+    onUserClick: (String) -> Unit
+) {
+        when {
+            ui.loading && ui.items.isEmpty() -> Column(Modifier.weight(1f).padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                repeat(5) { SkeletonBlock(Modifier.fillMaxWidth().height(60.dp)) }
+            }
+            ui.error != null && ui.items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                ErrorState(ui.error ?: "Terjadi kesalahan", { viewModel.load() })
+            }
+            ui.items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                EmptyState(AppIcons.comment, "Belum ada komentar", "Jadilah yang pertama menanggapi. Tulis komentarmu di bawah.")
+            }
+            else -> LazyColumn(Modifier.weight(1f)) {
+                ui.items.forEach { root ->
+                    item(key = root.id, contentType = "comment") {
+                        CommentRow(root, false, me, viewModel, onDelete, onReport, onUserClick)
+                    }
+                    val rs = ui.replies[root.id]
+                    if (root.replyCount > 0) {
+                        item(key = "toggle-${root.id}", contentType = "toggle") {
+                            val open = rs?.expanded == true
+                            Row(
+                                Modifier.padding(start = 56.dp, top = 2.dp, bottom = 6.dp).clip(CircleShape)
+                                    .clickable { viewModel.toggleReplies(root) }.padding(horizontal = 12.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(AppIcons.chevronDown, null, tint = Mono.Icon, modifier = Modifier.size(16.dp).rotate(if (open) 180f else 0f))
+                                Text(if (open) "Sembunyikan balasan" else "Lihat ${root.replyCount} balasan", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Mono.Text)
+                            }
+                        }
+                    }
+                    if (rs?.expanded == true) {
+                        items(rs.items, key = { it.id }, contentType = { "reply" }) { reply ->
+                            CommentRow(reply, true, me, viewModel, onDelete, onReport, onUserClick)
+                        }
+                        if (rs.loading) item(key = "rl-${root.id}", contentType = "more") { Text("Memuat balasan…", fontSize = 13.sp, color = Mono.TextFaint, modifier = Modifier.padding(start = 62.dp, bottom = 8.dp)) }
+                        else if (rs.hasMore && rs.page > 0) item(key = "rm-${root.id}", contentType = "more") {
+                            Text("Balasan lainnya", fontSize = 13.sp, color = Mono.TextDim, modifier = Modifier.padding(start = 62.dp, bottom = 10.dp).clickable { viewModel.loadReplies(root.id) })
+                        }
+                    }
+                }
+                if (ui.hasMore) item(key = "more", contentType = "more") {
+                    LaunchedEffect(ui.page) { viewModel.loadMore() }
+                    Text(
+                        if (ui.loadingMore) "Memuat…" else "Muat komentar lainnya",
+                        fontSize = 14.sp,
+                        color = Mono.TextDim,
+                        modifier = Modifier.fillMaxWidth().clickable { viewModel.loadMore() }.padding(16.dp)
+                    )
+                }
+            }
+        }
+}
+
+/** Dialog hapus + laporkan, dipakai layar komentar penuh dan sheet komentar di reader. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun CommentDialogs(
+    viewModel: CommentsViewModel,
+    deleteTarget: CommentDto?,
+    onDeleteDismiss: () -> Unit,
+    reportTarget: CommentDto?,
+    onReportDismiss: () -> Unit
+) {
     deleteTarget?.let { c ->
         AlertDialog(
-            onDismissRequest = { deleteTarget = null },
+            onDismissRequest = { onDeleteDismiss() },
             containerColor = Mono.Card,
             title = { Text("Hapus komentar?", style = MaterialTheme.typography.titleMedium) },
             text = { Text("Komentar yang dihapus tidak bisa dikembalikan.", color = Mono.TextDim, fontSize = 15.sp) },
-            confirmButton = { TextButton(onClick = { viewModel.delete(c); deleteTarget = null }) { Text("Hapus", color = Color(0xFFE08F8F)) } },
-            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text("Batal", color = Mono.TextDim) } }
+            confirmButton = { TextButton(onClick = { viewModel.delete(c); onDeleteDismiss() }) { Text("Hapus", color = Color(0xFFE08F8F)) } },
+            dismissButton = { TextButton(onClick = { onDeleteDismiss() }) { Text("Batal", color = Mono.TextDim) } }
         )
     }
 
     reportTarget?.let { c ->
         var reason by remember(c.id) { mutableStateOf("spam") }
         AlertDialog(
-            onDismissRequest = { reportTarget = null },
+            onDismissRequest = { onReportDismiss() },
             containerColor = Mono.Card,
             title = { Text("Laporkan komentar", style = MaterialTheme.typography.titleMedium) },
             text = {
@@ -249,14 +276,14 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
                     ReportReasons.forEach { (key, label) -> Chip(label, selected = reason == key, onClick = { reason = key }) }
                 }
             },
-            confirmButton = { TextButton(onClick = { viewModel.report(c, reason); reportTarget = null }) { Text("Kirim", color = Color.White) } },
-            dismissButton = { TextButton(onClick = { reportTarget = null }) { Text("Batal", color = Mono.TextDim) } }
+            confirmButton = { TextButton(onClick = { viewModel.report(c, reason); onReportDismiss() }) { Text("Kirim", color = Color.White) } },
+            dismissButton = { TextButton(onClick = { onReportDismiss() }) { Text("Batal", color = Mono.TextDim) } }
         )
     }
 }
 
 @Composable
-private fun CommentRow(
+internal fun CommentRow(
     c: CommentDto,
     isReply: Boolean,
     me: CommunityUserDto?,
