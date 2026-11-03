@@ -13,6 +13,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +37,9 @@ fun PublicProfileScreen(
     viewModel: ProfilePageViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val viewer by viewModel.viewer.collectAsStateWithLifecycle()
+    var showTools by remember { mutableStateOf(false) }
+    val canManage = viewer?.role == "OWNER" && viewer?.id != userId
     LaunchedEffect(userId) { viewModel.load(userId) }
 
     Box(Modifier.fillMaxSize().background(P.Content).statusBarsPadding()) {
@@ -39,19 +47,27 @@ fun PublicProfileScreen(
             state = state,
             fallbackUser = null,
             busy = false,
+            bannerBusy = false,
             onTab = viewModel::selectTab,
             onLoadMore = viewModel::loadMore,
             onRetry = viewModel::retry,
             onItemClick = { onOpen(it.source, it.slug, it.chapter) },
             onAvatarClick = null,
+            onBannerClick = null,
             onLevelClick = null,
             topLeft = {
                 Box(Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onBack), contentAlignment = Alignment.Center) {
                     Icon(AppIcons.chevronLeft, "Kembali", tint = Color.White, modifier = Modifier.size(26.dp))
                 }
             },
-            topRight = {}
+            topRight = {
+                if (canManage) Text(
+                    "Kelola", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { showTools = true }.padding(horizontal = 12.dp, vertical = 10.dp)
+                )
+            }
         )
+        if (showTools && canManage) OwnerToolsDialog(userId = userId, onDismiss = { showTools = false }, onChanged = viewModel::refresh)
         if (state.stats == null && state.statsError != null) {
             Text(state.statsError.orEmpty(), color = Color(0xFF807F84), fontSize = 14.sp, modifier = Modifier.align(Alignment.Center).padding(24.dp))
         }

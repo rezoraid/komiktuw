@@ -26,6 +26,42 @@ internal class PreparedAvatar(
 internal object AvatarProcessor {
     private const val MAX_SIDE = 640
     private const val PREVIEW_PREFIX = "avatar_preview_"
+    private const val BANNER_DECODE_SIDE = 1600
+    private const val BANNER_WIDTH = 1080
+    private const val BANNER_MAX_BYTES = 420_000
+
+    /**
+     * Banner profil: potong tengah ke rasio 2:1, kecilkan maksimal 1080 px lebar, lalu kompres ke JPEG
+     * di bawah batas server. Mengembalikan data URI. Berat; panggil dari thread latar belakang.
+     */
+    fun prepareBanner(context: Context, uri: Uri): String {
+        val source = decode(context, uri, BANNER_DECODE_SIDE) ?: error("Foto tidak bisa dibuka")
+        var cropW = source.width
+        var cropH = cropW / 2
+        if (cropH > source.height) { cropH = source.height; cropW = cropH * 2 }
+        require(cropW >= 2 && cropH >= 1) { "Foto terlalu kecil" }
+        val cropped = Bitmap.createBitmap(source, (source.width - cropW) / 2, (source.height - cropH) / 2, cropW, cropH)
+        val outW = minOf(cropW, BANNER_WIDTH)
+        val outH = (outW / 2).coerceAtLeast(1)
+        val canvasBitmap = Bitmap.createBitmap(outW, outH, Bitmap.Config.ARGB_8888)
+        Canvas(canvasBitmap).apply {
+            drawColor(Color.WHITE)
+            drawBitmap(Bitmap.createScaledBitmap(cropped, outW, outH, true), 0f, 0f, null)
+        }
+        if (cropped !== source) cropped.recycle()
+        source.recycle()
+
+        val output = ByteArrayOutputStream()
+        var quality = 86
+        do {
+            output.reset()
+            canvasBitmap.compress(Bitmap.CompressFormat.JPEG, quality, output)
+            quality -= 8
+        } while (output.size() > BANNER_MAX_BYTES && quality >= 38)
+        canvasBitmap.recycle()
+        require(output.size() <= BANNER_MAX_BYTES + 20_000) { "Gambar terlalu besar. Pilih gambar lain." }
+        return "data:image/jpeg;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
+    }
 
     fun prepare(context: Context, uri: Uri): PreparedAvatar {
         val source = decode(context, uri) ?: error("Foto tidak bisa dibuka")
@@ -64,24 +100,24 @@ internal object AvatarProcessor {
      * Decode ke bitmap software berukuran kecil. ImageDecoder (API 28+) mendukung HEIC/AVIF/WebP dan
      * otomatis memutar sesuai EXIF; BitmapFactory jadi cadangan untuk Android 8 atau jika gagal.
      */
-    private fun decode(context: Context, uri: Uri): Bitmap? {
+    private fun decode(context: Context, uri: Uri, maxSide: Int = MAX_SIDE): Bitmap? {
         if (Build.VERSION.SDK_INT >= 28) {
             val bmp = runCatching {
                 ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri)) { decoder, info, _ ->
                     decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
                     val longest = maxOf(info.size.width, info.size.height)
-                    if (longest > MAX_SIDE) {
-                        val f = MAX_SIDE.toFloat() / longest
+                    if (longest > maxSide) {
+                        val f = maxSide.toFloat() / longest
                         decoder.setTargetSize((info.size.width * f).toInt().coerceAtLeast(1), (info.size.height * f).toInt().coerceAtLeast(1))
                     }
                 }
             }.getOrNull()
             if (bmp != null) return bmp
         }
-        return decodeLegacy(context, uri)
+        return decodeLegacy(context, uri, maxSide)
     }
 
-    private fun decodeLegacy(context: Context, uri: Uri): Bitmap? {
+    private fun decodeLegacy(context: Context, uri: Uri, maxSide: Int): Bitmap? {
         val resolver = context.contentResolver
         // Baca sekali ke memori: sebagian provider (Google Foto, cloud) tidak bisa dibuka dua kali.
         val data = runCatching { resolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
@@ -91,7 +127,7 @@ internal object AvatarProcessor {
         BitmapFactory.decodeByteArray(data, 0, data.size, bounds)
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
         var sample = 1
-        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= MAX_SIDE) sample *= 2
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxSide) sample *= 2
         val bmp = BitmapFactory.decodeByteArray(data, 0, data.size, BitmapFactory.Options().apply { inSampleSize = sample })
             ?: return null
         val degrees = runCatching {

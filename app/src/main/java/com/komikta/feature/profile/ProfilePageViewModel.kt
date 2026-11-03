@@ -51,6 +51,9 @@ class ProfilePageViewModel @Inject constructor(
     private val _state = MutableStateFlow(ProfilePageState())
     val state: StateFlow<ProfilePageState> = _state.asStateFlow()
 
+    /** Akun yang sedang masuk (null = tamu). Dipakai untuk menampilkan alat OWNER di profil orang lain. */
+    val viewer: StateFlow<CommunityUserDto?> = repo.user
+
     private var userId = ""
     private var statsAt = 0L
     private var statsJob: Job? = null

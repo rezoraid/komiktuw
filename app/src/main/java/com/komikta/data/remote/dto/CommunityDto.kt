@@ -20,7 +20,16 @@ data class CommunityUserDto(
     val joinedAt: Long = 0L,
     val publicNo: Long = 0L,
     val readMinutes: Long = -1L,
-    val monthsJoined: Int = -1
+    val monthsJoined: Int = -1,
+    /** Chapter yang benar-benar dibaca (dihitung server dari waktu baca aktif). -1 = belum dimuat. */
+    val chaptersRead: Int = -1,
+    /** Alamat gambar banner profil; kosong jika belum diatur. */
+    val banner: String = "",
+    // Hanya terisi untuk panel OWNER.
+    val banned: Boolean = false,
+    val hasBanner: Boolean = false,
+    val hasAvatar: Boolean = false,
+    val lastLoginAt: Long = 0L
 )
 
 @Serializable
@@ -146,7 +155,8 @@ data class ActivityItemDto(
     val likeCount: Int = 0,
     val replyCount: Int = 0,
     val at: Long = 0L,
-    val readMinutes: Int = 0
+    /** Jumlah chapter komik ini yang sudah dibaca pengguna (hanya untuk kind = history). */
+    val chaptersRead: Int = 0
 )
 
 @Serializable

@@ -25,3 +25,11 @@ Komentar ada di Detail (baris "Komentar") dan di akhir tiap chapter di Reader. T
 ## Rilis
 - Versi 1.1.0 (versionCode 2). Signing rilis dibaca dari env/properti `KOMIKTA_STORE_FILE`, `KOMIKTA_STORE_PASSWORD`, `KOMIKTA_KEY_ALIAS`, `KOMIKTA_KEY_PASSWORD`. Kalau kosong, build rilis masih memakai keystore debug (tidak bisa diunggah ke Play Store, buat keystore sendiri dan simpan di luar repo).
 - Profile: Hapus akun (wajib Play Store), tautan Ketentuan dan Kebijakan Privasi (halaman `/terms` dan `/privacy` dari server), dan layar Moderasi untuk MODERATOR/OWNER (hapus komentar atau abaikan laporan).
+
+## Profil (update)
+
+- Kapsul peran: hanya kata peran (tanpa "Komikta"); Owner/Moderator/Premium punya pendar warna yang lewat berkala.
+- Statistik "menit membaca" diganti **chapter dibaca** (angka dari server, tidak bisa diubah dari aplikasi).
+- Banner profil gaya TikTok: ketuk banner / ikon kamera, atau menu gerigi → *Ganti banner* / *Hapus banner*. Gambar dipotong tengah ke rasio 2:1 dan dikompres sebelum diunggah.
+- Daftar tab **All** dirancang ulang: sampul, judul, chapter terakhir, waktu + jumlah chapter dibaca, tombol *Lanjut*.
+- OWNER: di profil pengguna lain muncul tombol **Kelola** (role, XP, hapus banner/foto, blokir).

@@ -66,7 +66,27 @@ class CommunityApi @Inject constructor(
     suspend fun updateAvatar(imageData: String): ApiResponse<MeResponse> =
         call("PUT", listOf("me", "avatar"), body = buildJsonObject { put("image", imageData) })
 
+    suspend fun updateBanner(imageData: String): ApiResponse<MeResponse> =
+        call("PUT", listOf("me", "banner"), body = buildJsonObject { put("image", imageData) })
+
+    suspend fun removeBanner(): ApiResponse<MeResponse> = call("DELETE", listOf("me", "banner"))
+
     suspend fun deleteAccount(): ApiResponse<OkDto> = call("DELETE", listOf("me"))
+
+    // ---- Panel OWNER ----
+    suspend fun adminUser(id: String): ApiResponse<MeResponse> = call("GET", listOf("admin", "users", id))
+
+    suspend fun adminGrantXp(id: String, amount: Int): ApiResponse<MeResponse> =
+        call("POST", listOf("admin", "users", id, "xp"), body = buildJsonObject { put("amount", amount) })
+
+    suspend fun adminResetMedia(id: String, banner: Boolean, avatar: Boolean): ApiResponse<OkDto> =
+        call("POST", listOf("admin", "users", id, "reset-media"), body = buildJsonObject { put("banner", banner); put("avatar", avatar) })
+
+    suspend fun adminSetRole(id: String, role: String): ApiResponse<MeResponse> =
+        call("PUT", listOf("admin", "users", id, "role"), body = buildJsonObject { put("role", role) })
+
+    suspend fun adminSetBan(id: String, banned: Boolean): ApiResponse<OkDto> =
+        call("PUT", listOf("admin", "users", id, "ban"), body = buildJsonObject { put("banned", banned) })
 
     suspend fun setReadingHistoryPublic(isPublic: Boolean): ApiResponse<OkDto> =
         call("PUT", listOf("me", "history-visibility"), body = buildJsonObject { put("publicHistory", isPublic) })

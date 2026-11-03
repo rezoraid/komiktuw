@@ -176,6 +176,24 @@ class CommunityRepository @Inject constructor(
         }
     }
 
+    suspend fun updateBanner(imageData: String): Result<CommunityUserDto> =
+        call { api.updateBanner(imageData) }.map { session.update(it.user); it.user }
+
+    suspend fun removeBanner(): Result<CommunityUserDto> =
+        call { api.removeBanner() }.map { session.update(it.user); it.user }
+
+    // ---- Panel OWNER ----
+    suspend fun adminUser(id: String): Result<CommunityUserDto> = call { api.adminUser(id) }.map { it.user }
+
+    suspend fun adminGrantXp(id: String, amount: Int): Result<CommunityUserDto> = call { api.adminGrantXp(id, amount) }.map { it.user }
+
+    suspend fun adminResetMedia(id: String, banner: Boolean, avatar: Boolean): Result<Unit> =
+        call { api.adminResetMedia(id, banner, avatar) }.map { }
+
+    suspend fun adminSetRole(id: String, role: String): Result<CommunityUserDto> = call { api.adminSetRole(id, role) }.map { it.user }
+
+    suspend fun adminSetBan(id: String, banned: Boolean): Result<Unit> = call { api.adminSetBan(id, banned) }.map { }
+
     suspend fun setReadingHistoryPublic(isPublic: Boolean): Result<Unit> {
         val before = session.user.value
         if (before != null) session.replaceLocal(before.copy(publicHistory = isPublic))

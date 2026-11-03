@@ -71,6 +71,9 @@ fun ProfileScreen(
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) viewModel.changeAvatar(uri)
     }
+    val bannerPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) viewModel.changeBanner(uri)
+    }
     LaunchedEffect(user?.id) {
         user?.id?.let { pageModel.load(it) }
     }
@@ -97,23 +100,27 @@ fun ProfileScreen(
     } else {
         // Identitas (nama, foto, peran, level) selalu dari sesi terbaru; angka statistik dari backend.
         val shown = remember(page, u) {
-            page.copy(stats = page.stats?.copy(name = u.name, username = u.username, picture = u.picture, role = u.role, level = u.level))
+            page.copy(stats = page.stats?.copy(name = u.name, username = u.username, picture = u.picture, banner = u.banner, role = u.role, level = u.level))
         }
         Box(Modifier.fillMaxSize().background(P.Content)) {
             ProfilePage(
                 state = shown,
                 fallbackUser = u,
                 busy = ui.busy,
+                bannerBusy = ui.bannerBusy,
                 onTab = pageModel::selectTab,
                 onLoadMore = pageModel::loadMore,
                 onRetry = pageModel::retry,
                 onItemClick = { onOpen(it.source, it.slug, it.chapter) },
                 onAvatarClick = { avatarPicker.launch("image/*") },
+                onBannerClick = { bannerPicker.launch("image/*") },
                 onLevelClick = { showXp = true },
                 topLeft = {
                     SettingsMenu(
                         u,
                         onPhoto = { avatarPicker.launch("image/*") },
+                        onBanner = { bannerPicker.launch("image/*") },
+                        onRemoveBanner = viewModel::removeBanner,
                         onEdit = { editing = true },
                         onVisibility = { viewModel.setHistoryVisibility(!u.publicHistory) },
                         onModeration = onModeration,
@@ -139,6 +146,7 @@ fun ProfileScreen(
     }
 
     if (showXp && u != null) {
+        val owner = u.role == "OWNER"
         val span = (u.xpNextLevel - u.xpCurrentLevel).coerceAtLeast(1)
         val into = (u.xp - u.xpCurrentLevel).coerceIn(0, span)
         AlertDialog(
@@ -147,12 +155,20 @@ fun ProfileScreen(
             title = { Text("Level ${u.level}", style = MaterialTheme.typography.titleMedium) },
             text = {
                 Column {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Menuju level ${u.level + 1}", fontSize = 14.sp, color = Ui.Text2)
-                        Text("${u.xp} / ${u.xpNextLevel} XP", fontSize = 14.sp, color = Ui.Text2)
-                    }
-                    Box(Modifier.padding(top = 10.dp).fillMaxWidth().height(6.dp).clip(CircleShape).background(Ui.Line)) {
-                        Box(Modifier.fillMaxWidth(into.toFloat() / span).height(6.dp).background(P.Blue))
+                    if (owner) {
+                        Text("Level OWNER bersifat tetap dan tidak bergantung pada XP.", fontSize = 14.sp, lineHeight = 20.sp, color = Ui.Text2)
+                    } else {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Menuju level ${u.level + 1}", fontSize = 14.sp, color = Ui.Text2)
+                            Text("${u.xp} / ${u.xpNextLevel} XP", fontSize = 14.sp, color = Ui.Text2)
+                        }
+                        Box(Modifier.padding(top = 10.dp).fillMaxWidth().height(6.dp).clip(CircleShape).background(Ui.Line)) {
+                            Box(Modifier.fillMaxWidth(into.toFloat() / span).height(6.dp).background(P.Blue))
+                        }
+                        Text(
+                            "XP didapat dengan membaca chapter (+8 XP tiap chapter baru, maksimal 80 XP per hari), menulis komentar, dan saat komentarmu disukai.",
+                            fontSize = 13.sp, lineHeight = 18.sp, color = Ui.Text3, modifier = Modifier.padding(top = 14.dp)
+                        )
                     }
                 }
             },
@@ -215,6 +231,8 @@ fun ProfileScreen(
 private fun SettingsMenu(
     u: CommunityUserDto,
     onPhoto: () -> Unit,
+    onBanner: () -> Unit,
+    onRemoveBanner: () -> Unit,
     onEdit: () -> Unit,
     onVisibility: () -> Unit,
     onModeration: () -> Unit,
@@ -232,6 +250,8 @@ private fun SettingsMenu(
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(Ui.Card)) {
             item("Ganti foto profil", Color.White, onPhoto)
+            item("Ganti banner", Color.White, onBanner)
+            if (u.banner.isNotBlank()) item("Hapus banner", Color.White, onRemoveBanner)
             item("Ganti username", Color.White, onEdit)
             item(if (u.publicHistory) "Riwayat & Likes: publik" else "Riwayat & Likes: privat", Color.White, onVisibility)
             if (u.role == "MODERATOR" || u.role == "OWNER") item("Moderasi", Color.White, onModeration)

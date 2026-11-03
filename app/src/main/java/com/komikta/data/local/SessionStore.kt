@@ -61,7 +61,13 @@ class SessionStore @Inject constructor(
     fun update(incoming: CommunityUserDto) {
         if (token == null) return
         val old = _user.value
-        val user = busted(if (incoming.commentCount < 0 && old != null && old.id == incoming.id) incoming.copy(commentCount = old.commentCount) else incoming)
+        val keep = if (old != null && old.id == incoming.id) {
+            incoming.copy(
+                commentCount = if (incoming.commentCount < 0) old.commentCount else incoming.commentCount,
+                chaptersRead = if (incoming.chaptersRead < 0) old.chaptersRead else incoming.chaptersRead
+            )
+        } else incoming
+        val user = busted(keep)
         sp.edit().putString("user", json.encodeToString(CommunityUserDto.serializer(), user)).apply()
         _user.value = user
         AvatarBust.set(user.picture, avatarRev)
