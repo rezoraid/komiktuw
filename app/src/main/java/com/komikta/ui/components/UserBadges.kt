@@ -5,10 +5,11 @@ import com.komikta.BuildConfig
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,30 +21,46 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.komikta.core.common.AvatarBust
+import com.komikta.ui.theme.Mono
 import com.komikta.ui.theme.Ui
 
-private val BadgeShape = RoundedCornerShape(5.dp)
-
-@Composable
-fun RoleBadge(role: String, modifier: Modifier = Modifier) {
-    val base = modifier.clip(BadgeShape)
-    when (role) {
-        "OWNER" -> Text("OWNER", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = base.background(Color(0xFF3C9BD6)).border(1.dp, Color(0xFF7BCFFF), BadgeShape).padding(horizontal = 7.dp, vertical = 2.dp))
-        "MODERATOR" -> Text("MOD", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF7BCFFF), modifier = base.background(Color(0xFF1C3445)).border(1.dp, Color(0xFF3C9BD6), BadgeShape).padding(horizontal = 7.dp, vertical = 1.dp))
-        "PREMIUM" -> Text("PREMIUM", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = base.background(Color(0xFF3C9BD6)).border(1.dp, Color(0xFF7BCFFF), BadgeShape).padding(horizontal = 7.dp, vertical = 2.dp))
-        else -> Text("USER", fontSize = 10.sp, fontWeight = FontWeight.Medium, color = Ui.Text2, modifier = base.background(Ui.Chip).padding(horizontal = 7.dp, vertical = 2.dp))
-    }
+/** Warna role. null = role biasa (Member), tampil netral. */
+fun roleTint(role: String): Color? = when (role) {
+    "OWNER" -> Color(0xFF2398F7)
+    "MODERATOR" -> Color(0xFF2FBF9B)
+    "PREMIUM" -> Color(0xFFE0A526)
+    else -> null
 }
 
+fun roleName(role: String): String = when (role) {
+    "OWNER" -> "Owner"
+    "MODERATOR" -> "Moderator"
+    "PREMIUM" -> "Premium"
+    else -> "Member"
+}
+
+/** Kapsul role untuk komentar: Owner biru, Moderator hijau, Premium emas, Member abu netral. */
+@Composable
+fun RoleBadge(role: String, modifier: Modifier = Modifier) {
+    val tint = roleTint(role)
+    val bg = tint?.copy(alpha = 0.22f) ?: Mono.CardHigh
+    val line = tint?.copy(alpha = 0.8f) ?: Mono.Line
+    Text(
+        roleName(role), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Mono.Text, maxLines = 1,
+        modifier = modifier.clip(CircleShape).background(bg).border(1.dp, line, CircleShape).padding(horizontal = 10.dp, vertical = 3.dp)
+    )
+}
+
+/** Kapsul level: bintang putih + angka, netral abu gelap. */
 @Composable
 fun LevelChip(level: Int, modifier: Modifier = Modifier) {
-    Text(
-        "Lv $level",
-        fontSize = 11.sp,
-        fontWeight = FontWeight.Medium,
-        color = Color(0xFF7BCFFF),
-        modifier = modifier.clip(BadgeShape).background(Color(0xFF1C3445)).border(1.dp, Color(0xFF3C9BD6), BadgeShape).padding(horizontal = 7.dp, vertical = 2.dp)
-    )
+    Row(
+        modifier.clip(CircleShape).background(Mono.CardHigh).border(1.dp, Mono.Line, CircleShape).padding(start = 7.dp, end = 10.dp, top = 3.dp, bottom = 3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(AppIcons.star, null, tint = Mono.Icon, modifier = Modifier.size(12.dp))
+        Text("Lv $level", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Mono.Text, maxLines = 1, modifier = Modifier.padding(start = 4.dp))
+    }
 }
 
 @Composable

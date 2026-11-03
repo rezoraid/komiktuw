@@ -96,7 +96,7 @@ class OwnerToolsViewModel @Inject constructor(private val repo: CommunityReposit
     fun grantXp(amount: Int) = act(if (amount > 0) "XP ditambahkan" else "XP dikurangi") { repo.adminGrantXp(id, amount) }
     fun setRole(role: String) = act("Role diubah") { repo.adminSetRole(id, role) }
     fun setBan(banned: Boolean) = act(if (banned) "Akun diblokir" else "Blokir dibuka") { repo.adminSetBan(id, banned) }
-    fun resetMedia(banner: Boolean, avatar: Boolean) = act("Konten dihapus") { repo.adminResetMedia(id, banner, avatar) }
+    fun resetMedia(avatar: Boolean) = act("Foto dihapus") { repo.adminResetMedia(id, avatar) }
 }
 
 @Composable
@@ -124,7 +124,7 @@ internal fun OwnerToolsDialog(
                 ui.loading -> Text("Memuat…", fontSize = 14.sp, color = Ui.Text2)
                 u == null -> {
                     Text(ui.error ?: "Gagal memuat akun", fontSize = 14.sp, color = Ui.Text2)
-                    TextButton(onClick = { vm.load(userId) }) { Text("Coba lagi", color = Ui.Accent) }
+                    TextButton(onClick = { vm.load(userId) }) { Text("Coba lagi", color = Color.White) }
                 }
                 else -> {
                     val isOwner = u.role == "OWNER"
@@ -162,7 +162,7 @@ internal fun OwnerToolsDialog(
                                 singleLine = true,
                                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                cursorBrush = SolidColor(Ui.Accent),
+                                cursorBrush = SolidColor(Color.White),
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -174,10 +174,7 @@ internal fun OwnerToolsDialog(
                     }
 
                     Section("Konten")
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Pill("Hapus banner", Modifier.weight(1f), enabled = u.hasBanner && !ui.working) { vm.resetMedia(banner = true, avatar = false) }
-                        Pill("Hapus foto", Modifier.weight(1f), enabled = u.hasAvatar && !ui.working) { vm.resetMedia(banner = false, avatar = true) }
-                    }
+                    Pill("Hapus foto", Modifier.fillMaxWidth(), enabled = u.hasAvatar && !ui.working) { vm.resetMedia(avatar = true) }
 
                     if (!isOwner) {
                         Section("Akun")
@@ -196,7 +193,7 @@ internal fun OwnerToolsDialog(
                     }
                 }
             }
-            ui.notice?.let { Text(it, fontSize = 13.sp, color = Ui.Accent) }
+            ui.notice?.let { Text(it, fontSize = 13.sp, color = Color.White) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) { Text("Tutup", color = Ui.Text2) }
             }

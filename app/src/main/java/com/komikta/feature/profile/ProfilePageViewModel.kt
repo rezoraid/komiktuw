@@ -29,13 +29,10 @@ data class ProfilePageState(
     val userId: String = "",
     val stats: CommunityUserDto? = null,
     val self: Boolean = false,
-    val activityVisible: Boolean = true,
     val statsError: String? = null,
     val tab: Int = 0,
     val tabs: List<TabState> = List(3) { TabState() }
-) {
-    fun locked(index: Int): Boolean = !activityVisible && index != 1
-}
+)
 
 fun ActivityItemDto.listKey(): String = when (kind) {
     "comment" -> "c:$id"
@@ -85,7 +82,7 @@ class ProfilePageViewModel @Inject constructor(
         statsJob = viewModelScope.launch {
             when (val r = repo.profile(id)) {
                 is Result.Success -> {
-                    commit { it.copy(stats = r.data.user, self = r.data.self, activityVisible = r.data.activityVisible, statsError = null) }
+                    commit { it.copy(stats = r.data.user, self = r.data.self, statsError = null) }
                     markStale()
                     ensureTab(_state.value.tab)
                 }
@@ -108,7 +105,7 @@ class ProfilePageViewModel @Inject constructor(
         viewModelScope.launch {
             val profile = repo.cachedProfile(id)
             if (profile != null && id == userId && _state.value.noTabLoaded()) {
-                _state.update { it.copy(stats = profile.user, self = profile.self, activityVisible = profile.activityVisible) }
+                _state.update { it.copy(stats = profile.user, self = profile.self) }
             }
         }
     }
@@ -145,10 +142,6 @@ class ProfilePageViewModel @Inject constructor(
         val s = _state.value
         val t = s.tabs[index]
         if (userId.isBlank() || t.loading || !t.hasMore || t.error != null) return
-        if (s.locked(index)) {
-            update(index) { it.copy(items = emptyList(), hasMore = false) }
-            return
-        }
         val id = userId
         val replace = t.page == 0
         update(index) { it.copy(loading = true) }

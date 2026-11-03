@@ -48,10 +48,10 @@ import com.komikta.data.remote.dto.CommunityUserDto
 import com.komikta.feature.auth.rememberGoogleSignIn
 import com.komikta.ui.components.AppIcons
 import com.komikta.ui.navigation.BottomNavItem
-import com.komikta.ui.theme.Ui
+import com.komikta.ui.theme.Mono
 import kotlinx.coroutines.delay
 
-/** Profil sendiri. Tab Comments/Likes/All memakai data backend; pengaturan akun ada di menu ikon gerigi. */
+/** Profil sendiri. Tab All/Comments/Likes memakai data backend; pengaturan akun ada di menu ikon gerigi. */
 @Composable
 fun ProfileScreen(
     onOpen: (source: String, slug: String, chapter: String?) -> Unit = { _, _, _ -> },
@@ -71,9 +71,6 @@ fun ProfileScreen(
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) viewModel.changeAvatar(uri)
     }
-    val bannerPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) viewModel.changeBanner(uri)
-    }
     LaunchedEffect(user?.id) {
         user?.id?.let { pageModel.load(it) }
     }
@@ -87,7 +84,7 @@ fun ProfileScreen(
     val u = user
     if (u == null) {
         Column(
-            Modifier.fillMaxSize().background(Ui.Bg).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp)
+            Modifier.fillMaxSize().background(Mono.Bg).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
             GuestContent(
                 busy = ui.busy,
@@ -100,29 +97,24 @@ fun ProfileScreen(
     } else {
         // Identitas (nama, foto, peran, level) selalu dari sesi terbaru; angka statistik dari backend.
         val shown = remember(page, u) {
-            page.copy(stats = page.stats?.copy(name = u.name, username = u.username, picture = u.picture, banner = u.banner, role = u.role, level = u.level))
+            page.copy(stats = page.stats?.copy(name = u.name, username = u.username, picture = u.picture, role = u.role, level = u.level))
         }
         Box(Modifier.fillMaxSize().background(P.Content)) {
             ProfilePage(
                 state = shown,
                 fallbackUser = u,
                 busy = ui.busy,
-                bannerBusy = ui.bannerBusy,
                 onTab = pageModel::selectTab,
                 onLoadMore = pageModel::loadMore,
                 onRetry = pageModel::retry,
                 onItemClick = { onOpen(it.source, it.slug, it.chapter) },
                 onAvatarClick = { avatarPicker.launch("image/*") },
-                onBannerClick = { bannerPicker.launch("image/*") },
                 onLevelClick = { showXp = true },
                 topLeft = {
                     SettingsMenu(
                         u,
                         onPhoto = { avatarPicker.launch("image/*") },
-                        onBanner = { bannerPicker.launch("image/*") },
-                        onRemoveBanner = viewModel::removeBanner,
                         onEdit = { editing = true },
-                        onVisibility = { viewModel.setHistoryVisibility(!u.publicHistory) },
                         onModeration = onModeration,
                         onTerms = { uriHandler.openUri("${BuildConfig.BASE_URL}/terms") },
                         onPrivacy = { uriHandler.openUri("${BuildConfig.BASE_URL}/privacy") },
@@ -139,7 +131,7 @@ fun ProfileScreen(
             ui.message?.let {
                 Text(
                     it, fontSize = 14.sp, color = Color.White,
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF2B2C31)).padding(horizontal = 16.dp, vertical = 10.dp)
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp).clip(RoundedCornerShape(10.dp)).background(Mono.CardHigh).padding(horizontal = 16.dp, vertical = 10.dp)
                 )
             }
         }
@@ -151,50 +143,50 @@ fun ProfileScreen(
         val into = (u.xp - u.xpCurrentLevel).coerceIn(0, span)
         AlertDialog(
             onDismissRequest = { showXp = false },
-            containerColor = Ui.Card,
+            containerColor = Mono.Card,
             title = { Text("Level ${u.level}", style = MaterialTheme.typography.titleMedium) },
             text = {
                 Column {
                     if (owner) {
-                        Text("Level OWNER bersifat tetap dan tidak bergantung pada XP.", fontSize = 14.sp, lineHeight = 20.sp, color = Ui.Text2)
+                        Text("Level OWNER bersifat tetap dan tidak bergantung pada XP.", fontSize = 14.sp, lineHeight = 20.sp, color = Mono.TextDim)
                     } else {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Menuju level ${u.level + 1}", fontSize = 14.sp, color = Ui.Text2)
-                            Text("${u.xp} / ${u.xpNextLevel} XP", fontSize = 14.sp, color = Ui.Text2)
+                            Text("Menuju level ${u.level + 1}", fontSize = 14.sp, color = Mono.TextDim)
+                            Text("${u.xp} / ${u.xpNextLevel} XP", fontSize = 14.sp, color = Mono.TextDim)
                         }
-                        Box(Modifier.padding(top = 10.dp).fillMaxWidth().height(6.dp).clip(CircleShape).background(Ui.Line)) {
-                            Box(Modifier.fillMaxWidth(into.toFloat() / span).height(6.dp).background(P.Blue))
+                        Box(Modifier.padding(top = 10.dp).fillMaxWidth().height(6.dp).clip(CircleShape).background(Mono.CardHigh)) {
+                            Box(Modifier.fillMaxWidth(into.toFloat() / span).height(6.dp).background(Color.White))
                         }
                         Text(
                             "XP didapat dengan membaca chapter (+8 XP tiap chapter baru, maksimal 80 XP per hari), menulis komentar, dan saat komentarmu disukai.",
-                            fontSize = 13.sp, lineHeight = 18.sp, color = Ui.Text3, modifier = Modifier.padding(top = 14.dp)
+                            fontSize = 13.sp, lineHeight = 18.sp, color = Mono.TextFaint, modifier = Modifier.padding(top = 14.dp)
                         )
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showXp = false }) { Text("Tutup", color = Ui.Accent) } }
+            confirmButton = { TextButton(onClick = { showXp = false }) { Text("Tutup", color = Color.White) } }
         )
     }
 
     if (confirmLogout) {
         AlertDialog(
             onDismissRequest = { confirmLogout = false },
-            containerColor = Ui.Card,
+            containerColor = Mono.Card,
             title = { Text("Keluar dari akun?", style = MaterialTheme.typography.titleMedium) },
-            text = { Text("Kamu perlu masuk lagi dengan Google untuk berkomentar dan mengumpulkan XP.", color = Ui.Text2, fontSize = 15.sp) },
+            text = { Text("Kamu perlu masuk lagi dengan Google untuk berkomentar dan mengumpulkan XP.", color = Mono.TextDim, fontSize = 15.sp) },
             confirmButton = { TextButton(onClick = { viewModel.signOut(); confirmLogout = false }) { Text("Keluar", color = Color(0xFFE08F8F)) } },
-            dismissButton = { TextButton(onClick = { confirmLogout = false }) { Text("Batal", color = Ui.Text2) } }
+            dismissButton = { TextButton(onClick = { confirmLogout = false }) { Text("Batal", color = Mono.TextDim) } }
         )
     }
 
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            containerColor = Ui.Card,
+            containerColor = Mono.Card,
             title = { Text("Hapus akun?", style = MaterialTheme.typography.titleMedium) },
-            text = { Text("Akun dan semua komentarmu akan dihapus permanen. XP dan level hilang. Tindakan ini tidak bisa dibatalkan.", color = Ui.Text2, fontSize = 15.sp) },
-            confirmButton = { TextButton(onClick = { viewModel.deleteAccount(); confirmDelete = false }) { Text("Hapus", color = Ui.Accent) } },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Batal", color = Ui.Text2) } }
+            text = { Text("Akun dan semua komentarmu akan dihapus permanen. XP dan level hilang. Tindakan ini tidak bisa dibatalkan.", color = Mono.TextDim, fontSize = 15.sp) },
+            confirmButton = { TextButton(onClick = { viewModel.deleteAccount(); confirmDelete = false }) { Text("Hapus", color = Color(0xFFE08F8F)) } },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Batal", color = Mono.TextDim) } }
         )
     }
 
@@ -202,27 +194,27 @@ fun ProfileScreen(
         var value by remember { mutableStateOf(user?.username.orEmpty()) }
         AlertDialog(
             onDismissRequest = { editing = false },
-            containerColor = Ui.Card,
+            containerColor = Mono.Card,
             title = { Text("Ganti username", style = MaterialTheme.typography.titleMedium) },
             text = {
                 Column {
-                    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ui.Chip).padding(12.dp)) {
+                    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Mono.CardHigh).padding(12.dp)) {
                         BasicTextField(
                             value = value,
                             onValueChange = { value = it.lowercase().filter { c -> c.isLetterOrDigit() || c == '_' }.take(20) },
                             singleLine = true,
                             textStyle = MaterialTheme.typography.bodyLarge,
-                            cursorBrush = SolidColor(Ui.Accent),
+                            cursorBrush = SolidColor(Color.White),
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-                    Text("3-20 karakter: huruf kecil, angka, underscore. Bisa diganti sekali per 7 hari.", fontSize = 13.sp, color = Ui.Text3, modifier = Modifier.padding(top = 8.dp))
+                    Text("3-20 karakter: huruf kecil, angka, underscore. Bisa diganti sekali per 7 hari.", fontSize = 13.sp, color = Mono.TextFaint, modifier = Modifier.padding(top = 8.dp))
                 }
             },
             confirmButton = {
-                TextButton(onClick = { val name = value; editing = false; viewModel.changeUsername(name) }, enabled = value.length >= 3) { Text("Simpan", color = Ui.Accent) }
+                TextButton(onClick = { val name = value; editing = false; viewModel.changeUsername(name) }, enabled = value.length >= 3) { Text("Simpan", color = Color.White) }
             },
-            dismissButton = { TextButton(onClick = { editing = false }) { Text("Batal", color = Ui.Text2) } }
+            dismissButton = { TextButton(onClick = { editing = false }) { Text("Batal", color = Mono.TextDim) } }
         )
     }
 }
@@ -231,10 +223,7 @@ fun ProfileScreen(
 private fun SettingsMenu(
     u: CommunityUserDto,
     onPhoto: () -> Unit,
-    onBanner: () -> Unit,
-    onRemoveBanner: () -> Unit,
     onEdit: () -> Unit,
-    onVisibility: () -> Unit,
     onModeration: () -> Unit,
     onTerms: () -> Unit,
     onPrivacy: () -> Unit,
@@ -248,17 +237,14 @@ private fun SettingsMenu(
         Box(Modifier.size(44.dp).clip(CircleShape).clickable { open = true }, contentAlignment = Alignment.Center) {
             Icon(AppIcons.settings, "Pengaturan", tint = Color.White, modifier = Modifier.size(24.dp))
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(Ui.Card)) {
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(Mono.Card)) {
             item("Ganti foto profil", Color.White, onPhoto)
-            item("Ganti banner", Color.White, onBanner)
-            if (u.banner.isNotBlank()) item("Hapus banner", Color.White, onRemoveBanner)
             item("Ganti username", Color.White, onEdit)
-            item(if (u.publicHistory) "Riwayat & Likes: publik" else "Riwayat & Likes: privat", Color.White, onVisibility)
             if (u.role == "MODERATOR" || u.role == "OWNER") item("Moderasi", Color.White, onModeration)
             item("Ketentuan", Color.White, onTerms)
             item("Kebijakan Privasi", Color.White, onPrivacy)
             item("Hapus akun", Color(0xFFE08F8F), onDelete)
-            DropdownMenuItem(text = { Text("Komikta ${BuildConfig.VERSION_NAME}", fontSize = 13.sp, color = Ui.Text3) }, onClick = {}, enabled = false)
+            DropdownMenuItem(text = { Text("Komikta ${BuildConfig.VERSION_NAME}", fontSize = 13.sp, color = Mono.TextFaint) }, onClick = {}, enabled = false)
         }
     }
 }
@@ -266,39 +252,39 @@ private fun SettingsMenu(
 @Composable
 private fun GuestContent(busy: Boolean, message: String?, onSignIn: () -> Unit, onTerms: () -> Unit, onPrivacy: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(top = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(84.dp).clip(CircleShape).background(Ui.Chip), contentAlignment = Alignment.Center) {
-            Icon(BottomNavItem.Profile.unselectedIcon, null, tint = Ui.Text2, modifier = Modifier.size(38.dp))
+        Box(Modifier.size(84.dp).clip(CircleShape).background(Mono.CardHigh), contentAlignment = Alignment.Center) {
+            Icon(BottomNavItem.Profile.unselectedIcon, null, tint = Mono.Icon, modifier = Modifier.size(38.dp))
         }
         Text("Pembaca tamu", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
-        Text("Bookmark dan riwayat baca tersimpan di perangkat ini", fontSize = 14.sp, color = Ui.Text2, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+        Text("Bookmark dan riwayat baca tersimpan di perangkat ini", fontSize = 14.sp, color = Mono.TextDim, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
     }
-    Column(Modifier.padding(top = 28.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ui.Card).padding(16.dp)) {
+    Column(Modifier.padding(top = 28.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Mono.Card).padding(16.dp)) {
         Text("Masuk untuk ikut komunitas", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-        Text("Tulis komentar, balas, beri like, dan kumpulkan XP di setiap chapter.", fontSize = 14.sp, lineHeight = 20.sp, color = Ui.Text2, modifier = Modifier.padding(top = 4.dp))
+        Text("Tulis komentar, balas, beri like, dan kumpulkan XP di setiap chapter.", fontSize = 14.sp, lineHeight = 20.sp, color = Mono.TextDim, modifier = Modifier.padding(top = 4.dp))
         Text(
             if (busy) "Memproses…" else "Masuk dengan Google",
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Ui.OnAccent,
+            color = Color.Black,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .padding(top = 16.dp)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
-                .background(Ui.AccentBrush)
+                .background(Color.White)
                 .clickable(enabled = !busy, onClick = onSignIn)
                 .padding(vertical = 13.dp)
         )
-        message?.let { Text(it, fontSize = 13.sp, color = Ui.Text2, modifier = Modifier.padding(top = 10.dp)) }
+        message?.let { Text(it, fontSize = 13.sp, color = Mono.TextDim, modifier = Modifier.padding(top = 10.dp)) }
     }
-    Text("TENTANG APLIKASI", fontSize = 12.sp, letterSpacing = 1.sp, color = Ui.Text3, modifier = Modifier.padding(top = 28.dp, bottom = 8.dp, start = 2.dp))
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ui.Card)) {
+    Text("TENTANG APLIKASI", fontSize = 12.sp, letterSpacing = 1.sp, color = Mono.TextFaint, modifier = Modifier.padding(top = 28.dp, bottom = 8.dp, start = 2.dp))
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Mono.Card)) {
         InfoLine("Ketentuan", null, onTerms)
-        Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
         InfoLine("Kebijakan Privasi", null, onPrivacy)
-        Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
         InfoLine("Versi", BuildConfig.VERSION_NAME, null)
-        Box(Modifier.fillMaxWidth().height(1.dp).background(Ui.Line))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
         InfoLine("Sumber", "Lumos · Manta · Shinigami", null)
     }
 }
@@ -310,8 +296,8 @@ private fun InfoLine(label: String, value: String?, onClick: (() -> Unit)?) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, fontSize = 15.sp, modifier = Modifier.weight(1f))
-        if (value != null) Text(value, fontSize = 14.sp, color = Ui.Text2)
-        if (onClick != null) Icon(AppIcons.chevronRight, null, tint = Ui.Text3, modifier = Modifier.size(18.dp))
+        if (value != null) Text(value, fontSize = 14.sp, color = Mono.TextDim)
+        if (onClick != null) Icon(AppIcons.chevronRight, null, tint = Mono.Icon, modifier = Modifier.size(18.dp))
     }
 }
 

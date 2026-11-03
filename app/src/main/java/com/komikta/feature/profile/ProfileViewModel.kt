@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-data class ProfileUiState(val busy: Boolean = false, val bannerBusy: Boolean = false, val message: String? = null)
+data class ProfileUiState(val busy: Boolean = false, val message: String? = null)
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
@@ -68,16 +68,6 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    fun setHistoryVisibility(isPublic: Boolean) {
-        viewModelScope.launch {
-            when (val r = repo.setReadingHistoryPublic(isPublic)) {
-                is Result.Success -> _ui.value = ProfileUiState(message = if (isPublic) "Riwayat sekarang publik" else "Riwayat sekarang privat")
-                is Result.Error -> _ui.value = ProfileUiState(message = r.message)
-                else -> Unit
-            }
-        }
-    }
-
     fun changeAvatar(uri: Uri) {
         viewModelScope.launch {
             val prepared = withContext(Dispatchers.IO) { runCatching { AvatarProcessor.prepare(appContext, uri) } }
@@ -90,36 +80,6 @@ class ProfileViewModel @Inject constructor(
                 is Result.Success -> _ui.value = ProfileUiState(message = "Foto profil diperbarui")
                 is Result.Error -> _ui.value = ProfileUiState(message = r.message)
                 else -> Unit
-            }
-        }
-    }
-
-    fun changeBanner(uri: Uri) {
-        if (_ui.value.bannerBusy) return
-        viewModelScope.launch {
-            _ui.value = ProfileUiState(bannerBusy = true)
-            val prepared = withContext(Dispatchers.IO) { runCatching { AvatarProcessor.prepareBanner(appContext, uri) } }
-            val data = prepared.getOrNull()
-            if (data == null) {
-                _ui.value = ProfileUiState(message = prepared.exceptionOrNull()?.message ?: "Gagal membaca gambar")
-                return@launch
-            }
-            _ui.value = when (val r = repo.updateBanner(data)) {
-                is Result.Success -> ProfileUiState(message = "Banner diperbarui")
-                is Result.Error -> ProfileUiState(message = r.message)
-                else -> ProfileUiState()
-            }
-        }
-    }
-
-    fun removeBanner() {
-        if (_ui.value.bannerBusy) return
-        viewModelScope.launch {
-            _ui.value = ProfileUiState(bannerBusy = true)
-            _ui.value = when (val r = repo.removeBanner()) {
-                is Result.Success -> ProfileUiState(message = "Banner dihapus")
-                is Result.Error -> ProfileUiState(message = r.message)
-                else -> ProfileUiState()
             }
         }
     }

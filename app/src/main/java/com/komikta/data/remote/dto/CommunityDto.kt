@@ -9,7 +9,6 @@ data class CommunityUserDto(
     val name: String = "",
     val picture: String = "",
     val role: String = "USER",
-    val publicHistory: Boolean = false,
     val level: Int = 1,
     val email: String? = null,
     val xp: Int = 0,
@@ -23,11 +22,8 @@ data class CommunityUserDto(
     val monthsJoined: Int = -1,
     /** Chapter yang benar-benar dibaca (dihitung server dari waktu baca aktif). -1 = belum dimuat. */
     val chaptersRead: Int = -1,
-    /** Alamat gambar banner profil; kosong jika belum diatur. */
-    val banner: String = "",
     // Hanya terisi untuk panel OWNER.
     val banned: Boolean = false,
-    val hasBanner: Boolean = false,
     val hasAvatar: Boolean = false,
     val lastLoginAt: Long = 0L
 )
@@ -134,8 +130,7 @@ data class PublicReadingProgressDto(
 @Serializable
 data class ProfileResponseDto(
     val user: CommunityUserDto = CommunityUserDto(),
-    val self: Boolean = false,
-    val activityVisible: Boolean = false
+    val self: Boolean = false
 )
 
 /** Satu baris aktivitas profil. kind: history | comment | like. */

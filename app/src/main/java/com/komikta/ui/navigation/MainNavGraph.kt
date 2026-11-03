@@ -28,6 +28,7 @@ import com.komikta.feature.library.LibraryScreen
 import com.komikta.feature.profile.ProfileScreen
 import com.komikta.feature.profile.PublicProfileScreen
 import com.komikta.feature.reader.ReaderScreen
+import com.komikta.ui.theme.Mono
 import com.komikta.ui.theme.Ui
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -51,7 +52,7 @@ fun MainNavGraph() {
     var focusSearch by remember { mutableStateOf(false) }
 
     Scaffold(
-        containerColor = Ui.Bg,
+        containerColor = if (route == BottomNavItem.Profile.route) Mono.Bg else Ui.Bg,
         bottomBar = {
             if (showBottomBar) {
                 BottomBar(

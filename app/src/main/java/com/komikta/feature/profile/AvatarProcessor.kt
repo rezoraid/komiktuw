@@ -26,42 +26,6 @@ internal class PreparedAvatar(
 internal object AvatarProcessor {
     private const val MAX_SIDE = 640
     private const val PREVIEW_PREFIX = "avatar_preview_"
-    private const val BANNER_DECODE_SIDE = 1600
-    private const val BANNER_WIDTH = 1080
-    private const val BANNER_MAX_BYTES = 420_000
-
-    /**
-     * Banner profil: potong tengah ke rasio 2:1, kecilkan maksimal 1080 px lebar, lalu kompres ke JPEG
-     * di bawah batas server. Mengembalikan data URI. Berat; panggil dari thread latar belakang.
-     */
-    fun prepareBanner(context: Context, uri: Uri): String {
-        val source = decode(context, uri, BANNER_DECODE_SIDE) ?: error("Foto tidak bisa dibuka")
-        var cropW = source.width
-        var cropH = cropW / 2
-        if (cropH > source.height) { cropH = source.height; cropW = cropH * 2 }
-        require(cropW >= 2 && cropH >= 1) { "Foto terlalu kecil" }
-        val cropped = Bitmap.createBitmap(source, (source.width - cropW) / 2, (source.height - cropH) / 2, cropW, cropH)
-        val outW = minOf(cropW, BANNER_WIDTH)
-        val outH = (outW / 2).coerceAtLeast(1)
-        val canvasBitmap = Bitmap.createBitmap(outW, outH, Bitmap.Config.ARGB_8888)
-        Canvas(canvasBitmap).apply {
-            drawColor(Color.WHITE)
-            drawBitmap(Bitmap.createScaledBitmap(cropped, outW, outH, true), 0f, 0f, null)
-        }
-        if (cropped !== source) cropped.recycle()
-        source.recycle()
-
-        val output = ByteArrayOutputStream()
-        var quality = 86
-        do {
-            output.reset()
-            canvasBitmap.compress(Bitmap.CompressFormat.JPEG, quality, output)
-            quality -= 8
-        } while (output.size() > BANNER_MAX_BYTES && quality >= 38)
-        canvasBitmap.recycle()
-        require(output.size() <= BANNER_MAX_BYTES + 20_000) { "Gambar terlalu besar. Pilih gambar lain." }
-        return "data:image/jpeg;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
-    }
 
     fun prepare(context: Context, uri: Uri): PreparedAvatar {
         val source = decode(context, uri) ?: error("Foto tidak bisa dibuka")

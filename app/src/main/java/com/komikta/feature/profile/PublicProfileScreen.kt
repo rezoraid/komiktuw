@@ -27,8 +27,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.komikta.ui.components.AppIcons
+import com.komikta.ui.theme.Mono
 
-/** Profil pengguna lain: tampilan sama dengan profil sendiri, data diambil dari backend untuk userId tersebut. */
+/** Profil pengguna lain: tampilan sama dengan profil sendiri, data diambil dari backend untuk userId tersebut. Semua aktivitas publik. */
 @Composable
 fun PublicProfileScreen(
     userId: String,
@@ -47,13 +48,11 @@ fun PublicProfileScreen(
             state = state,
             fallbackUser = null,
             busy = false,
-            bannerBusy = false,
             onTab = viewModel::selectTab,
             onLoadMore = viewModel::loadMore,
             onRetry = viewModel::retry,
             onItemClick = { onOpen(it.source, it.slug, it.chapter) },
             onAvatarClick = null,
-            onBannerClick = null,
             onLevelClick = null,
             topLeft = {
                 Box(Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onBack), contentAlignment = Alignment.Center) {
@@ -69,7 +68,7 @@ fun PublicProfileScreen(
         )
         if (showTools && canManage) OwnerToolsDialog(userId = userId, onDismiss = { showTools = false }, onChanged = viewModel::refresh)
         if (state.stats == null && state.statsError != null) {
-            Text(state.statsError.orEmpty(), color = Color(0xFF807F84), fontSize = 14.sp, modifier = Modifier.align(Alignment.Center).padding(24.dp))
+            Text(state.statsError.orEmpty(), color = Mono.TextDim, fontSize = 14.sp, modifier = Modifier.align(Alignment.Center).padding(24.dp))
         }
     }
 }

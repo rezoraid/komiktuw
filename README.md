@@ -26,10 +26,12 @@ Komentar ada di Detail (baris "Komentar") dan di akhir tiap chapter di Reader. T
 - Versi 1.1.0 (versionCode 2). Signing rilis dibaca dari env/properti `KOMIKTA_STORE_FILE`, `KOMIKTA_STORE_PASSWORD`, `KOMIKTA_KEY_ALIAS`, `KOMIKTA_KEY_PASSWORD`. Kalau kosong, build rilis masih memakai keystore debug (tidak bisa diunggah ke Play Store, buat keystore sendiri dan simpan di luar repo).
 - Profile: Hapus akun (wajib Play Store), tautan Ketentuan dan Kebijakan Privasi (halaman `/terms` dan `/privacy` dari server), dan layar Moderasi untuk MODERATOR/OWNER (hapus komentar atau abaikan laporan).
 
-## Profil (update)
+## Profil & komentar (update)
 
-- Kapsul peran: hanya kata peran (tanpa "Komikta"); Owner/Moderator/Premium punya pendar warna yang lewat berkala.
-- Statistik "menit membaca" diganti **chapter dibaca** (angka dari server, tidak bisa diubah dari aplikasi).
-- Banner profil gaya TikTok: ketuk banner / ikon kamera, atau menu gerigi → *Ganti banner* / *Hapus banner*. Gambar dipotong tengah ke rasio 2:1 dan dikompres sebelum diunggah.
-- Daftar tab **All** dirancang ulang: sampul, judul, chapter terakhir, waktu + jumlah chapter dibaca, tombol *Lanjut*.
-- OWNER: di profil pengguna lain muncul tombol **Kelola** (role, XP, hapus banner/foto, blokir).
+- **Tema monokrom** untuk profil dan komentar: teks putih, latar abu-hitam, ikon putih (palet di `ui/theme/Mono.kt`). Satu-satunya warna lain adalah warna role: Owner biru, Moderator hijau, Premium emas, Member abu netral.
+- **Background/banner profil dihapus total**: tidak ada lagi banner, ikon kamera banner, menu *Ganti/Hapus banner*, maupun endpoint banner di server. Header kini bersih: foto profil bercincin putih, nama, @username, kapsul role + level, dan kartu statistik (chapter dibaca, total komentar, bulan bergabung).
+- Profil sendiri dan profil orang lain memakai satu tampilan yang sama; teks kosong menyesuaikan ("kamu" vs "pengguna ini").
+- Tab **All / Comments / Likes** dirapikan: tab berikon putih, tiap aktivitas jadi kartu (sampul, judul, chapter, waktu, jumlah chapter dibaca, tombol *Lanjut*; komentar tampil dalam kotak kutipan).
+- **Aktivitas privat dihapus**: riwayat dan likes selalu publik. Menu *Riwayat & Likes: publik/privat* dan layar "Aktivitas bersifat privat" sudah hilang (server: endpoint `history-visibility` dihapus, tab `all`/`likes` tidak lagi memberi `403`).
+- **Komentar**: tiap komentar berupa kartu; username besar (17sp, tebal), di bawahnya badge role dan level (Lv + bintang putih), lalu isi komentar putih, aksi suka/balas/opsi berikon putih. Bagian komentar di akhir chapter memakai gaya yang sama.
+- OWNER: di profil pengguna lain muncul tombol **Kelola** (role, XP, hapus foto, blokir).
