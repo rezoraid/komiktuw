@@ -12,6 +12,7 @@ import com.komikta.data.repository.CommunityRepository
 import com.komikta.domain.model.ComicDetail
 import com.komikta.domain.usecase.GetComicDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -51,14 +52,6 @@ class DetailViewModel @Inject constructor(
     private val _chapterComments = MutableStateFlow<Map<String, Int>>(emptyMap())
     val chapterComments: StateFlow<Map<String, Int>> = _chapterComments.asStateFlow()
 
-    fun loadChapterComments() {
-        if (slug.isBlank()) return
-        viewModelScope.launch {
-            val r = community.chapterCounts(source, slug)
-            if (r is Result.Success) _chapterComments.value = r.data
-        }
-    }
-
     val isBookmarked: StateFlow<Boolean> = bookmarkDao.isBookmarked(bookmarkId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
@@ -72,16 +65,34 @@ class DetailViewModel @Inject constructor(
     private val _likeMessage = MutableStateFlow<String?>(null)
     val likeMessage: StateFlow<String?> = _likeMessage.asStateFlow()
 
+    private var detailJob: Job? = null
+    private var confirmed = LikeUi()
+    private var wanted = false
+    private var syncing = false
+
     init {
         loadDetail()
         loadLike()
     }
 
+    fun loadChapterComments() {
+        if (slug.isBlank()) return
+        viewModelScope.launch {
+            community.observeChapterCounts(source, slug).collect { r ->
+                if (r is Result.Success) _chapterComments.value = r.data
+            }
+        }
+    }
+
     fun loadLike() {
         if (slug.isBlank()) return
         viewModelScope.launch {
-            val r = community.likeState(source, slug, null)
-            if (r is Result.Success) _like.value = LikeUi(r.data.liked, r.data.count)
+            community.observeLikeState(source, slug, null).collect { r ->
+                if (r is Result.Success && !syncing) {
+                    confirmed = LikeUi(r.data.liked, r.data.count)
+                    _like.value = confirmed
+                }
+            }
         }
     }
 
@@ -92,40 +103,64 @@ class DetailViewModel @Inject constructor(
             return
         }
         val before = _like.value
-        if (before.busy) return
+        if (!syncing) confirmed = before
         val want = !before.liked
-        _like.value = LikeUi(want, (before.count + if (want) 1 else -1).coerceAtLeast(0), busy = true)
+        wanted = want
+        _like.value = LikeUi(want, (before.count + if (want) 1 else -1).coerceAtLeast(0))
+        if (syncing) return
+        syncing = true
         viewModelScope.launch {
-            when (val r = community.setLike(want, source, slug, null, detail.title, "", detail.coverUrl.orEmpty())) {
-                is Result.Success -> _like.value = LikeUi(r.data.liked, r.data.count)
-                is Result.Error -> { _like.value = before; _likeMessage.value = r.message }
-                else -> _like.value = before
+            try {
+                while (wanted != confirmed.liked) {
+                    val target = wanted
+                    when (val r = community.setLike(target, source, slug, null, detail.title, "", detail.coverUrl.orEmpty())) {
+                        is Result.Success -> {
+                            confirmed = LikeUi(r.data.liked, r.data.count)
+                            if (wanted == confirmed.liked) _like.value = confirmed
+                        }
+                        is Result.Error -> {
+                            wanted = confirmed.liked
+                            _like.value = confirmed
+                            _likeMessage.value = r.message
+                        }
+                        else -> {
+                            wanted = confirmed.liked
+                            _like.value = confirmed
+                        }
+                    }
+                }
+            } finally {
+                syncing = false
             }
         }
     }
 
     fun clearLikeMessage() { _likeMessage.value = null }
 
-    fun loadDetail() {
+    fun loadDetail(refresh: Boolean = false) {
         if (slug.isBlank()) {
             _uiState.update { it.copy(isLoading = false, errorMessage = "Invalid comic") }
             return
         }
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            when (val result = getComicDetail(source, slug)) {
-                is Result.Success -> _uiState.update { it.copy(isLoading = false, detail = result.data) }
-                is Result.Error -> _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
-                else -> _uiState.update { it.copy(isLoading = false) }
+        detailJob?.cancel()
+        _uiState.update { it.copy(isLoading = it.detail == null, errorMessage = null) }
+        detailJob = viewModelScope.launch {
+            getComicDetail.observe(source, slug, refresh).collect { result ->
+                when (result) {
+                    is Result.Success -> _uiState.update { it.copy(isLoading = false, detail = result.data, errorMessage = null) }
+                    is Result.Error -> _uiState.update {
+                        if (it.detail != null) it.copy(isLoading = false) else it.copy(isLoading = false, errorMessage = result.message)
+                    }
+                    else -> _uiState.update { it.copy(isLoading = false) }
+                }
             }
         }
     }
 
     fun toggleBookmark() {
+        val detail = _uiState.value.detail ?: return
         viewModelScope.launch {
-            val detail = _uiState.value.detail ?: return@launch
-            val existing = bookmarkDao.getById(bookmarkId)
-            if (existing != null) {
+            if (bookmarkDao.getById(bookmarkId) != null) {
                 bookmarkDao.delete(bookmarkId)
             } else {
                 bookmarkDao.upsert(

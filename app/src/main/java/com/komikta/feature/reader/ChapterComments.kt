@@ -34,11 +34,16 @@ import com.komikta.ui.components.relativeTime
 import com.komikta.ui.theme.Ui
 
 @Composable
-fun ChapterCommentsSection(chapterSlug: String, load: suspend (String) -> CommentPageDto?, onOpen: () -> Unit) {
-    var page by remember(chapterSlug) { mutableStateOf<CommentPageDto?>(null) }
-    var done by remember(chapterSlug) { mutableStateOf(false) }
+fun ChapterCommentsSection(
+    chapterSlug: String,
+    load: suspend (String) -> CommentPageDto?,
+    peek: (String) -> CommentPageDto?,
+    onOpen: () -> Unit
+) {
+    var page by remember(chapterSlug) { mutableStateOf(peek(chapterSlug)) }
+    var done by remember(chapterSlug) { mutableStateOf(page != null) }
     LaunchedEffect(chapterSlug) {
-        page = load(chapterSlug)
+        load(chapterSlug)?.let { page = it }
         done = true
     }
     val items = remember(page) { page?.items.orEmpty().filter { !it.deleted }.take(3) }

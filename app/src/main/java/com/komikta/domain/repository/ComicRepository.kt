@@ -17,9 +17,12 @@ interface ComicRepository {
     suspend fun search(params: SearchParams): Result<List<Comic>>
     suspend fun getGenres(source: String): Result<List<String>>
     suspend fun getComicDetail(source: String, slug: String): Result<ComicDetail>
-    suspend fun getChapterContent(
-        source: String,
-        comicSlug: String,
-        chapterSlug: String
-    ): Result<ChapterContent>
+    suspend fun getChapterContent(source: String, comicSlug: String, chapterSlug: String): Result<ChapterContent>
+
+    fun observeLatest(source: String, page: Int = 1, refresh: Boolean = false): Flow<Result<List<Comic>>>
+    fun observePopular(source: String, refresh: Boolean = false): Flow<Result<List<Comic>>>
+    fun observeBrowse(params: BrowseParams, refresh: Boolean = false): Flow<Result<List<Comic>>>
+    fun observeSearch(params: SearchParams): Flow<Result<List<Comic>>>
+    fun observeGenres(source: String): Flow<Result<List<String>>>
+    fun observeDetail(source: String, slug: String, refresh: Boolean = false): Flow<Result<ComicDetail>>
 }

@@ -10,7 +10,7 @@ import com.komikta.domain.model.Comic
 import com.komikta.domain.usecase.GetLatestComicsUseCase
 import com.komikta.domain.usecase.GetPopularComicsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.async
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class HomeUiState(
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
     val latestComics: List<Comic> = emptyList(),
     val popularComics: List<Comic> = emptyList(),
     val errorMessage: String? = null
@@ -41,26 +41,51 @@ class HomeViewModel @Inject constructor(
         historyDao.getRecentHistory(10)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    private var job: Job? = null
+    private var latestDone = false
+    private var popularDone = false
+
     init { loadHome() }
 
-    fun loadHome() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            val source = ApiConfig.DEFAULT_SOURCE
-            val latestDeferred = async { getLatestComics(source, page = 1) }
-            val popularDeferred = async { getPopularComics(source) }
-            val latestResult = latestDeferred.await()
-            val popularResult = popularDeferred.await()
-            val latest = (latestResult as? Result.Success)?.data.orEmpty()
-            val popular = (popularResult as? Result.Success)?.data.orEmpty()
-            val error = when {
-                latestResult is Result.Error -> latestResult.message
-                popularResult is Result.Error -> popularResult.message
-                else -> null
+    fun loadHome(refresh: Boolean = false) {
+        job?.cancel()
+        latestDone = false
+        popularDone = false
+        _uiState.update { it.copy(isLoading = it.latestComics.isEmpty(), errorMessage = null) }
+        val source = ApiConfig.DEFAULT_SOURCE
+        job = viewModelScope.launch {
+            launch {
+                getLatestComics.observe(source, 1, refresh).collect { r ->
+                    latestDone = true
+                    applyResult(r) { st, items -> st.copy(latestComics = items) }
+                }
             }
-            _uiState.update {
-                it.copy(isLoading = false, latestComics = latest, popularComics = popular, errorMessage = error)
+            launch {
+                getPopularComics.observe(source, refresh).collect { r ->
+                    popularDone = true
+                    applyResult(r) { st, items -> st.copy(popularComics = items) }
+                }
             }
+        }
+    }
+
+    fun revalidate() {
+        if (job?.isActive != true) loadHome()
+    }
+
+    private fun applyResult(result: Result<List<Comic>>, merge: (HomeUiState, List<Comic>) -> HomeUiState) {
+        _uiState.update { st ->
+            val merged = when (result) {
+                is Result.Success -> merge(st, result.data)
+                is Result.Empty -> merge(st, emptyList())
+                else -> st
+            }
+            val error = (result as? Result.Error)?.message
+            val hasData = merged.latestComics.isNotEmpty() || merged.popularComics.isNotEmpty()
+            merged.copy(
+                isLoading = !hasData && !(latestDone && popularDone),
+                errorMessage = if (hasData) null else error ?: merged.errorMessage
+            )
         }
     }
 }

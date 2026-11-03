@@ -70,7 +70,6 @@ class ReaderViewModel @Inject constructor(
 
     fun setAutoNext(value: Boolean) = prefs.setAutoNext(value)
 
-    // ---- Waktu baca aktif: hanya dihitung saat layar reader terlihat (RESUMED), dikirim tiap 30 dtk dan saat berhenti.
     private var activeSince = 0L
     private var tickJob: Job? = null
 
@@ -102,16 +101,9 @@ class ReaderViewModel @Inject constructor(
         community.trackReadingTime(source, comicSlug, chapter, seconds)
     }
 
-    private val commentCache = HashMap<String, Pair<Long, CommentPageDto>>()
+    suspend fun commentPreview(chapter: String): CommentPageDto? = community.commentPreview(source, comicSlug, chapter)
 
-    suspend fun commentPreview(chapter: String): CommentPageDto? {
-        val hit = commentCache[chapter]
-        if (hit != null && System.currentTimeMillis() - hit.first < 60_000) return hit.second
-        return when (val r = community.comments(source, comicSlug, chapter, "top", 1)) {
-            is Result.Success -> r.data.also { commentCache[chapter] = System.currentTimeMillis() to it }
-            else -> null
-        }
-    }
+    fun peekCommentPreview(chapter: String): CommentPageDto? = community.peekCommentPreview(source, comicSlug, chapter)
 
     init {
         loadChapter()
@@ -144,7 +136,7 @@ class ReaderViewModel @Inject constructor(
         }
         viewModelScope.launch { saveHistory(content) }
         prefetchNext(content)
-        // Komentar chapter dimuat di latar belakang: bagian komentar di akhir chapter dan layar komentar langsung terisi.
+        prefetchPrev(content)
         viewModelScope.launch { commentPreview(content.chapterSlug) }
         community.prefetchComments(source, comicSlug, content.chapterSlug)
     }
@@ -156,6 +148,11 @@ class ReaderViewModel @Inject constructor(
             val data = getChapterContent(source, comicSlug, next).getOrNull() ?: return@launch
             _uiState.update { st -> if (st.loaded.lastOrNull()?.chapterSlug == from.chapterSlug) st.copy(upcoming = data) else st }
         }
+    }
+
+    private fun prefetchPrev(from: ChapterContent) {
+        val prev = from.prevChapterSlug?.takeIf { it.isNotBlank() } ?: return
+        viewModelScope.launch { getChapterContent(source, comicSlug, prev) }
     }
 
     fun appendNext() {
@@ -213,7 +210,7 @@ class ReaderViewModel @Inject constructor(
             )
         )
         if (community.user.value != null) {
-            community.saveReadingProgress(
+            community.queueReadingProgress(
                 source = source,
                 slug = comicSlug,
                 chapter = content.chapterSlug,

@@ -1,63 +1,99 @@
 package com.komikta.data.repository
 
+import com.komikta.BuildConfig
+import com.komikta.core.cache.ResponseCache
 import com.komikta.core.common.Result
 import com.komikta.core.network.HttpException
 import com.komikta.data.local.SessionStore
 import com.komikta.data.remote.api.CommunityApi
 import com.komikta.data.remote.dto.ActivityPageDto
 import com.komikta.data.remote.dto.ApiResponse
-import com.komikta.data.remote.dto.LikeStateDto
-import com.komikta.data.remote.dto.ProfileResponseDto
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import com.komikta.data.remote.dto.CommentDto
 import com.komikta.data.remote.dto.CommentPageDto
 import com.komikta.data.remote.dto.CommentResultDto
 import com.komikta.data.remote.dto.CommunityUserDto
 import com.komikta.data.remote.dto.LikeResultDto
-import com.komikta.data.remote.dto.ReportPageDto
+import com.komikta.data.remote.dto.LikeStateDto
+import com.komikta.data.remote.dto.ProfileResponseDto
 import com.komikta.data.remote.dto.PublicReadingHistoryDto
+import com.komikta.data.remote.dto.ReportPageDto
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 import java.io.IOException
-import java.util.Collections
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class CommunityRepository @Inject constructor(
     private val api: CommunityApi,
-    private val session: SessionStore
+    private val session: SessionStore,
+    private val cache: ResponseCache
 ) {
     val user: StateFlow<CommunityUserDto?> get() = session.user
 
-    // Scope milik singleton: pengiriman waktu baca tetap selesai walau layar reader sudah ditutup.
     private val background = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val meLock = Mutex()
+    private var lastMeAt = 0L
+    private var progressJob: Job? = null
+    private var lastProgressKey: String? = null
 
-    // Cache halaman pertama komentar per thread+urutan: layar komentar tampil seketika, lalu disegarkan diam-diam.
-    private val commentCache: MutableMap<String, CommentPageDto> = Collections.synchronizedMap(
-        object : LinkedHashMap<String, CommentPageDto>(16, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CommentPageDto>?) = size > 40
-        }
-    )
+    private val countsSerializer = MapSerializer(String.serializer(), Int.serializer())
 
-    private fun commentKey(source: String, slug: String, chapter: String?, sort: String) = "$source|$slug|${chapter.orEmpty()}|$sort"
+    private fun uid(): String = session.user.value?.id?.takeIf { it.isNotBlank() } ?: "anon"
+    private fun scope(): String = "u|${uid()}|"
+
+    private fun commentKey(source: String, slug: String, chapter: String?, sort: String) =
+        "${scope()}comments|$source|$slug|${chapter.orEmpty()}|$sort"
+
+    private fun likeKey(source: String, slug: String, chapter: String?) =
+        "${scope()}like|$source|$slug|${chapter.orEmpty()}"
+
+    private fun countsKey(source: String, slug: String) = "counts|$source|$slug"
+    private fun profileKey(userId: String) = "${scope()}profile|$userId"
+    private fun activityKey(userId: String, tab: String) = "${scope()}activity|$userId|$tab"
 
     fun cachedComments(source: String, slug: String, chapter: String?, sort: String): CommentPageDto? =
-        commentCache[commentKey(source, slug, chapter, sort)]
+        cache.peekMemory<CommentPageDto>(commentKey(source, slug, chapter, sort))?.value
 
     fun storeComments(source: String, slug: String, chapter: String?, sort: String, page: CommentPageDto) {
-        commentCache[commentKey(source, slug, chapter, sort)] = page
+        cache.put(commentKey(source, slug, chapter, sort), CommentPageDto.serializer(), page)
     }
 
-    /** Muat komentar di latar belakang supaya saat layar komentar dibuka datanya sudah ada. */
+    fun observeComments(source: String, slug: String, chapter: String?, sort: String, refresh: Boolean = false): Flow<Result<CommentPageDto>> =
+        cache.stream(commentKey(source, slug, chapter, sort), CommentPageDto.serializer(), TTL_COMMENTS, refresh) {
+            call { api.comments(source, slug, chapter, sort, 1) }
+        }
+
     fun prefetchComments(source: String, slug: String, chapter: String?, sort: String = "newest") {
-        background.launch { comments(source, slug, chapter, sort, 1) }
+        background.launch {
+            cache.load(commentKey(source, slug, chapter, sort), CommentPageDto.serializer(), TTL_COMMENTS) {
+                call { api.comments(source, slug, chapter, sort, 1) }
+            }
+        }
     }
+
+    suspend fun commentPreview(source: String, slug: String, chapter: String): CommentPageDto? =
+        cache.load(commentKey(source, slug, chapter, "top"), CommentPageDto.serializer(), TTL_COMMENTS) {
+            call { api.comments(source, slug, chapter, "top", 1) }
+        }.let { (it as? Result.Success)?.data }
+
+    fun peekCommentPreview(source: String, slug: String, chapter: String): CommentPageDto? =
+        cache.peekMemory<CommentPageDto>(commentKey(source, slug, chapter, "top"))?.value
 
     private suspend fun <T> call(block: suspend () -> ApiResponse<T>): Result<T> = try {
         val r = block()
@@ -65,7 +101,7 @@ class CommunityRepository @Inject constructor(
         if (r.ok && data != null) {
             Result.Success(data)
         } else {
-            if (r.error?.code == "UNAUTHORIZED") session.clear()
+            if (r.error?.code == "UNAUTHORIZED") signOut()
             Result.Error(r.error?.message ?: "Terjadi kesalahan", r.error?.code)
         }
     } catch (e: CancellationException) {
@@ -83,18 +119,28 @@ class CommunityRepository @Inject constructor(
     }
 
     suspend fun signInWithGoogle(idToken: String): Result<CommunityUserDto> =
-        call { api.loginGoogle(idToken) }.map { session.save(it.token, it.user); it.user }
+        call { api.loginGoogle(idToken) }.map {
+            session.save(it.token, it.user)
+            lastMeAt = System.currentTimeMillis()
+            it.user
+        }
 
-    suspend fun refreshMe(): Result<CommunityUserDto> {
+    suspend fun refreshMe(force: Boolean = false): Result<CommunityUserDto> {
         if (session.token == null) return Result.Error("Belum masuk", "UNAUTHORIZED")
-        return call { api.me() }.map { r ->
-            r.token?.let { session.updateToken(it) }
-            session.update(r.user)
-            r.user
+        return meLock.withLock {
+            val current = session.user.value
+            if (!force && current != null && System.currentTimeMillis() - lastMeAt < ME_FRESH_MS) {
+                return@withLock Result.Success(current)
+            }
+            call { api.me() }.map { r ->
+                r.token?.let { session.updateToken(it) }
+                session.update(r.user)
+                lastMeAt = System.currentTimeMillis()
+                r.user
+            }
         }
     }
 
-    /** Optimistic: username langsung berubah di layar, dikembalikan jika server menolak. */
     suspend fun updateUsername(username: String): Result<CommunityUserDto> {
         val before = session.user.value
         if (before != null) session.replaceLocal(before.copy(username = username))
@@ -103,13 +149,31 @@ class CommunityRepository @Inject constructor(
             .also { if (it is Result.Error && before != null) session.replaceLocal(before) }
     }
 
-    /** Optimistic: [previewUrl] (file lokal) langsung dipakai sebagai foto, dikembalikan jika upload gagal. */
-    suspend fun updateAvatar(imageData: String, previewUrl: String? = null): Result<CommunityUserDto> {
+    suspend fun updateAvatar(
+        imageData: String,
+        previewUrl: String? = null,
+        preload: suspend (String) -> Unit = {}
+    ): Result<CommunityUserDto> {
         val before = session.user.value
         if (before != null && previewUrl != null) session.replaceLocal(before.copy(picture = previewUrl))
-        return call { api.updateAvatar(imageData) }
-            .map { session.bumpAvatar(); session.update(it.user); it.user }
-            .also { if (it is Result.Error && before != null) session.replaceLocal(before) }
+        return when (val r = call { api.updateAvatar(imageData) }) {
+            is Result.Success -> {
+                val revision = System.currentTimeMillis()
+                val remote = r.data.user
+                val busted = session.bustedUrl(remote.picture, revision)
+                val absolute = if (busted.startsWith("/")) BuildConfig.BASE_URL.trimEnd('/') + busted else busted
+                if (busted.isNotBlank() && !busted.startsWith("file:")) {
+                    withTimeoutOrNull(AVATAR_PRELOAD_MS) { preload(absolute) }
+                }
+                session.bumpAvatar(revision)
+                session.update(remote)
+                Result.Success(remote)
+            }
+            else -> {
+                if (before != null) session.replaceLocal(before)
+                r.map { it.user }
+            }
+        }
     }
 
     suspend fun setReadingHistoryPublic(isPublic: Boolean): Result<Unit> {
@@ -120,14 +184,43 @@ class CommunityRepository @Inject constructor(
             .also { if (it is Result.Error && before != null) session.replaceLocal(before) }
     }
 
-    suspend fun saveReadingProgress(source: String, slug: String, chapter: String, comicTitle: String, chapterTitle: String, coverUrl: String): Result<Unit> =
-        call { api.saveReadingProgress(source, slug, chapter, comicTitle, chapterTitle, coverUrl) }.map { }
+    fun queueReadingProgress(source: String, slug: String, chapter: String, comicTitle: String, chapterTitle: String, coverUrl: String) {
+        if (session.token == null) return
+        val key = "$source|$slug|$chapter|$comicTitle"
+        if (key == lastProgressKey) return
+        progressJob?.cancel()
+        progressJob = background.launch {
+            delay(PROGRESS_DEBOUNCE_MS)
+            var attempt = 0
+            while (attempt < PROGRESS_ATTEMPTS) {
+                val r = call { api.saveReadingProgress(source, slug, chapter, comicTitle, chapterTitle, coverUrl) }
+                if (r is Result.Success) {
+                    lastProgressKey = key
+                    return@launch
+                }
+                if (r is Result.Error && r.code != null) return@launch
+                attempt++
+                delay(PROGRESS_RETRY_MS * attempt)
+            }
+        }
+    }
 
-    suspend fun profile(userId: String): Result<ProfileResponseDto> = call { api.profile(userId) }
+    suspend fun cachedProfile(userId: String): ProfileResponseDto? =
+        cache.peek(profileKey(userId), ProfileResponseDto.serializer())?.value
 
-    suspend fun activity(userId: String, tab: String, page: Int): Result<ActivityPageDto> = call { api.activity(userId, tab, page) }
+    suspend fun profile(userId: String): Result<ProfileResponseDto> =
+        call { api.profile(userId) }.also {
+            if (it is Result.Success) cache.put(profileKey(userId), ProfileResponseDto.serializer(), it.data)
+        }
 
-    /** Kirim durasi baca aktif (detik). Fire-and-forget; server membatasi kredit berdasarkan waktu nyata. */
+    suspend fun cachedActivity(userId: String, tab: String): ActivityPageDto? =
+        cache.peek(activityKey(userId, tab), ActivityPageDto.serializer())?.value
+
+    suspend fun activity(userId: String, tab: String, page: Int): Result<ActivityPageDto> =
+        call { api.activity(userId, tab, page) }.also {
+            if (page == 1 && it is Result.Success) cache.put(activityKey(userId, tab), ActivityPageDto.serializer(), it.data)
+        }
+
     fun trackReadingTime(source: String, slug: String, chapter: String, seconds: Int) {
         if (session.token == null || seconds < 1) return
         background.launch {
@@ -140,14 +233,24 @@ class CommunityRepository @Inject constructor(
         }
     }
 
-    suspend fun likeState(source: String, slug: String, chapter: String?): Result<LikeStateDto> = call { api.likeState(source, slug, chapter) }
+    fun observeLikeState(source: String, slug: String, chapter: String?): Flow<Result<LikeStateDto>> =
+        cache.stream(likeKey(source, slug, chapter), LikeStateDto.serializer(), TTL_LIKE) {
+            call { api.likeState(source, slug, chapter) }
+        }
 
     suspend fun setLike(on: Boolean, source: String, slug: String, chapter: String?, comicTitle: String, chapterTitle: String, coverUrl: String): Result<LikeStateDto> =
         call { if (on) api.putLike(source, slug, chapter, comicTitle, chapterTitle, coverUrl) else api.deleteLike(source, slug, chapter) }
+            .also { if (it is Result.Success) cache.put(likeKey(source, slug, chapter), LikeStateDto.serializer(), it.data) }
 
-    fun signOut() = session.clear()
+    fun signOut() {
+        val prefix = scope()
+        session.clear()
+        cache.clearPrefix(prefix)
+        lastProgressKey = null
+        lastMeAt = 0L
+    }
 
-    suspend fun deleteAccount(): Result<Unit> = call { api.deleteAccount() }.map { session.clear() }
+    suspend fun deleteAccount(): Result<Unit> = call { api.deleteAccount() }.map { signOut() }
 
     suspend fun publicReadingHistory(userId: String): Result<PublicReadingHistoryDto> = call { api.publicReadingHistory(userId) }
 
@@ -159,8 +262,10 @@ class CommunityRepository @Inject constructor(
         call { api.comments(source, slug, chapter, sort, page) }
             .also { if (page == 1 && it is Result.Success) storeComments(source, slug, chapter, sort, it.data) }
 
-    suspend fun chapterCounts(source: String, slug: String): Result<Map<String, Int>> =
-        call { api.counts(source, slug) }.map { it.counts }
+    fun observeChapterCounts(source: String, slug: String): Flow<Result<Map<String, Int>>> =
+        cache.stream(countsKey(source, slug), countsSerializer, TTL_COUNTS) {
+            call { api.counts(source, slug) }.map { it.counts }
+        }
 
     suspend fun replies(rootId: String, page: Int): Result<CommentPageDto> = call { api.replies(rootId, page) }
 
@@ -177,4 +282,15 @@ class CommunityRepository @Inject constructor(
     suspend fun like(id: String, on: Boolean): Result<LikeResultDto> = call { api.like(id, on) }
 
     suspend fun report(id: String, reason: String, note: String): Result<Unit> = call { api.report(id, reason, note) }.map { }
+
+    private companion object {
+        val TTL_COMMENTS = TimeUnit.SECONDS.toMillis(45)
+        val TTL_LIKE = TimeUnit.SECONDS.toMillis(60)
+        val TTL_COUNTS = TimeUnit.SECONDS.toMillis(60)
+        const val ME_FRESH_MS = 30_000L
+        const val AVATAR_PRELOAD_MS = 4_000L
+        const val PROGRESS_DEBOUNCE_MS = 1_200L
+        const val PROGRESS_RETRY_MS = 2_000L
+        const val PROGRESS_ATTEMPTS = 3
+    }
 }

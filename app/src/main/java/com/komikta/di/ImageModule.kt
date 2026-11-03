@@ -27,8 +27,8 @@ object ImageModule {
     ): ImageLoader {
         val imageClient = okHttpClient.newBuilder()
             .dispatcher(Dispatcher().apply {
-                maxRequests = 12
-                maxRequestsPerHost = 4
+                maxRequests = 24
+                maxRequestsPerHost = 8
             })
             .connectTimeout(12, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)

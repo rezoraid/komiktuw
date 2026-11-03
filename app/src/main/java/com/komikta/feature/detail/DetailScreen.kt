@@ -119,7 +119,7 @@ fun DetailScreen(
             uiState.isLoading && detail == null -> DetailSkeleton()
             uiState.errorMessage != null && detail == null -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    ErrorState(uiState.errorMessage ?: "Terjadi kesalahan", viewModel::loadDetail)
+                    ErrorState(uiState.errorMessage ?: "Terjadi kesalahan", { viewModel.loadDetail(refresh = true) })
                 }
             }
             detail != null -> {

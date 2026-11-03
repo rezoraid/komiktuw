@@ -2,11 +2,16 @@
 
 ## UI dan performa
 - Tema gelap dengan aksen violet (`Ui.Accent`) dan font Poppins, tanpa glassmorphism dan tanpa navigasi mengambang.
-- Transisi navigasi berupa fade singkat; loading memakai skeleton shimmer.
-- Explore memuat satu halaman awal; halaman berikutnya dimuat saat mendekati akhir daftar.
+- Transisi navigasi berupa fade singkat; loading memakai skeleton shimmer hanya saat belum ada data sama sekali.
+- Cache dua lapis (`ResponseCache`): memori LRU + Room (`cache_entries`, maksimal 400 entri, usia maksimal 14 hari). Daftar 2 menit, pencarian 5 menit, detail 10 menit, chapter 6 jam, genre 12 jam.
+- Stale-while-revalidate: Home, Explore, pencarian, detail, komentar, like, jumlah komentar per chapter, dan profil menampilkan cache seketika (juga setelah aplikasi dimatikan), lalu menyegarkan di latar belakang. UI hanya diperbarui jika datanya berubah.
+- Request yang sama berjalan bersamaan digabung jadi satu; request tetap selesai walau layar ditutup.
+- Optimistic UI: komentar, balasan, edit, hapus, like komentar, like komik, username, foto profil, dan visibilitas riwayat langsung berubah dan dipulihkan jika server menolak. Ketukan like beruntun digabung sehingga server hanya menerima status akhir.
+- Foto profil baru dimuat ke cache gambar sebelum menggantikan pratinjau lokal, sehingga tidak ada kedipan.
+- Progres baca dikirim ke server dengan debounce dan retry, bukan setiap perubahan.
+- Startup memanaskan koneksi dan data Home sebelum UI tampil; chapter sebelumnya dan berikutnya diprefetch.
+- OkHttp: connection pool, retry satu kali untuk GET (error jaringan, 502/503/504), dispatcher lebih longgar. Coil memakai memory cache dan disk cache.
 - Daftar Compose memakai stable keys dan contentType.
-- Cache memori repository: daftar 60 detik, detail 5 menit, chapter 10 menit.
-- Coil memakai memory cache dan disk cache.
 
 ## Build
 Buka folder ini melalui Android Studio dan jalankan Gradle Sync, lalu Build APK. Arsip ini tidak menyertakan `gradle-wrapper.jar`; jika Android Studio tidak dapat menjalankan wrapper, gunakan Gradle wrapper yang dibuat Android Studio atau tambahkan file wrapper resmi yang sesuai dengan Gradle 8.9.

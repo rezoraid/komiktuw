@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.komikta.R
 import com.komikta.data.local.entity.ReadingHistoryEntity
@@ -84,13 +85,18 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val history by viewModel.continueReading.collectAsStateWithLifecycle()
 
+    LifecycleResumeEffect(Unit) {
+        viewModel.revalidate()
+        onPauseOrDispose {}
+    }
+
     when {
         uiState.isLoading && uiState.latestComics.isEmpty() -> Column(Modifier.fillMaxSize().background(Ui.Bg)) {
             HomeHeader(onSearchClick)
             PosterRowSkeleton(rows = 3)
         }
         uiState.errorMessage != null && uiState.latestComics.isEmpty() -> Box(Modifier.fillMaxSize().background(Ui.Bg), contentAlignment = Alignment.Center) {
-            ErrorState(uiState.errorMessage ?: "Terjadi kesalahan", viewModel::loadHome)
+            ErrorState(uiState.errorMessage ?: "Terjadi kesalahan", { viewModel.loadHome(refresh = true) })
         }
         else -> {
             val latest = uiState.latestComics
@@ -143,7 +149,7 @@ fun HomeScreen(
                     item(key = "rank-title") { SectionHeader("Popular all time", "Most read on Komikta", "See all", onUpdateViewAll) }
                     item(key = "rank-row") {
                         LazyRow(contentPadding = PaddingValues(horizontal = Pad), horizontalArrangement = Arrangement.spacedBy(Gap)) {
-                            itemsIndexed(ranked) { page, column ->
+                            itemsIndexed(ranked, key = { page, _ -> "rank-page-$page" }) { page, column ->
                                 Column(Modifier.width(screenWidth - 56.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                     column.forEachIndexed { i, c -> RankRow(page * 3 + i + 1, c) { open(c) } }
                                 }

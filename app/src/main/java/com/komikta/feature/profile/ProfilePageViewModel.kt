@@ -17,7 +17,6 @@ import javax.inject.Inject
 
 val ProfileTabKeys = listOf("all", "comments", "likes")
 
-/** Satu tab aktivitas: daftar dimuat bertahap (paginasi) dan disimpan selama ViewModel hidup. */
 data class TabState(
     val items: List<ActivityItemDto> = emptyList(),
     val page: Int = 0,
@@ -35,7 +34,6 @@ data class ProfilePageState(
     val tab: Int = 0,
     val tabs: List<TabState> = List(3) { TabState() }
 ) {
-    /** Tab All dan Likes privat bagi orang lain kecuali pemilik membukanya; Comments selalu publik. */
     fun locked(index: Int): Boolean = !activityVisible && index != 1
 }
 
@@ -58,16 +56,11 @@ class ProfilePageViewModel @Inject constructor(
     private var statsJob: Job? = null
     private val tabJobs = arrayOfNulls<Job>(ProfileTabKeys.size)
 
-    /** Ubah state lalu simpan ke cache, supaya membuka profil ini lagi langsung tampil. */
     private fun commit(block: (ProfilePageState) -> ProfilePageState) {
         _state.update(block)
         if (userId.isNotBlank()) cache.put(userId, ProfileCache.Entry(_state.value, statsAt))
     }
 
-    /**
-     * Muat profil. Data cache langsung tampil; jika sudah lewat [STALE_MS] disegarkan diam-diam
-     * (daftar lama tetap terlihat sampai data baru datang, tanpa spinner/kosong sesaat).
-     */
     fun load(id: String, force: Boolean = false) {
         if (id.isBlank()) return
         if (id != userId) {
@@ -76,7 +69,8 @@ class ProfilePageViewModel @Inject constructor(
             userId = id
             val hit = cache.get(id)
             statsAt = hit?.statsAt ?: 0L
-            _state.value = hit?.state?.let { st -> st.copy(tabs = st.tabs.map { it.copy(loading = false) }) } ?: ProfilePageState(userId = id)
+            _state.value = hit?.state?.let { st -> st.copy(tabs = st.tabs.map { it.copy(loading = false) }) } ?: seedState(id)
+            if (hit == null) restoreFromDisk(id)
         }
         val fresh = System.currentTimeMillis() - statsAt < STALE_MS
         if (!force && fresh) {
@@ -89,7 +83,6 @@ class ProfilePageViewModel @Inject constructor(
             when (val r = repo.profile(id)) {
                 is Result.Success -> {
                     commit { it.copy(stats = r.data.user, self = r.data.self, activityVisible = r.data.activityVisible, statsError = null) }
-                    // Data lama (mis. setelah baca chapter) diganti saat data baru datang, bukan dikosongkan dulu.
                     markStale()
                     ensureTab(_state.value.tab)
                 }
@@ -102,6 +95,22 @@ class ProfilePageViewModel @Inject constructor(
             }
         }
     }
+
+    private fun seedState(id: String): ProfilePageState {
+        val me = repo.user.value?.takeIf { it.id == id }
+        return ProfilePageState(userId = id, stats = me, self = me != null)
+    }
+
+    private fun restoreFromDisk(id: String) {
+        viewModelScope.launch {
+            val profile = repo.cachedProfile(id)
+            if (profile != null && id == userId && _state.value.noTabLoaded()) {
+                _state.update { it.copy(stats = profile.user, self = profile.self, activityVisible = profile.activityVisible) }
+            }
+        }
+    }
+
+    private fun ProfilePageState.noTabLoaded(): Boolean = tabs.all { it.page == 0 }
 
     fun refresh() = load(userId, force = true)
 
@@ -119,7 +128,6 @@ class ProfilePageViewModel @Inject constructor(
         loadTab(i)
     }
 
-    /** Tandai semua tab perlu dimuat ulang dari halaman 1, tetapi biarkan daftar lama tetap tampil. */
     private fun markStale() {
         tabJobs.forEach { it?.cancel() }
         commit { s -> s.copy(tabs = s.tabs.map { it.copy(page = 0, hasMore = true, loading = false, error = null) }) }
@@ -139,9 +147,16 @@ class ProfilePageViewModel @Inject constructor(
             return
         }
         val id = userId
-        val replace = t.page == 0 // halaman 1 menggantikan daftar lama, halaman berikutnya ditambahkan
+        val replace = t.page == 0
         update(index) { it.copy(loading = true) }
         tabJobs[index] = viewModelScope.launch {
+            if (replace && t.items.isEmpty()) {
+                repo.cachedActivity(id, ProfileTabKeys[index])?.let { cached ->
+                    if (id == userId && _state.value.tabs[index].items.isEmpty()) {
+                        update(index) { it.copy(items = cached.items.take(MAX_ITEMS)) }
+                    }
+                }
+            }
             when (val r = repo.activity(id, ProfileTabKeys[index], t.page + 1)) {
                 is Result.Success -> if (id == userId) update(index) { cur ->
                     val base = if (replace) emptyList() else cur.items
@@ -161,6 +176,6 @@ class ProfilePageViewModel @Inject constructor(
 
     private companion object {
         const val STALE_MS = 20_000L
-        const val MAX_ITEMS = 200 // batas memori: daftar lebih dari ini tidak dimuat ke layar
+        const val MAX_ITEMS = 200
     }
 }

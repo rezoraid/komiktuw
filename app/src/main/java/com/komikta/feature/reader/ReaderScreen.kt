@@ -337,7 +337,7 @@ fun ReaderScreen(
                             is ReaderItem.Divider -> {
                                 val info = uiState.chapterInfo
                                 val nextSlug = uiState.loaded.firstOrNull { it.chapterSlug == item.chapterSlug }?.nextChapterSlug
-                                ChapterCommentsSection(item.chapterSlug, viewModel::commentPreview) { onComments(item.chapterSlug) }
+                                ChapterCommentsSection(item.chapterSlug, viewModel::commentPreview, viewModel::peekCommentPreview) { onComments(item.chapterSlug) }
                                 ChapterEnd(
                                     current = info[item.chapterSlug],
                                     fallbackTitle = uiState.loaded.firstOrNull { it.chapterSlug == item.chapterSlug }?.title,
@@ -351,7 +351,7 @@ fun ReaderScreen(
                             is ReaderItem.End -> {
                                 val chapter = uiState.loaded.firstOrNull { it.chapterSlug == item.chapterSlug }
                                 val nextSlug = chapter?.nextChapterSlug
-                                ChapterCommentsSection(item.chapterSlug, viewModel::commentPreview) { onComments(item.chapterSlug) }
+                                ChapterCommentsSection(item.chapterSlug, viewModel::commentPreview, viewModel::peekCommentPreview) { onComments(item.chapterSlug) }
                                 if (autoNext) {
                                     val info = uiState.chapterInfo
                                     ChapterEnd(

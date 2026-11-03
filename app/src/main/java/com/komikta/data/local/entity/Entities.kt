@@ -34,3 +34,10 @@ data class BookmarkEntity(
     val status: String?,
     val bookmarkedAt: Long
 )
+
+@Entity(tableName = "cache_entries")
+data class CacheEntity(
+    @PrimaryKey val key: String,
+    val payload: String,
+    val storedAt: Long
+)

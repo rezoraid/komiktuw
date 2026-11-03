@@ -72,7 +72,6 @@ fun ProfileScreen(
         if (uri != null) viewModel.changeAvatar(uri)
     }
     LaunchedEffect(user?.id) {
-        viewModel.refresh()
         user?.id?.let { pageModel.load(it) }
     }
     LaunchedEffect(ui.message) {

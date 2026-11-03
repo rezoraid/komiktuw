@@ -8,6 +8,7 @@ import com.komikta.data.remote.dto.CommentDto
 import com.komikta.data.remote.dto.CommentPageDto
 import com.komikta.data.repository.CommunityRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -56,43 +57,54 @@ class CommentsViewModel @Inject constructor(
     private val _draft = MutableStateFlow("")
     val draft: StateFlow<String> = _draft.asStateFlow()
 
+    private var loadJob: Job? = null
+    private val confirmedIds = HashSet<String>()
+    private val likeWanted = HashMap<String, Boolean>()
+    private val likeConfirmed = HashMap<String, Pair<Boolean, Int>>()
+    private val likeSyncing = HashSet<String>()
+
     init {
-        // Tampilkan cache seketika (kalau ada), lalu segarkan diam-diam tanpa skeleton/spinner.
         val cached = repo.cachedComments(source, slug, chapter, "newest")
         if (cached != null) {
             _ui.value = CommentsUiState(loading = false, items = cached.items, total = cached.total, page = 1, hasMore = cached.hasMore)
         }
-        load(silent = cached != null)
+        load()
     }
 
     fun setDraft(v: String) { if (v.length <= MAX_LEN) _draft.value = v }
 
     fun notice(msg: String?) = _ui.update { it.copy(notice = msg) }
 
-    fun load(silent: Boolean = false) {
-        viewModelScope.launch {
-            val sort = _ui.value.sort
-            if (!silent) _ui.update { it.copy(loading = true, error = null) }
-            when (val r = repo.comments(source, slug, chapter, sort, 1)) {
-                is Result.Success -> _ui.update { st ->
-                    if (st.sort != sort) st else {
-                        // Komentar yang baru dikirim (belum dikonfirmasi server) tetap di atas.
-                        val pending = st.items.filter { it.id.startsWith(TMP) }
-                        st.copy(
-                            loading = false,
-                            error = null,
-                            items = pending + r.data.items,
-                            total = r.data.total + pending.size,
-                            page = 1,
-                            hasMore = r.data.hasMore,
-                            replies = if (silent) st.replies else emptyMap()
-                        )
-                    }
+    fun load(refresh: Boolean = false) {
+        loadJob?.cancel()
+        val sort = _ui.value.sort
+        if (_ui.value.items.isEmpty()) _ui.update { it.copy(loading = true, error = null) }
+        loadJob = viewModelScope.launch {
+            repo.observeComments(source, slug, chapter, sort, refresh).collect { r ->
+                when (r) {
+                    is Result.Success -> _ui.update { st -> if (st.sort != sort) st else mergeServerPage(st, r.data) }
+                    is Result.Error -> _ui.update { if (it.items.isNotEmpty()) it.copy(loading = false) else it.copy(loading = false, error = r.message) }
+                    else -> _ui.update { it.copy(loading = false) }
                 }
-                is Result.Error -> _ui.update { if (silent) it.copy(loading = false) else it.copy(loading = false, error = r.message) }
-                else -> _ui.update { it.copy(loading = false) }
             }
         }
+    }
+
+    private fun mergeServerPage(st: CommentsUiState, page: CommentPageDto): CommentsUiState {
+        val serverIds = page.items.mapTo(HashSet()) { it.id }
+        confirmedIds.removeAll(serverIds)
+        val pending = st.items.filter { it.id.startsWith(TMP) }
+        val local = st.items.filter { it.id in confirmedIds }
+        val localIds = local.mapTo(HashSet()) { it.id }
+        val tail = if (st.page > 1) st.items.filter { !it.id.startsWith(TMP) && it.id !in serverIds && it.id !in localIds } else emptyList()
+        return st.copy(
+            loading = false,
+            error = null,
+            items = pending + local + page.items + tail,
+            total = page.total + pending.size + local.size,
+            page = maxOf(st.page, 1),
+            hasMore = if (st.page > 1) st.hasMore else page.hasMore
+        )
     }
 
     private fun sortLocal(items: List<CommentDto>, sort: String): List<CommentDto> =
@@ -102,7 +114,6 @@ class CommentsViewModel @Inject constructor(
     fun setSort(sort: String) {
         if (sort == _ui.value.sort) return
         val cached = repo.cachedComments(source, slug, chapter, sort)
-        // Urutan langsung berubah di layar (dari cache atau diurutkan lokal); server mengoreksi diam-diam.
         _ui.update { st ->
             st.copy(
                 sort = sort,
@@ -113,7 +124,7 @@ class CommentsViewModel @Inject constructor(
                 error = null
             )
         }
-        load(silent = _ui.value.items.isNotEmpty())
+        load()
     }
 
     fun loadMore() {
@@ -134,7 +145,6 @@ class CommentsViewModel @Inject constructor(
         }
     }
 
-    /** Simpan keadaan halaman pertama ke cache supaya dibuka lagi tetap terbaru tanpa menunggu jaringan. */
     private fun persist() {
         val s = _ui.value
         if (s.loading || s.page > 1) return
@@ -155,11 +165,17 @@ class CommentsViewModel @Inject constructor(
             when (val r = repo.replies(rootId, cur.page + 1)) {
                 is Result.Success -> _ui.update { st ->
                     val prev = st.replies[rootId] ?: cur
-                    val known = prev.items.map { it.id }.toSet()
-                    st.copy(replies = st.replies + (rootId to prev.copy(items = prev.items + r.data.items.filter { it.id !in known }, page = cur.page + 1, hasMore = r.data.hasMore, loading = false)))
+                    val serverIds = r.data.items.mapTo(HashSet()) { it.id }
+                    val items = if (cur.page == 0) {
+                        r.data.items + prev.items.filter { it.id !in serverIds }
+                    } else {
+                        val known = prev.items.mapTo(HashSet()) { it.id }
+                        prev.items + r.data.items.filter { it.id !in known }
+                    }
+                    st.copy(replies = st.replies + (rootId to prev.copy(items = items, page = cur.page + 1, hasMore = r.data.hasMore, loading = false)))
                 }
                 is Result.Error -> _ui.update { st -> st.copy(notice = r.message, replies = st.replies + (rootId to (st.replies[rootId] ?: cur).copy(loading = false))) }
-                else -> Unit
+                else -> _ui.update { st -> st.copy(replies = st.replies + (rootId to (st.replies[rootId] ?: cur).copy(loading = false))) }
             }
         }
     }
@@ -255,6 +271,7 @@ class CommentsViewModel @Inject constructor(
                 is Result.Success -> {
                     val c = r.data.comment
                     mapAll(tmp.id) { c }
+                    if (c.parentId == null) confirmedIds.add(c.id)
                     persist()
                     notice(
                         when {
@@ -282,19 +299,52 @@ class CommentsViewModel @Inject constructor(
     fun toggleLike(c: CommentDto) {
         if (c.id.startsWith(TMP)) return
         if (user.value == null) { notice("Masuk dulu untuk menyukai komentar"); return }
-        val on = !c.liked
-        mapAll(c.id) { it.copy(liked = on, likeCount = (it.likeCount + if (on) 1 else -1).coerceAtLeast(0)) }
+        val id = c.id
+        val current = findComment(id) ?: c
+        val on = !current.liked
+        if (id !in likeSyncing) likeConfirmed[id] = current.liked to current.likeCount
+        likeWanted[id] = on
+        mapAll(id) { it.copy(liked = on, likeCount = (it.likeCount + if (on) 1 else -1).coerceAtLeast(0)) }
+        if (likeSyncing.add(id)) syncLike(id)
+    }
+
+    private fun findComment(id: String): CommentDto? {
+        val st = _ui.value
+        return st.items.firstOrNull { it.id == id } ?: st.replies.values.firstNotNullOfOrNull { rs -> rs.items.firstOrNull { it.id == id } }
+    }
+
+    private fun syncLike(id: String) {
         viewModelScope.launch {
-            when (val r = repo.like(c.id, on)) {
-                is Result.Success -> {
-                    mapAll(c.id) { it.copy(liked = r.data.liked, likeCount = r.data.likeCount) }
-                    persist()
+            try {
+                while (true) {
+                    val (confirmedLiked, confirmedCount) = likeConfirmed[id] ?: break
+                    val target = likeWanted[id] ?: break
+                    if (target == confirmedLiked) break
+                    when (val r = repo.like(id, target)) {
+                        is Result.Success -> {
+                            likeConfirmed[id] = r.data.liked to r.data.likeCount
+                            if (likeWanted[id] == r.data.liked) {
+                                mapAll(id) { it.copy(liked = r.data.liked, likeCount = r.data.likeCount) }
+                            }
+                        }
+                        is Result.Error -> {
+                            likeWanted[id] = confirmedLiked
+                            mapAll(id) { it.copy(liked = confirmedLiked, likeCount = confirmedCount) }
+                            notice(r.message)
+                            break
+                        }
+                        else -> {
+                            likeWanted[id] = confirmedLiked
+                            mapAll(id) { it.copy(liked = confirmedLiked, likeCount = confirmedCount) }
+                            break
+                        }
+                    }
                 }
-                is Result.Error -> {
-                    mapAll(c.id) { it.copy(liked = c.liked, likeCount = c.likeCount) }
-                    notice(r.message)
-                }
-                else -> Unit
+            } finally {
+                likeSyncing.remove(id)
+                likeWanted.remove(id)
+                likeConfirmed.remove(id)
+                persist()
             }
         }
     }
@@ -318,7 +368,6 @@ class CommentsViewModel @Inject constructor(
         }
     }
 
-    /** Optimistic: komentar langsung hilang dari layar; kembali lagi jika server gagal menghapus. */
     fun delete(c: CommentDto) {
         if (c.id.startsWith(TMP)) return
         val before = _ui.value
@@ -326,9 +375,10 @@ class CommentsViewModel @Inject constructor(
         viewModelScope.launch {
             when (val r = repo.delete(c.id)) {
                 is Result.Success -> {
+                    confirmedIds.remove(c.id)
                     persist()
                     notice("Komentar dihapus")
-                    repo.refreshMe()
+                    repo.refreshMe(force = true)
                 }
                 is Result.Error -> {
                     _ui.update { it.copy(items = before.items, replies = before.replies, total = before.total) }
@@ -354,7 +404,7 @@ class CommentsViewModel @Inject constructor(
             when (val r = repo.signInWithGoogle(idToken)) {
                 is Result.Success -> {
                     notice("Masuk sebagai @${r.data.username}")
-                    load(silent = true)
+                    load()
                 }
                 is Result.Error -> notice(r.message)
                 else -> Unit

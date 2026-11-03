@@ -7,6 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.komikta.data.local.dao.ReadChapterDao
 import com.komikta.core.database.KomiktaDatabase
 import com.komikta.data.local.dao.BookmarkDao
+import com.komikta.data.local.dao.CacheDao
 import com.komikta.data.local.dao.ReadingHistoryDao
 import dagger.Module
 import dagger.Provides
@@ -29,6 +30,16 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `cache_entries` (" +
+                    "`key` TEXT NOT NULL, `payload` TEXT NOT NULL, `storedAt` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`key`))"
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): KomiktaDatabase {
@@ -37,8 +48,8 @@ object DatabaseModule {
             KomiktaDatabase::class.java,
             "komikta.db"
         )
-            .addMigrations(MIGRATION_1_2)
-            .fallbackToDestructiveMigration()
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .fallbackToDestructiveMigrationOnDowngrade()
             .build()
     }
 
@@ -50,4 +61,7 @@ object DatabaseModule {
 
     @Provides
     fun provideBookmarkDao(db: KomiktaDatabase): BookmarkDao = db.bookmarkDao()
+
+    @Provides
+    fun provideCacheDao(db: KomiktaDatabase): CacheDao = db.cacheDao()
 }

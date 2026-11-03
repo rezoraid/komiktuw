@@ -1,7 +1,11 @@
 package com.komikta.data.repository
 
+import com.komikta.core.cache.ResponseCache
 import com.komikta.core.common.Result
+import com.komikta.core.network.HttpException
 import com.komikta.data.remote.api.KomiktaApi
+import com.komikta.data.remote.dto.ApiResponse
+import com.komikta.data.remote.dto.ComicListResponse
 import com.komikta.data.remote.dto.toDomain
 import com.komikta.domain.model.BrowseParams
 import com.komikta.domain.model.ChapterContent
@@ -10,189 +14,158 @@ import com.komikta.domain.model.ComicDetail
 import com.komikta.domain.model.SearchParams
 import com.komikta.domain.model.Source
 import com.komikta.domain.repository.ComicRepository
-import com.komikta.core.network.HttpException
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class ComicRepositoryImpl @Inject constructor(
-    private val api: KomiktaApi
+    private val api: KomiktaApi,
+    private val cache: ResponseCache
 ) : ComicRepository {
 
-    private data class CacheEntry<T>(val value: T, val storedAt: Long = System.currentTimeMillis())
-    private val listCache = ConcurrentHashMap<String, CacheEntry<Result<List<Comic>>>>()
-    private val detailCache = ConcurrentHashMap<String, CacheEntry<Result<ComicDetail>>>()
-    private val chapterCache = ConcurrentHashMap<String, CacheEntry<Result<ChapterContent>>>()
+    private val comicList = ListSerializer(Comic.serializer())
+    private val sourceList = ListSerializer(Source.serializer())
+    private val stringList = ListSerializer(String.serializer())
 
-    private fun <T> cached(cache: ConcurrentHashMap<String, CacheEntry<T>>, key: String, ttlMs: Long): T? {
-        val entry = cache[key] ?: return null
-        if (System.currentTimeMillis() - entry.storedAt > ttlMs) {
-            cache.remove(key, entry)
-            return null
-        }
-        return entry.value
-    }
-
-    private fun <T> trimCache(cache: ConcurrentHashMap<String, CacheEntry<T>>, maxEntries: Int) {
-        if (cache.size > maxEntries) {
-            cache.entries.sortedBy { it.value.storedAt }
-                .take(cache.size - maxEntries)
-                .forEach { cache.remove(it.key, it.value) }
-        }
-    }
-
-    override suspend fun getSources(): Result<List<Source>> = safeApiCall {
-        val response = api.getSources()
-        if (!response.ok || response.data == null) {
-            return@safeApiCall Result.Error(
-                message = response.error?.message ?: "Failed to fetch sources",
-                code = response.error?.code
-            )
-        }
-        val items = response.data.items.map { it.toDomain() }
+    private fun <T> listResult(items: List<T>): Result<List<T>> =
         if (items.isEmpty()) Result.Empty else Result.Success(items)
-    }
+
+    override suspend fun getSources(): Result<List<Source>> =
+        cache.load("sources", sourceList, TTL_STATIC) {
+            guarded {
+                val response = api.getSources()
+                val data = response.data
+                if (!response.ok || data == null) failure(response, "Failed to fetch sources")
+                else Result.Success(data.items.map { it.toDomain() })
+            }
+        }.let { r -> if (r is Result.Success && r.data.isEmpty()) Result.Empty else r }
 
     override suspend fun getLatest(source: String, page: Int): Result<List<Comic>> =
-        cachedList("latest:$source:$page") {
-            val response = api.getLatest(source, page)
-            mapListResponse(response, source)
-        }
+        cache.load(latestKey(source, page), comicList, TTL_LIST) { fetchLatest(source, page) }.let(::emptyAware)
 
     override suspend fun getPopular(source: String): Result<List<Comic>> =
-        cachedList("popular:$source") {
-            val response = api.getPopular(source)
-            mapListResponse(response, source)
-        }
+        cache.load(popularKey(source), comicList, TTL_LIST) { fetchPopular(source) }.let(::emptyAware)
 
     override suspend fun browse(params: BrowseParams): Result<List<Comic>> =
-        cachedList("browse:${params.source}:${params.page}:${params.type}:${params.status}:${params.sort}:${params.genres}") {
-            val response = api.browse(
-                source = params.source,
-                page = params.page,
-                type = params.type,
-                status = params.status,
-                sort = params.sort,
-                genres = params.genres
-            )
-            mapListResponse(response, params.source)
-        }
+        cache.load(browseKey(params), comicList, TTL_LIST) { fetchBrowse(params) }.let(::emptyAware)
 
     override suspend fun search(params: SearchParams): Result<List<Comic>> =
-        cachedList("search:${params.source}:${params.query.trim().lowercase()}:${params.page}") {
-            val response = api.search(params.source, params.query, params.page)
-            mapListResponse(response, params.source)
+        cache.load(searchKey(params), comicList, TTL_SEARCH) { fetchSearch(params) }.let(::emptyAware)
+
+    override suspend fun getGenres(source: String): Result<List<String>> =
+        cache.load(genresKey(source), stringList, TTL_STATIC) { fetchGenres(source) }.let(::emptyAware)
+
+    override suspend fun getComicDetail(source: String, slug: String): Result<ComicDetail> =
+        cache.load(detailKey(source, slug), ComicDetail.serializer(), TTL_DETAIL) { fetchDetail(source, slug) }
+
+    override suspend fun getChapterContent(source: String, comicSlug: String, chapterSlug: String): Result<ChapterContent> =
+        cache.load(chapterKey(source, comicSlug, chapterSlug), ChapterContent.serializer(), TTL_CHAPTER) {
+            fetchChapter(source, comicSlug, chapterSlug)
         }
 
-    private suspend fun cachedList(
-        key: String,
-        request: suspend () -> Result<List<Comic>>
-    ): Result<List<Comic>> {
-        cached(listCache, key, 60_000L)?.let { return it }
-        val result = safeApiCall { request() }
-        if (result is Result.Success || result is Result.Empty) {
-            listCache[key] = CacheEntry(result)
-            trimCache(listCache, 100)
-        }
-        return result
+    override fun observeLatest(source: String, page: Int, refresh: Boolean): Flow<Result<List<Comic>>> =
+        cache.stream(latestKey(source, page), comicList, TTL_LIST, refresh, ::listResult) { fetchLatest(source, page) }
+
+    override fun observePopular(source: String, refresh: Boolean): Flow<Result<List<Comic>>> =
+        cache.stream(popularKey(source), comicList, TTL_LIST, refresh, ::listResult) { fetchPopular(source) }
+
+    override fun observeBrowse(params: BrowseParams, refresh: Boolean): Flow<Result<List<Comic>>> =
+        cache.stream(browseKey(params), comicList, TTL_LIST, refresh, ::listResult) { fetchBrowse(params) }
+
+    override fun observeSearch(params: SearchParams): Flow<Result<List<Comic>>> =
+        cache.stream(searchKey(params), comicList, TTL_SEARCH, false, ::listResult) { fetchSearch(params) }
+
+    override fun observeGenres(source: String): Flow<Result<List<String>>> =
+        cache.stream(genresKey(source), stringList, TTL_STATIC, false, ::listResult) { fetchGenres(source) }
+
+    override fun observeDetail(source: String, slug: String, refresh: Boolean): Flow<Result<ComicDetail>> =
+        cache.stream(detailKey(source, slug), ComicDetail.serializer(), TTL_DETAIL, refresh) { fetchDetail(source, slug) }
+
+    private fun <T> emptyAware(result: Result<List<T>>): Result<List<T>> =
+        if (result is Result.Success && result.data.isEmpty()) Result.Empty else result
+
+    private fun latestKey(source: String, page: Int) = "latest|$source|$page"
+    private fun popularKey(source: String) = "popular|$source"
+    private fun genresKey(source: String) = "genres|$source"
+    private fun detailKey(source: String, slug: String) = "detail|$source|$slug"
+    private fun chapterKey(source: String, comic: String, chapter: String) = "chapter|$source|$comic|$chapter"
+    private fun searchKey(p: SearchParams) = "search|${p.source}|${p.query.trim().lowercase()}|${p.page}"
+    private fun browseKey(p: BrowseParams) = "browse|${p.source}|${p.page}|${p.type}|${p.status}|${p.sort}|${p.genres}"
+
+    private suspend fun fetchLatest(source: String, page: Int): Result<List<Comic>> =
+        guarded { mapList(api.getLatest(source, page), source) }
+
+    private suspend fun fetchPopular(source: String): Result<List<Comic>> =
+        guarded { mapList(api.getPopular(source), source) }
+
+    private suspend fun fetchBrowse(params: BrowseParams): Result<List<Comic>> = guarded {
+        mapList(
+            api.browse(params.source, params.page, params.type, params.status, params.sort, params.genres),
+            params.source
+        )
     }
 
-    override suspend fun getGenres(source: String): Result<List<String>> = safeApiCall {
+    private suspend fun fetchSearch(params: SearchParams): Result<List<Comic>> =
+        guarded { mapList(api.search(params.source, params.query, params.page), params.source) }
+
+    private suspend fun fetchGenres(source: String): Result<List<String>> = guarded {
         val response = api.getGenres(source)
-        if (!response.ok || response.data == null) {
-            return@safeApiCall Result.Error(
-                message = response.error?.message ?: "Failed to fetch genres",
-                code = response.error?.code
-            )
-        }
-        val items = response.data.items
-        if (items.isEmpty()) Result.Empty else Result.Success(items)
+        val data = response.data
+        if (!response.ok || data == null) failure(response, "Failed to fetch genres") else Result.Success(data.items)
     }
 
-    override suspend fun getComicDetail(source: String, slug: String): Result<ComicDetail> {
-        val key = "$source:$slug"
-        cached(detailCache, key, 300_000L)?.let { return it }
-        val result = safeApiCall {
-            val response = api.getComicDetail(source, slug)
-            if (!response.ok || response.data == null) {
-                return@safeApiCall Result.Error(
-                    message = response.error?.message ?: "Comic not found",
-                    code = response.error?.code
-                )
-            }
-            Result.Success(response.data.toDomain(source))
-        }
-        if (result is Result.Success) {
-            detailCache[key] = CacheEntry(result)
-            trimCache(detailCache, 100)
-        }
-        return result
+    private suspend fun fetchDetail(source: String, slug: String): Result<ComicDetail> = guarded {
+        val response = api.getComicDetail(source, slug)
+        val data = response.data
+        if (!response.ok || data == null) failure(response, "Comic not found") else Result.Success(data.toDomain(source))
     }
 
-    override suspend fun getChapterContent(
-        source: String,
-        comicSlug: String,
-        chapterSlug: String
-    ): Result<ChapterContent> {
-        val key = "$source:$comicSlug:$chapterSlug"
-        cached(chapterCache, key, 600_000L)?.let { return it }
-        val result = safeApiCall {
-            val response = api.getChapterContent(source, comicSlug, chapterSlug)
-            if (!response.ok || response.data == null) {
-                return@safeApiCall Result.Error(
-                    message = response.error?.message ?: "Chapter not found",
-                    code = response.error?.code
-                )
-            }
-            Result.Success(response.data.toDomain(source, comicSlug, chapterSlug))
-        }
-        if (result is Result.Success) {
-            chapterCache[key] = CacheEntry(result)
-            trimCache(chapterCache, 40)
-        }
-        return result
+    private suspend fun fetchChapter(source: String, comic: String, chapter: String): Result<ChapterContent> = guarded {
+        val response = api.getChapterContent(source, comic, chapter)
+        val data = response.data
+        if (!response.ok || data == null) failure(response, "Chapter not found")
+        else Result.Success(data.toDomain(source, comic, chapter))
     }
 
-    private fun mapListResponse(
-        response: com.komikta.data.remote.dto.ApiResponse<com.komikta.data.remote.dto.ComicListResponse>,
-        source: String
-    ): Result<List<Comic>> {
-        if (!response.ok || response.data == null) {
-            return Result.Error(
-                message = response.error?.message ?: "Failed to fetch comics",
-                code = response.error?.code
-            )
-        }
-        val items = response.data.items.map { it.toDomain(source) }
-        return if (items.isEmpty()) Result.Empty else Result.Success(items)
+    private fun mapList(response: ApiResponse<ComicListResponse>, source: String): Result<List<Comic>> {
+        val data = response.data
+        if (!response.ok || data == null) return failure(response, "Failed to fetch comics")
+        return Result.Success(data.items.map { it.toDomain(source) })
     }
 
-    private suspend fun <T> safeApiCall(block: suspend () -> Result<T>): Result<T> {
-        return try {
-            withContext(Dispatchers.Default) { block() }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: SocketTimeoutException) {
-            Result.Error(message = "Request timeout. Please try again.", throwable = e)
-        } catch (e: UnknownHostException) {
-            Result.Error(message = "No internet connection.", throwable = e)
-        } catch (e: HttpException) {
-            if (e.code >= 500) {
-                Result.Error(message = "Server error. Please try again later.", code = e.code.toString(), throwable = e)
-            } else {
-                Result.Error(message = "Request failed (${e.code})", code = e.code.toString(), throwable = e)
-            }
-        } catch (e: IOException) {
-            Result.Error(message = "Network error. Please check your connection.", throwable = e)
-        } catch (e: Exception) {
-            Result.Error(message = e.message ?: "Unexpected error occurred", throwable = e)
-        }
+    private fun failure(response: ApiResponse<*>, fallback: String): Result.Error =
+        Result.Error(message = response.error?.message ?: fallback, code = response.error?.code)
+
+    private suspend fun <T> guarded(block: suspend () -> Result<T>): Result<T> = try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: SocketTimeoutException) {
+        Result.Error(message = "Request timeout. Please try again.", throwable = e)
+    } catch (e: UnknownHostException) {
+        Result.Error(message = "No internet connection.", throwable = e)
+    } catch (e: HttpException) {
+        if (e.code >= 500) Result.Error(message = "Server error. Please try again later.", code = e.code.toString(), throwable = e)
+        else Result.Error(message = "Request failed (${e.code})", code = e.code.toString(), throwable = e)
+    } catch (e: IOException) {
+        Result.Error(message = "Network error. Please check your connection.", throwable = e)
+    } catch (e: Exception) {
+        Result.Error(message = e.message ?: "Unexpected error occurred", throwable = e)
+    }
+
+    private companion object {
+        val TTL_LIST = TimeUnit.MINUTES.toMillis(2)
+        val TTL_SEARCH = TimeUnit.MINUTES.toMillis(5)
+        val TTL_DETAIL = TimeUnit.MINUTES.toMillis(10)
+        val TTL_CHAPTER = TimeUnit.HOURS.toMillis(6)
+        val TTL_STATIC = TimeUnit.HOURS.toMillis(12)
     }
 }

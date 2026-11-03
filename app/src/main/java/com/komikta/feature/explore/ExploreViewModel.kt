@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** Pesan saat filter valid tetapi hasilnya kosong (bukan error jaringan). */
 internal const val NO_COMICS_MESSAGE = "Tidak ada komik untuk filter ini"
 
 data class ExploreUiState(
@@ -58,7 +57,8 @@ class ExploreViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ExploreUiState())
     val uiState: StateFlow<ExploreUiState> = _uiState.asStateFlow()
 
-    private var searchJob: Job? = null
+    private var listJob: Job? = null
+    private var moreJob: Job? = null
 
     init {
         loadGenres()
@@ -67,43 +67,41 @@ class ExploreViewModel @Inject constructor(
 
     private fun loadGenres() {
         viewModelScope.launch {
-            val result = getGenres(ApiConfig.DEFAULT_SOURCE)
-            val remote = (result as? Result.Success)?.data.orEmpty()
-            val keys = remote.map { it.trim().lowercase() }.toSet()
-            val curated = if (remote.isEmpty() || CURATED_GENRES.any { it.lowercase() in keys }) {
-                CURATED_GENRES
-            } else {
-                remote.take(30).map { it.titleCase() }
+            getGenres.observe(ApiConfig.DEFAULT_SOURCE).collect { result ->
+                val remote = (result as? Result.Success)?.data.orEmpty()
+                val keys = remote.map { it.trim().lowercase() }.toSet()
+                val curated = if (remote.isEmpty() || CURATED_GENRES.any { it.lowercase() in keys }) {
+                    CURATED_GENRES
+                } else {
+                    remote.take(30).map { it.titleCase() }
+                }
+                _uiState.update { it.copy(genres = curated) }
             }
-            _uiState.update { it.copy(genres = curated) }
         }
     }
 
     fun onQueryChange(query: String) {
         _uiState.update { it.copy(query = query) }
-        searchJob?.cancel()
-        searchJob = viewModelScope.launch {
-            delay(350)
-            if (query.isBlank()) loadInitial() else doSearch(query)
+        moreJob?.cancel()
+        listJob?.cancel()
+        listJob = viewModelScope.launch {
+            if (query.isBlank()) {
+                runInitial(refresh = false)
+            } else {
+                delay(SEARCH_DEBOUNCE_MS)
+                runSearch(query.trim())
+            }
         }
     }
 
-    private data class PageBatch(val items: List<Comic>, val canLoadMore: Boolean, val error: String?)
-
-    private suspend fun fetchPage(page: Int, state: ExploreUiState): PageBatch {
-        val result = browseComics(
-            BrowseParams(
-                source = ApiConfig.DEFAULT_SOURCE,
-                page = page,
-                type = state.type,
-                status = state.status,
-                sort = state.sort,
-                genres = state.selectedGenres.takeIf { it.isNotEmpty() }?.joinToString(",") { it.lowercase() }
-            )
-        )
-        val data = (result as? Result.Success)?.data.orEmpty()
-        return PageBatch(data.distinctBy { it.slug }, data.isNotEmpty(), (result as? Result.Error)?.message)
-    }
+    private fun browseParams(state: ExploreUiState, page: Int) = BrowseParams(
+        source = ApiConfig.DEFAULT_SOURCE,
+        page = page,
+        type = state.type,
+        status = state.status,
+        sort = state.sort,
+        genres = state.selectedGenres.takeIf { it.isNotEmpty() }?.joinToString(",") { it.lowercase() }
+    )
 
     private fun filtersChanged(old: ExploreUiState, new: ExploreUiState) =
         old.selectedGenres != new.selectedGenres || old.type != new.type ||
@@ -113,7 +111,7 @@ class ExploreViewModel @Inject constructor(
         val old = _uiState.value
         val new = old.copy(selectedGenres = genres, sort = sort, status = status, query = "")
         _uiState.value = new
-        if (filtersChanged(old, new)) loadInitial()
+        if (filtersChanged(old, new) || old.query.isNotBlank()) loadInitial()
     }
 
     fun setType(type: String?) {
@@ -123,32 +121,51 @@ class ExploreViewModel @Inject constructor(
         loadInitial()
     }
 
-    /** Hapus kata kunci dan semua filter, lalu muat ulang daftar awal. */
     fun resetAll() {
-        searchJob?.cancel()
         _uiState.update { it.copy(query = "", selectedGenres = emptySet(), sort = null, status = null) }
         loadInitial()
     }
 
     fun retry() {
         val q = _uiState.value.query
-        if (q.isNotBlank()) doSearch(q) else loadInitial()
+        moreJob?.cancel()
+        listJob?.cancel()
+        listJob = viewModelScope.launch { if (q.isNotBlank()) runSearch(q.trim()) else runInitial(refresh = true) }
     }
 
-    private fun loadInitial() {
-        viewModelScope.launch {
-            val snapshot = _uiState.value
-            _uiState.update { it.copy(isLoading = true, errorMessage = null, page = 1, canLoadMore = true, comics = emptyList()) }
-            val batch = fetchPage(1, snapshot)
-            if (filtersChanged(snapshot, _uiState.value)) return@launch
-            _uiState.update {
-                it.copy(
+    private fun loadInitial(refresh: Boolean = false) {
+        moreJob?.cancel()
+        listJob?.cancel()
+        listJob = viewModelScope.launch { runInitial(refresh) }
+    }
+
+    private suspend fun runInitial(refresh: Boolean) {
+        val snapshot = _uiState.value
+        _uiState.update {
+            it.copy(isLoading = true, isLoadingMore = false, errorMessage = null, page = 1, canLoadMore = true, comics = emptyList())
+        }
+        browseComics.observe(browseParams(snapshot, 1), refresh).collect { result -> applyFirstPage(result, true) }
+    }
+
+    private suspend fun runSearch(query: String) {
+        _uiState.update { it.copy(isLoading = it.comics.isEmpty(), isLoadingMore = false, errorMessage = null, canLoadMore = false) }
+        searchComics.observe(SearchParams(source = ApiConfig.DEFAULT_SOURCE, query = query, page = 1))
+            .collect { result -> applyFirstPage(result, false) }
+    }
+
+    private fun applyFirstPage(result: Result<List<Comic>>, pageable: Boolean) {
+        _uiState.update { st ->
+            when (result) {
+                is Result.Success -> st.copy(
                     isLoading = false,
-                    comics = batch.items,
+                    comics = result.data.distinctBy { it.slug },
                     page = 1,
-                    canLoadMore = batch.canLoadMore,
-                    errorMessage = if (batch.items.isEmpty()) (batch.error ?: NO_COMICS_MESSAGE) else null
+                    canLoadMore = pageable && result.data.isNotEmpty(),
+                    errorMessage = null
                 )
+                is Result.Empty -> st.copy(isLoading = false, comics = emptyList(), canLoadMore = false, errorMessage = NO_COMICS_MESSAGE)
+                is Result.Error -> if (st.comics.isEmpty()) st.copy(isLoading = false, errorMessage = result.message) else st.copy(isLoading = false)
+                else -> st.copy(isLoading = false)
             }
         }
     }
@@ -156,38 +173,27 @@ class ExploreViewModel @Inject constructor(
     fun loadMore() {
         val state = _uiState.value
         if (state.isLoading || state.isLoadingMore || !state.canLoadMore || state.query.isNotBlank()) return
-        viewModelScope.launch {
+        val next = state.page + 1
+        moreJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
-            val next = state.page + 1
-            val batch = fetchPage(next, state)
-            if (filtersChanged(state, _uiState.value)) return@launch
+            val result = browseComics(browseParams(state, next))
+            val batch = (result as? Result.Success)?.data.orEmpty()
             _uiState.update {
-                val merged = (it.comics + batch.items).distinctBy { c -> c.slug }
-                it.copy(
-                    isLoadingMore = false,
-                    comics = merged,
-                    page = next,
-                    canLoadMore = batch.canLoadMore && merged.size > it.comics.size,
-                    errorMessage = if (merged.isEmpty()) batch.error else null
-                )
+                if (filtersChanged(state, it) || it.query.isNotBlank()) it.copy(isLoadingMore = false) else {
+                    val merged = (it.comics + batch).distinctBy { c -> c.slug }
+                    it.copy(
+                        isLoadingMore = false,
+                        comics = merged,
+                        page = next,
+                        canLoadMore = batch.isNotEmpty() && merged.size > it.comics.size,
+                        errorMessage = if (merged.isEmpty()) (result as? Result.Error)?.message else null
+                    )
+                }
             }
         }
     }
 
-    private fun doSearch(query: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null, canLoadMore = false) }
-            val source = ApiConfig.DEFAULT_SOURCE
-            val result = searchComics(SearchParams(source = source, query = query, page = 1))
-            val all = (result as? Result.Success)?.data.orEmpty().distinctBy { it.slug }
-            val error = (result as? Result.Error)?.message
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    comics = all,
-                    errorMessage = if (all.isEmpty()) error else null
-                )
-            }
-        }
+    private companion object {
+        const val SEARCH_DEBOUNCE_MS = 280L
     }
 }

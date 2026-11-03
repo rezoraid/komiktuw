@@ -3,6 +3,8 @@ package com.komikta.feature.profile
 import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
+import coil.ImageLoader
+import coil.request.ImageRequest
 import androidx.lifecycle.viewModelScope
 import com.komikta.core.common.Result
 import com.komikta.data.repository.CommunityRepository
@@ -21,15 +23,19 @@ data class ProfileUiState(val busy: Boolean = false, val message: String? = null
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val repo: CommunityRepository,
-    @ApplicationContext private val appContext: Context
+    @ApplicationContext private val appContext: Context,
+    private val imageLoader: ImageLoader
 ) : ViewModel() {
     val user = repo.user
     private val _ui = MutableStateFlow(ProfileUiState())
     val ui: StateFlow<ProfileUiState> = _ui.asStateFlow()
 
-    init { if (repo.user.value != null) viewModelScope.launch { repo.refreshMe() } }
+    init { refresh() }
 
-    fun refresh() { if (repo.user.value != null) viewModelScope.launch { repo.refreshMe() } }
+    fun refresh() {
+        if (repo.user.value != null) viewModelScope.launch { repo.refreshMe() }
+    }
+
 
     fun busy(b: Boolean) { _ui.value = _ui.value.copy(busy = b) }
 
@@ -72,7 +78,6 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    /** Foto baru langsung tampil (file lokal); upload jalan di belakang, dikembalikan jika gagal. */
     fun changeAvatar(uri: Uri) {
         viewModelScope.launch {
             val prepared = withContext(Dispatchers.IO) { runCatching { AvatarProcessor.prepare(appContext, uri) } }
@@ -81,7 +86,7 @@ class ProfileViewModel @Inject constructor(
                 _ui.value = ProfileUiState(message = prepared.exceptionOrNull()?.message ?: "Gagal membaca foto")
                 return@launch
             }
-            when (val r = repo.updateAvatar(avatar.dataUri, avatar.previewUrl)) {
+            when (val r = repo.updateAvatar(avatar.dataUri, avatar.previewUrl, ::preloadAvatar)) {
                 is Result.Success -> _ui.value = ProfileUiState(message = "Foto profil diperbarui")
                 is Result.Error -> _ui.value = ProfileUiState(message = r.message)
                 else -> Unit
@@ -89,7 +94,6 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    /** Username langsung berubah di layar; jika server menolak, nama lama kembali dan pesan error muncul. */
     fun changeUsername(username: String, onDone: (Boolean) -> Unit = {}) {
         if (username == repo.user.value?.username) { onDone(true); return }
         viewModelScope.launch {
@@ -99,5 +103,13 @@ class ProfileViewModel @Inject constructor(
                 else -> onDone(false)
             }
         }
+    }
+
+    private suspend fun preloadAvatar(url: String) {
+        imageLoader.execute(ImageRequest.Builder(appContext).data(url).size(AVATAR_PX, AVATAR_PX).build())
+    }
+
+    private companion object {
+        const val AVATAR_PX = 160
     }
 }

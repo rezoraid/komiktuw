@@ -1,5 +1,8 @@
 package com.komikta.domain.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Source(
     val id: String,
     val name: String,
@@ -9,6 +12,7 @@ data class Source(
     val sorts: List<String> = emptyList()
 )
 
+@Serializable
 data class Comic(
     val title: String,
     val slug: String,
@@ -24,6 +28,7 @@ data class Comic(
     val chapters: List<Chapter> = emptyList()
 )
 
+@Serializable
 data class ComicDetail(
     val title: String,
     val slug: String,
@@ -43,6 +48,7 @@ data class ComicDetail(
     val source: String
 )
 
+@Serializable
 data class Chapter(
     val slug: String,
     val number: String? = null,
@@ -50,6 +56,7 @@ data class Chapter(
     val timeAgo: String? = null
 )
 
+@Serializable
 data class ChapterContent(
     val title: String? = null,
     val comicSlug: String,

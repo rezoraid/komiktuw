@@ -40,8 +40,12 @@ class SessionStore @Inject constructor(
         return u.copy(picture = p + (if ('?' in p) "&" else "?") + "rev=$avatarRev")
     }
 
-    fun bumpAvatar() {
-        avatarRev = System.currentTimeMillis()
+    fun bustedUrl(picture: String, revision: Long): String =
+        if (picture.isBlank() || picture.startsWith("data:") || picture.startsWith("file:")) picture
+        else picture + (if ('?' in picture) "&" else "?") + "rev=$revision"
+
+    fun bumpAvatar(revision: Long = System.currentTimeMillis()) {
+        avatarRev = revision
         sp.edit().putLong("avatarRev", avatarRev).apply()
         AvatarBust.set(_user.value?.picture, avatarRev)
     }
@@ -63,7 +67,6 @@ class SessionStore @Inject constructor(
         AvatarBust.set(user.picture, avatarRev)
     }
 
-    /** Ganti user di sesi apa adanya (tanpa cache-bust): untuk tampilan optimistic dan pengembaliannya. */
     fun replaceLocal(user: CommunityUserDto) {
         if (token == null) return
         sp.edit().putString("user", json.encodeToString(CommunityUserDto.serializer(), user)).apply()

@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.komikta.data.local.entity.BookmarkEntity
+import com.komikta.data.local.entity.CacheEntity
 import com.komikta.data.local.entity.ReadChapterEntity
 import com.komikta.data.local.entity.ReadingHistoryEntity
 import kotlinx.coroutines.flow.Flow
@@ -52,4 +53,22 @@ interface ReadChapterDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun markRead(entity: ReadChapterEntity)
+}
+
+@Dao
+interface CacheDao {
+    @Query("SELECT * FROM cache_entries WHERE `key` = :key LIMIT 1")
+    suspend fun get(key: String): CacheEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun put(entity: CacheEntity)
+
+    @Query("DELETE FROM cache_entries WHERE `key` LIKE :prefix || '%'")
+    suspend fun deletePrefix(prefix: String)
+
+    @Query("DELETE FROM cache_entries WHERE storedAt < :before")
+    suspend fun deleteOlderThan(before: Long)
+
+    @Query("DELETE FROM cache_entries WHERE `key` NOT IN (SELECT `key` FROM cache_entries ORDER BY storedAt DESC LIMIT :keep)")
+    suspend fun keepNewest(keep: Int)
 }
