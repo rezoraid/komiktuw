@@ -6,6 +6,7 @@ import android.content.ContextWrapper
 import android.view.View
 import android.view.ViewTreeObserver
 import android.view.Window
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
@@ -82,15 +83,18 @@ fun ImmersiveDialogEffect() {
 }
 
 /** Padding status bar yang tidak berubah walau bar disembunyikan, jadi konten tidak bergeser. */
+@OptIn(ExperimentalLayoutApi::class)
 fun Modifier.stableStatusBarsPadding(): Modifier = composed {
     windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 fun Modifier.stableNavigationBarsPadding(): Modifier = composed {
     windowInsetsPadding(WindowInsets.navigationBarsIgnoringVisibility)
 }
 
 /** Insets vertikal sheet yang stabil (tidak ikut berubah saat system bar disembunyikan). */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun stableSheetInsets(): WindowInsets =
     WindowInsets.systemBarsIgnoringVisibility.only(WindowInsetsSides.Vertical)

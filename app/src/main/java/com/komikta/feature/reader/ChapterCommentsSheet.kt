@@ -101,7 +101,7 @@ fun ChapterCommentsSheet(
         containerColor = Mono.Bg,
         contentColor = Color.White,
         dragHandle = { BottomSheetDefaults.DragHandle(color = Mono.TextFaint) },
-        windowInsets = stableSheetInsets()
+        contentWindowInsets = { stableSheetInsets() }
     ) {
         ImmersiveDialogEffect()
         Column(

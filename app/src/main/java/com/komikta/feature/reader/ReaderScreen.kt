@@ -15,6 +15,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -153,7 +154,7 @@ private const val PRELOAD_PARALLEL = 4
 
 enum class ScrollMode { Smooth, Swipe }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ReaderScreen(
     onBack: () -> Unit,
@@ -556,7 +557,7 @@ fun ReaderScreen(
                 onDismissRequest = { showSettings = false },
                 sheetState = rememberModalBottomSheetState(),
                 containerColor = Color(0xFF1A1A1C),
-                windowInsets = stableSheetInsets()
+                contentWindowInsets = { stableSheetInsets() }
             ) {
                 ImmersiveDialogEffect()
                 Column(Modifier.padding(20.dp)) {
@@ -836,7 +837,7 @@ private fun ChapterListSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = Color(0xFF1C1C1E),
         contentColor = Color.White,
-        windowInsets = stableSheetInsets()
+        contentWindowInsets = { stableSheetInsets() }
     ) {
         ImmersiveDialogEffect()
         Column(
