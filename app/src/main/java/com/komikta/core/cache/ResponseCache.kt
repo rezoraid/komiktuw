@@ -62,6 +62,11 @@ class ResponseCache @Inject constructor(
         }
     }
 
+    private fun touch(key: String) {
+        val now = System.currentTimeMillis()
+        synchronized(lock) { memory[key]?.let { memory[key] = Entry(it.value, now) } }
+    }
+
     fun <T> update(key: String, serializer: KSerializer<T>, transform: (T) -> T) {
         val current = peekMemory<T>(key) ?: return
         put(key, serializer, transform(current.value))
@@ -123,8 +128,10 @@ class ResponseCache @Inject constructor(
         if (!stale) return@flow
         val r = shared(key, fetch)
         if (r is Result.Success) {
-            put(key, serializer, r.data)
-            if (hit == null || hit.value != r.data) emit(wrap(r.data))
+            if (hit == null || hit.value != r.data) {
+                put(key, serializer, r.data)
+                emit(wrap(r.data))
+            } else touch(key)
         } else if (hit == null) {
             emit(r)
         }

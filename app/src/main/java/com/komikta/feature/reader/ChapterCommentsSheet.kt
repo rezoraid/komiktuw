@@ -6,10 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
@@ -25,28 +22,21 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -65,15 +55,7 @@ import com.komikta.ui.theme.Mono
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/**
- * Komentar untuk SATU chapter, tampil sebagai bottom sheet di atas reader.
- * Awalnya setengah layar; mulai mengetik (ketuk kotak tulis) -> otomatis naik penuh layar; geser ke atas juga bisa. Reader di belakangnya
- * tidak ikut berpindah halaman, jadi posisi baca tetap.
- *
- * Kotak tulis komentar ada di atas daftar (bukan di bawah) supaya selalu terlihat
- * saat sheet masih setengah layar.
- */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChapterCommentsSheet(
     source: String,
@@ -83,13 +65,13 @@ fun ChapterCommentsSheet(
     onDismiss: () -> Unit,
     onUserClick: (String) -> Unit
 ) {
-    // Sinkron sebelum state dibaca, supaya tidak sempat tampil komentar chapter sebelumnya.
     remember(source, comicSlug, chapterSlug) { viewModel.bind(source, comicSlug, chapterSlug) }
+    LaunchedEffect(source, comicSlug, chapterSlug) { viewModel.load() }
 
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val me by viewModel.user.collectAsStateWithLifecycle()
     val draft by viewModel.draft.collectAsStateWithLifecycle()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     val focus = remember { FocusRequester() }
     var deleteTarget by remember { mutableStateOf<CommentDto?>(null) }
@@ -103,10 +85,9 @@ fun ChapterCommentsSheet(
         }
     }
 
-    // Balas / edit: buka penuh dan arahkan kursor ke kotak tulis.
     LaunchedEffect(ui.replyingTo?.id, ui.editing?.id) {
         if (ui.replyingTo != null || ui.editing != null) {
-            sheetState.expand()
+            delay(80)
             runCatching { focus.requestFocus() }
         }
     }
@@ -118,29 +99,13 @@ fun ChapterCommentsSheet(
         contentColor = Color.White,
         dragHandle = { BottomSheetDefaults.DragHandle(color = Mono.TextFaint) }
     ) {
-        // fillMaxHeight: tinggi sheet = layar penuh, posisi awalnya otomatis setengah layar.
-        // Saat sheet setengah layar, bagian bawah kolom ini berada di luar layar. Ukur seberapa banyak yang
-        // keluar layar, lalu naikkan isi (termasuk kotak tulis) sebanyak itu supaya kotak tulis selalu terlihat.
-        val rootHeight = LocalView.current.rootView.height
-        val imeShown = WindowInsets.isImeVisible
-        val typing = imeShown || sheetState.targetValue == SheetValue.Expanded
-        var hiddenPx by remember { mutableIntStateOf(0) }
         Column(
             Modifier
                 .fillMaxWidth()
-                .fillMaxHeight()
-                .onGloballyPositioned { c ->
-                    val bottom = c.positionInWindow().y + c.size.height
-                    val hidden = (bottom - rootHeight).toInt().coerceAtLeast(0)
-                    if (kotlin.math.abs(hidden - hiddenPx) > 1) hiddenPx = hidden
-                }
-                // Angkat isi hanya saat sheet setengah layar dan keyboard belum muncul. Begitu mau mengetik
-                // (target sheet = penuh / keyboard tampil), imePadding yang mengatur sendiri.
-                .padding(bottom = if (typing) 0.dp else with(LocalDensity.current) { hiddenPx.toDp() })
+                .fillMaxHeight(0.92f)
                 .navigationBarsPadding()
                 .imePadding()
         ) {
-            // Header
             Row(
                 Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -169,12 +134,9 @@ fun ChapterCommentsSheet(
 
             Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
 
-            // Daftar komentar (populer di atas)
             CommentsBody(ui, me, viewModel, { deleteTarget = it }, { reportTarget = it }, onUserClick)
 
-            // Kotak tulis komentar di bawah
             Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
-            // Kotak tulis komentar (di atas daftar)
             Column(Modifier.fillMaxWidth().background(Mono.Bar).padding(top = 4.dp)) {
                 ui.notice?.let {
                     Text(it, fontSize = 13.sp, color = Mono.TextDim, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
@@ -231,11 +193,7 @@ fun ChapterCommentsSheet(
                                 maxLines = 5,
                                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White, fontSize = 15.sp),
                                 cursorBrush = SolidColor(Color.White),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .focusRequester(focus)
-                                    // Mulai mengetik -> sheet penuh supaya keyboard tidak menutupi daftar.
-                                    .onFocusChanged { if (it.isFocused) scope.launch { sheetState.expand() } }
+                                modifier = Modifier.fillMaxWidth().focusRequester(focus)
                             )
                         }
                         val canSend = draft.isNotBlank() && !ui.sending

@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import java.io.IOException
@@ -56,6 +57,8 @@ class CommunityRepository @Inject constructor(
     private var lastProgressKey: String? = null
 
     private val countsSerializer = MapSerializer(String.serializer(), Int.serializer())
+    private val pinnedSerializer = ListSerializer(CommentDto.serializer())
+    private val pinLock = Mutex()
 
     private fun uid(): String = session.user.value?.id?.takeIf { it.isNotBlank() } ?: "anon"
     private fun scope(): String = "u|${uid()}|"
@@ -65,6 +68,9 @@ class CommunityRepository @Inject constructor(
 
     private fun likeKey(source: String, slug: String, chapter: String?) =
         "${scope()}like|$source|$slug|${chapter.orEmpty()}"
+
+    private fun pinKey(source: String, slug: String, chapter: String?) =
+        "${scope()}mine|$source|$slug|${chapter.orEmpty()}"
 
     private fun countsKey(source: String, slug: String) = "counts|$source|$slug"
     private fun profileKey(userId: String) = "${scope()}profile|$userId"
@@ -81,6 +87,49 @@ class CommunityRepository @Inject constructor(
         cache.stream(commentKey(source, slug, chapter, sort), CommentPageDto.serializer(), TTL_COMMENTS, refresh) {
             call { api.comments(source, slug, chapter, sort, 1) }
         }
+
+    suspend fun pinned(source: String, slug: String, chapter: String?): List<CommentDto> {
+        val limit = System.currentTimeMillis() - PIN_MS
+        return cache.peek(pinKey(source, slug, chapter), pinnedSerializer)?.value.orEmpty().filter { it.createdAt > limit }
+    }
+
+    suspend fun pin(source: String, slug: String, chapter: String?, comment: CommentDto, onlyIfPresent: Boolean = false) {
+        pinLock.withLock {
+            val key = pinKey(source, slug, chapter)
+            val current = cache.peek(key, pinnedSerializer)?.value.orEmpty()
+            if (!onlyIfPresent || current.any { it.id == comment.id }) {
+                cache.put(key, pinnedSerializer, (listOf(comment) + current.filter { it.id != comment.id }).take(PIN_MAX))
+            }
+        }
+    }
+
+    suspend fun unpin(source: String, slug: String, chapter: String?, id: String) {
+        pinLock.withLock {
+            val key = pinKey(source, slug, chapter)
+            val current = cache.peek(key, pinnedSerializer)?.value.orEmpty()
+            if (current.any { it.id == id }) cache.put(key, pinnedSerializer, current.filter { it.id != id })
+        }
+    }
+
+    suspend fun findPosted(
+        source: String,
+        slug: String,
+        chapter: String?,
+        rootId: String?,
+        userId: String,
+        body: String,
+        since: Long,
+        known: Set<String>
+    ): CommentDto? {
+        val fetches: List<suspend () -> Result<CommentPageDto>> =
+            if (rootId != null) listOf({ call { api.replies(rootId, 1) } })
+            else listOf({ call { api.comments(source, slug, chapter, "new", 1) } }, { call { api.comments(source, slug, chapter, "top", 1) } })
+        for (fetch in fetches) {
+            val page = (fetch() as? Result.Success)?.data ?: continue
+            page.items.firstOrNull { it.id !in known && it.user.id == userId && it.body.trim() == body && it.createdAt >= since }?.let { return it }
+        }
+        return null
+    }
 
     fun prefetchComments(source: String, slug: String, chapter: String?, sort: String = "top") {
         background.launch {
@@ -310,6 +359,8 @@ class CommunityRepository @Inject constructor(
         val TTL_COMMENTS = TimeUnit.SECONDS.toMillis(45)
         val TTL_LIKE = TimeUnit.SECONDS.toMillis(60)
         val TTL_COUNTS = TimeUnit.SECONDS.toMillis(60)
+        const val PIN_MS = 6L * 60 * 60 * 1000
+        const val PIN_MAX = 20
         const val ME_FRESH_MS = 30_000L
         const val AVATAR_PRELOAD_MS = 4_000L
         const val PROGRESS_DEBOUNCE_MS = 1_200L

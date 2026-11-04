@@ -193,30 +193,33 @@ internal fun ColumnScope.CommentsBody(
             ui.items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 EmptyState(AppIcons.comment, "Belum ada komentar", "Jadilah yang pertama menanggapi. Tulis komentarmu di bawah.")
             }
-            else -> LazyColumn(Modifier.weight(1f)) {
-                ui.items.forEach { root ->
-                    item(key = root.id, contentType = "comment") {
-                        CommentRow(root, false, me, viewModel, onDelete, onReport, onUserClick, repliesOpen = ui.replies[root.id]?.expanded == true)
-                    }
-                    val rs = ui.replies[root.id]
-                    if (rs?.expanded == true) {
-                        items(rs.items, key = { it.id }, contentType = { "reply" }) { reply ->
-                            CommentRow(reply, true, me, viewModel, onDelete, onReport, onUserClick)
+            else -> {
+                val roots = remember(ui.items) { ui.items.distinctBy { it.id } }
+                LazyColumn(Modifier.weight(1f)) {
+                    roots.forEach { root ->
+                        item(key = "c-${root.id}", contentType = "comment") {
+                            CommentRow(root, false, me, viewModel, onDelete, onReport, onUserClick, repliesOpen = ui.replies[root.id]?.expanded == true)
                         }
-                        if (rs.loading) item(key = "rl-${root.id}", contentType = "more") { Text("Memuat balasan…", fontSize = 13.sp, color = Mono.TextFaint, modifier = Modifier.padding(start = 60.dp, bottom = 8.dp)) }
-                        else if (rs.hasMore && rs.page > 0) item(key = "rm-${root.id}", contentType = "more") {
-                            Text("Balasan lainnya", fontSize = 13.sp, color = Mono.TextDim, modifier = Modifier.padding(start = 60.dp, bottom = 10.dp).clickable { viewModel.loadReplies(root.id) })
+                        val rs = ui.replies[root.id]
+                        if (rs?.expanded == true) {
+                            items(rs.items.distinctBy { it.id }, key = { "r-${it.id}" }, contentType = { "reply" }) { reply ->
+                                CommentRow(reply, true, me, viewModel, onDelete, onReport, onUserClick)
+                            }
+                            if (rs.loading) item(key = "rl-${root.id}", contentType = "more") { Text("Memuat balasan…", fontSize = 13.sp, color = Mono.TextFaint, modifier = Modifier.padding(start = 60.dp, bottom = 8.dp)) }
+                            else if (rs.hasMore && rs.page > 0) item(key = "rm-${root.id}", contentType = "more") {
+                                Text("Balasan lainnya", fontSize = 13.sp, color = Mono.TextDim, modifier = Modifier.padding(start = 60.dp, bottom = 10.dp).clickable { viewModel.loadReplies(root.id) })
+                            }
                         }
                     }
-                }
-                if (ui.hasMore) item(key = "more", contentType = "more") {
-                    LaunchedEffect(ui.page) { viewModel.loadMore() }
-                    Text(
-                        if (ui.loadingMore) "Memuat…" else "Muat komentar lainnya",
-                        fontSize = 14.sp,
-                        color = Mono.TextDim,
-                        modifier = Modifier.fillMaxWidth().clickable { viewModel.loadMore() }.padding(16.dp)
-                    )
+                    if (ui.hasMore) item(key = "more", contentType = "more") {
+                        LaunchedEffect(ui.page) { viewModel.loadMore() }
+                        Text(
+                            if (ui.loadingMore) "Memuat…" else "Muat komentar lainnya",
+                            fontSize = 14.sp,
+                            color = Mono.TextDim,
+                            modifier = Modifier.fillMaxWidth().clickable { viewModel.loadMore() }.padding(16.dp)
+                        )
+                    }
                 }
             }
         }
