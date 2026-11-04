@@ -163,3 +163,37 @@ data class ActivityPageDto(
 
 @Serializable
 data class LikeStateDto(val liked: Boolean = false, val count: Int = 0)
+
+@Serializable
+data class AdminStatsDto(
+    val users: Int = 0,
+    val newUsers7d: Int = 0,
+    val active24h: Int = 0,
+    val banned: Int = 0,
+    val owners: Int = 0,
+    val moderators: Int = 0,
+    val premiums: Int = 0,
+    val comments: Int = 0,
+    val comments24h: Int = 0,
+    val openReports: Int = 0,
+    val chaptersRead: Long = 0L
+)
+
+@Serializable
+data class AdminUserPageDto(val items: List<CommunityUserDto> = emptyList(), val hasMore: Boolean = false, val page: Int = 1, val total: Int = 0)
+
+@Serializable
+data class AdminCommentDto(
+    val id: String = "",
+    val body: String = "",
+    val deleted: Boolean = false,
+    val targetKey: String = "",
+    val createdAt: Long = 0L,
+    val likeCount: Int = 0,
+    val replyCount: Int = 0,
+    val reportCount: Int = 0,
+    val user: CommunityUserDto? = null
+)
+
+@Serializable
+data class AdminCommentPageDto(val items: List<AdminCommentDto> = emptyList(), val hasMore: Boolean = false, val page: Int = 1, val total: Int = 0)

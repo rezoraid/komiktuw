@@ -19,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.komikta.feature.admin.AdminScreen
 import com.komikta.feature.community.CommentsScreen
 import com.komikta.feature.community.ModerationScreen
 import com.komikta.feature.detail.DetailScreen
@@ -48,7 +49,7 @@ fun MainNavGraph() {
     val navController = rememberNavController()
     val route = navController.currentBackStackEntryAsState().value?.destination?.route
     val showBottomBar = route in tabRoutes
-    val isDetail = route?.startsWith("detail") == true || route?.startsWith("comments") == true || route == "moderation" || route?.startsWith("public-profile") == true
+    val isDetail = route?.startsWith("detail") == true || route?.startsWith("comments") == true || route == "moderation" || route == "admin" || route?.startsWith("public-profile") == true
     var focusSearch by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -105,10 +106,13 @@ fun MainNavGraph() {
                     onOpen = { s, slug, chapter ->
                         if (chapter != null) navController.navigate("reader/$s/$slug/$chapter") else navController.navigate("detail/$s/$slug")
                     },
-                    onModeration = { navController.navigate("moderation") }
+                    onModeration = { navController.navigate("moderation") },
+                    onAdmin = { navController.navigate("admin") }
                 ) }
 
             composable("moderation") { ModerationScreen(onBack = { navController.popBackStack() }) }
+
+            composable("admin") { AdminScreen(onBack = { navController.popBackStack() }, onOpenProfile = { id -> navController.navigate("public-profile/$id") }) }
 
             composable(
                 route = "public-profile/{userId}",

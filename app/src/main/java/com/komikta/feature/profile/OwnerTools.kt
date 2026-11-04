@@ -69,6 +69,11 @@ class OwnerToolsViewModel @Inject constructor(private val repo: CommunityReposit
     val ui: StateFlow<OwnerToolsState> = _ui.asStateFlow()
     private var id = ""
 
+    fun open(userId: String) {
+        _ui.value = OwnerToolsState()
+        load(userId)
+    }
+
     fun load(userId: String) {
         id = userId
         _ui.update { it.copy(loading = it.user == null, error = null) }
@@ -104,10 +109,11 @@ internal fun OwnerToolsDialog(
     userId: String,
     onDismiss: () -> Unit,
     onChanged: () -> Unit,
+    onOpenProfile: (() -> Unit)? = null,
     vm: OwnerToolsViewModel = hiltViewModel()
 ) {
     val ui by vm.ui.collectAsStateWithLifecycle()
-    LaunchedEffect(userId) { vm.load(userId) }
+    LaunchedEffect(userId) { vm.open(userId) }
     // Setiap aksi sukses mengubah data akun: segarkan halaman profil di belakang dialog.
     LaunchedEffect(ui.notice) { if (ui.notice != null && ui.error == null) onChanged() }
     val u = ui.user
@@ -195,6 +201,7 @@ internal fun OwnerToolsDialog(
             }
             ui.notice?.let { Text(it, fontSize = 13.sp, color = Color.White) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                if (onOpenProfile != null && u != null) TextButton(onClick = onOpenProfile) { Text("Lihat profil", color = Color.White) }
                 TextButton(onClick = onDismiss) { Text("Tutup", color = Ui.Text2) }
             }
         }

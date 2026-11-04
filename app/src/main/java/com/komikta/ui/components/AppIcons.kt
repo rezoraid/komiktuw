@@ -198,6 +198,46 @@ object AppIcons {
         }
     }
 
+    val dashboard: ImageVector by lazy {
+        navIcon("Dashboard", false, strokeWidth = 1.8f) {
+            moveTo(4f, 4f); lineTo(10.5f, 4f); lineTo(10.5f, 12f); lineTo(4f, 12f); close()
+            moveTo(13.5f, 4f); lineTo(20f, 4f); lineTo(20f, 8.5f); lineTo(13.5f, 8.5f); close()
+            moveTo(13.5f, 12f); lineTo(20f, 12f); lineTo(20f, 20f); lineTo(13.5f, 20f); close()
+            moveTo(4f, 15.5f); lineTo(10.5f, 15.5f); lineTo(10.5f, 20f); lineTo(4f, 20f); close()
+        }
+    }
+
+    val users: ImageVector by lazy {
+        navIcon("Users", false, strokeWidth = 1.8f) {
+            circle(9f, 8.5f, 3.5f)
+            moveTo(2.5f, 20f)
+            curveTo(2.5f, 15.8f, 5.4f, 13.8f, 9f, 13.8f)
+            curveTo(12.6f, 13.8f, 15.5f, 15.8f, 15.5f, 20f)
+            moveTo(15.5f, 5.2f)
+            curveTo(17.7f, 5.6f, 18.8f, 7f, 18.8f, 8.6f)
+            curveTo(18.8f, 10.2f, 17.7f, 11.6f, 15.5f, 12f)
+            moveTo(17f, 14.2f)
+            curveTo(19.6f, 14.8f, 21.5f, 16.6f, 21.5f, 20f)
+        }
+    }
+
+    val flag: ImageVector by lazy {
+        navIcon("Flag", false, strokeWidth = 1.8f) {
+            moveTo(5f, 21f); lineTo(5f, 3.5f)
+            moveTo(5f, 4.5f); lineTo(18.5f, 4.5f); lineTo(15.5f, 9f); lineTo(18.5f, 13.5f); lineTo(5f, 13.5f)
+        }
+    }
+
+    val trash: ImageVector by lazy {
+        navIcon("Trash", false, strokeWidth = 1.8f) {
+            moveTo(4f, 6.5f); lineTo(20f, 6.5f)
+            moveTo(9f, 6.5f); lineTo(9f, 4f); lineTo(15f, 4f); lineTo(15f, 6.5f)
+            moveTo(6f, 6.5f); lineTo(7f, 20f); lineTo(17f, 20f); lineTo(18f, 6.5f)
+            moveTo(10f, 10.5f); lineTo(10f, 16f)
+            moveTo(14f, 10.5f); lineTo(14f, 16f)
+        }
+    }
+
     val send: ImageVector by lazy {
         navIcon("Send", false, strokeWidth = 1.8f) {
             moveTo(4f, 11.6f); lineTo(20f, 4.4f); lineTo(14f, 20f); lineTo(11.4f, 13.2f); close()

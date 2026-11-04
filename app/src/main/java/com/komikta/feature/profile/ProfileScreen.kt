@@ -56,6 +56,7 @@ import kotlinx.coroutines.delay
 fun ProfileScreen(
     onOpen: (source: String, slug: String, chapter: String?) -> Unit = { _, _, _ -> },
     onModeration: () -> Unit = {},
+    onAdmin: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel(),
     pageModel: ProfilePageViewModel = hiltViewModel()
 ) {
@@ -118,6 +119,7 @@ fun ProfileScreen(
                         onEdit = { editing = true },
                         onEditName = { editingName = true },
                         onModeration = onModeration,
+                        onAdmin = onAdmin,
                         onTerms = { uriHandler.openUri("${BuildConfig.BASE_URL}/terms") },
                         onPrivacy = { uriHandler.openUri("${BuildConfig.BASE_URL}/privacy") },
                         onDelete = { confirmDelete = true }
@@ -256,6 +258,7 @@ private fun SettingsMenu(
     onEdit: () -> Unit,
     onEditName: () -> Unit,
     onModeration: () -> Unit,
+    onAdmin: () -> Unit,
     onTerms: () -> Unit,
     onPrivacy: () -> Unit,
     onDelete: () -> Unit
@@ -272,6 +275,7 @@ private fun SettingsMenu(
             item("Ganti foto profil", Color.White, onPhoto)
             item("Ganti nama tampilan", Color.White, onEditName)
             item("Ganti username", Color.White, onEdit)
+            if (u.role == "OWNER") item("Panel admin", Color.White, onAdmin)
             if (u.role == "MODERATOR" || u.role == "OWNER") item("Moderasi", Color.White, onModeration)
             item("Ketentuan", Color.White, onTerms)
             item("Kebijakan Privasi", Color.White, onPrivacy)

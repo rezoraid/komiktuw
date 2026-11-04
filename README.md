@@ -35,3 +35,7 @@ Komentar ada di Detail (baris "Komentar") dan di akhir tiap chapter di Reader. T
 - **Aktivitas privat dihapus**: riwayat dan likes selalu publik. Menu *Riwayat & Likes: publik/privat* dan layar "Aktivitas bersifat privat" sudah hilang (server: endpoint `history-visibility` dihapus, tab `all`/`likes` tidak lagi memberi `403`).
 - **Komentar**: tiap komentar berupa kartu; username besar (17sp, tebal), di bawahnya badge role dan level (Lv + bintang putih), lalu isi komentar putih, aksi suka/balas/opsi berikon putih. Bagian komentar di akhir chapter memakai gaya yang sama.
 - OWNER: di profil pengguna lain muncul tombol **Kelola** (role, XP, hapus foto, blokir).
+
+## Panel Admin (OWNER)
+- Profil > ikon pengaturan > **Panel admin** (hanya muncul untuk OWNER). Empat tab: Ringkasan (statistik), Pengguna (cari, filter role/diblokir, kelola role/XP/foto/blokir), Komentar (cari, filter dilaporkan, hapus), Laporan.
+- Ringkasan, daftar pengguna, dan daftar komentar butuh endpoint baru di server, lihat `ADMIN_API.md`.

@@ -5,6 +5,9 @@ import com.komikta.core.network.ApiConfig
 import com.komikta.core.network.HttpException
 import com.komikta.data.local.SessionStore
 import com.komikta.data.remote.dto.ActivityPageDto
+import com.komikta.data.remote.dto.AdminCommentPageDto
+import com.komikta.data.remote.dto.AdminStatsDto
+import com.komikta.data.remote.dto.AdminUserPageDto
 import com.komikta.data.remote.dto.ApiResponse
 import com.komikta.data.remote.dto.LikeStateDto
 import com.komikta.data.remote.dto.ProfileResponseDto
@@ -72,6 +75,23 @@ class CommunityApi @Inject constructor(
     suspend fun deleteAccount(): ApiResponse<OkDto> = call("DELETE", listOf("me"))
 
     // ---- Panel OWNER ----
+    suspend fun adminStats(): ApiResponse<AdminStatsDto> = call("GET", listOf("admin", "stats"))
+
+    suspend fun adminUsers(q: String, role: String, banned: Boolean, page: Int): ApiResponse<AdminUserPageDto> =
+        call("GET", listOf("admin", "users"), query = buildMap {
+            put("page", page.toString())
+            if (q.isNotEmpty()) put("q", q)
+            if (role.isNotEmpty()) put("role", role)
+            if (banned) put("banned", "1")
+        })
+
+    suspend fun adminComments(q: String, reported: Boolean, page: Int): ApiResponse<AdminCommentPageDto> =
+        call("GET", listOf("admin", "comments"), query = buildMap {
+            put("page", page.toString())
+            if (q.isNotEmpty()) put("q", q)
+            if (reported) put("reported", "1")
+        })
+
     suspend fun adminUser(id: String): ApiResponse<MeResponse> = call("GET", listOf("admin", "users", id))
 
     suspend fun adminGrantXp(id: String, amount: Int): ApiResponse<MeResponse> =

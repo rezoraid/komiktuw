@@ -47,20 +47,25 @@ private val ReasonLabel = mapOf("spam" to "Spam", "abuse" to "Kasar / pelecehan"
 
 @Composable
 fun ModerationScreen(onBack: () -> Unit, viewModel: ModerationViewModel = hiltViewModel()) {
-    val ui by viewModel.ui.collectAsStateWithLifecycle()
+    Column(Modifier.fillMaxSize().background(Ui.Bg).statusBarsPadding().navigationBarsPadding()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(AppIcons.chevronLeft, "Back", tint = Color.White, modifier = Modifier.size(24.dp)) }
+            Text("Moderasi", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+        }
+        ReportsPane(viewModel, Modifier.weight(1f))
+    }
+}
 
+@Composable
+internal fun ReportsPane(viewModel: ModerationViewModel, modifier: Modifier = Modifier) {
+    val ui by viewModel.ui.collectAsStateWithLifecycle()
     LaunchedEffect(ui.notice) {
         if (ui.notice != null) {
             delay(2600)
             viewModel.clearNotice()
         }
     }
-
-    Column(Modifier.fillMaxSize().background(Ui.Bg).statusBarsPadding().navigationBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(AppIcons.chevronLeft, "Back", tint = Color.White, modifier = Modifier.size(24.dp)) }
-            Text("Moderasi", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-        }
+    Column(modifier.fillMaxWidth()) {
         ui.notice?.let { Text(it, fontSize = 13.sp, color = Soft, modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)) }
         when {
             ui.loading && ui.items.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { Text("Memuat…", color = Ui.Text2) }

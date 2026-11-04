@@ -7,6 +7,9 @@ import com.komikta.core.network.HttpException
 import com.komikta.data.local.SessionStore
 import com.komikta.data.remote.api.CommunityApi
 import com.komikta.data.remote.dto.ActivityPageDto
+import com.komikta.data.remote.dto.AdminCommentPageDto
+import com.komikta.data.remote.dto.AdminStatsDto
+import com.komikta.data.remote.dto.AdminUserPageDto
 import com.komikta.data.remote.dto.ApiResponse
 import com.komikta.data.remote.dto.CommentDto
 import com.komikta.data.remote.dto.CommentPageDto
@@ -185,6 +188,12 @@ class CommunityRepository @Inject constructor(
     }
 
     // ---- Panel OWNER ----
+    suspend fun adminStats(): Result<AdminStatsDto> = call { api.adminStats() }
+
+    suspend fun adminUsers(q: String, role: String, banned: Boolean, page: Int): Result<AdminUserPageDto> = call { api.adminUsers(q, role, banned, page) }
+
+    suspend fun adminComments(q: String, reported: Boolean, page: Int): Result<AdminCommentPageDto> = call { api.adminComments(q, reported, page) }
+
     suspend fun adminUser(id: String): Result<CommunityUserDto> = call { api.adminUser(id) }.map { it.user }
 
     suspend fun adminGrantXp(id: String, amount: Int): Result<CommunityUserDto> = call { api.adminGrantXp(id, amount) }.map { it.user }
