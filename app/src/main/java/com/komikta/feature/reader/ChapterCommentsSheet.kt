@@ -56,6 +56,7 @@ import com.komikta.feature.community.CommentDialogs
 import com.komikta.feature.community.CommentsBody
 import com.komikta.feature.community.CommentsViewModel
 import com.komikta.ui.components.AppIcons
+import com.komikta.ui.components.RoleAvatar
 import com.komikta.ui.theme.Mono
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -205,8 +206,9 @@ fun ChapterCommentsSheet(
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.Bottom,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        RoleAvatar(me?.picture, me?.let { it.name.ifBlank { it.username } }.orEmpty(), 34.dp, me?.role ?: "USER")
                         Box(
                             Modifier
                                 .weight(1f)
@@ -229,8 +231,12 @@ fun ChapterCommentsSheet(
                             )
                         }
                         val canSend = draft.isNotBlank() && !ui.sending
-                        IconButton(onClick = viewModel::submit, enabled = canSend) {
-                            Icon(AppIcons.send, "Kirim", tint = if (canSend) Mono.Icon else Mono.TextFaint, modifier = Modifier.size(26.dp))
+                        IconButton(
+                            onClick = viewModel::submit,
+                            enabled = canSend,
+                            modifier = Modifier.size(44.dp).clip(CircleShape).background(if (canSend) Color.White else Mono.CardHigh)
+                        ) {
+                            Icon(AppIcons.send, "Kirim", tint = if (canSend) Color.Black else Mono.TextFaint, modifier = Modifier.size(22.dp))
                         }
                     }
                     if (draft.length > 800) {

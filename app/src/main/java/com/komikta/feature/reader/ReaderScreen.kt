@@ -1,6 +1,12 @@
 package com.komikta.feature.reader
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.ui.draw.shadow
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
@@ -406,45 +412,71 @@ fun ReaderScreen(
             }
         }
 
-        if (controlsVisible) {
-            Column(
+        // Navigasi mengambang: kapsul bulat dengan jarak dari tepi layar, muncul/hilang dengan animasi halus.
+        val barShape = RoundedCornerShape(26.dp)
+        val barColor = Color(0xF21A1A1C)
+        val barBorder = Color.White.copy(alpha = 0.10f)
+
+        AnimatedVisibility(
+            visible = controlsVisible,
+            modifier = Modifier.align(Alignment.TopCenter),
+            enter = fadeIn(tween(180)) + slideInVertically(tween(220)) { -it / 2 },
+            exit = fadeOut(tween(140)) + slideOutVertically(tween(180)) { -it / 2 }
+        ) {
+            Row(
                 Modifier
-                    .align(Alignment.TopCenter)
                     .fillMaxWidth()
-                    .background(Ui.Bar)
                     .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Top))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .shadow(12.dp, barShape, clip = false)
+                    .clip(barShape)
+                    .background(barColor)
+                    .border(1.dp, barBorder, barShape)
+                    .pointerInput(Unit) { detectTapGestures { } }
+                    .height(52.dp)
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    Modifier.fillMaxWidth().height(50.dp).padding(horizontal = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
-                    }
-                    Text(
-                        text = uiState.content?.title ?: "Reader",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
-                    )
-                    IconButton(onClick = { showChapters = true }) {
-                        Icon(Icons.Default.Menu, "Daftar chapter", tint = Color.White)
-                    }
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                }
+                Text(
+                    text = uiState.content?.title ?: "Reader",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(horizontal = 6.dp)
+                )
+                IconButton(onClick = { showChapters = true }) {
+                    Icon(Icons.Default.Menu, "Daftar chapter", tint = Color.White)
                 }
             }
+        }
 
+        AnimatedVisibility(
+            visible = controlsVisible,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = fadeIn(tween(180)) + slideInVertically(tween(220)) { it / 2 },
+            exit = fadeOut(tween(140)) + slideOutVertically(tween(180)) { it / 2 }
+        ) {
+            val hasPrev = !uiState.content?.prevChapterSlug.isNullOrBlank()
+            val hasNext = !uiState.content?.nextChapterSlug.isNullOrBlank()
             Column(
                 Modifier
-                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .background(Ui.Bar)
                     .navigationBarsPadding()
+                    .padding(horizontal = 12.dp, vertical = 12.dp)
+                    .shadow(12.dp, barShape, clip = false)
+                    .clip(barShape)
+                    .background(barColor)
+                    .border(1.dp, barBorder, barShape)
+                    .pointerInput(Unit) { detectTapGestures { } }
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
             ) {
                 if (totalPages > 1) {
                     Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("$currentPage", color = Color.White, style = MaterialTheme.typography.labelMedium)
@@ -457,8 +489,8 @@ fun ReaderScreen(
                             },
                             valueRange = 1f..totalPages.toFloat(),
                             colors = SliderDefaults.colors(
-                                thumbColor = Ui.Accent,
-                                activeTrackColor = Ui.Accent,
+                                thumbColor = Color.White,
+                                activeTrackColor = Color.White,
                                 inactiveTrackColor = Color.White.copy(alpha = 0.2f)
                             ),
                             modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
@@ -471,8 +503,6 @@ fun ReaderScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val hasPrev = !uiState.content?.prevChapterSlug.isNullOrBlank()
-                    val hasNext = !uiState.content?.nextChapterSlug.isNullOrBlank()
                     IconButton(onClick = { viewModel.goPrev() }, enabled = hasPrev) {
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Prev", tint = if (hasPrev) Color.White else Ui.Text3)
                     }
@@ -481,9 +511,9 @@ fun ReaderScreen(
                     }
                     IconButton(
                         onClick = { autoScroll = !autoScroll },
-                        modifier = Modifier.clip(CircleShape).background(if (autoScroll) Ui.AccentSoft else Color.Transparent)
+                        modifier = Modifier.size(44.dp).clip(CircleShape).background(if (autoScroll) Color.White else Color.White.copy(alpha = 0.10f))
                     ) {
-                        Icon(Icons.Default.PlayArrow, if (autoScroll) "Pause" else "Auto scroll", tint = if (autoScroll) Ui.Accent else Color.White)
+                        Icon(Icons.Default.PlayArrow, if (autoScroll) "Pause" else "Auto scroll", tint = if (autoScroll) Ui.OnAccent else Color.White)
                     }
                     IconButton(
                         onClick = { currentSlug?.let { commentsFor = it } },
@@ -529,7 +559,7 @@ fun ReaderScreen(
             ModalBottomSheet(
                 onDismissRequest = { showSettings = false },
                 sheetState = rememberModalBottomSheetState(),
-                containerColor = Color(0xFF151D20)
+                containerColor = Color(0xFF1A1A1C)
             ) {
                 Column(Modifier.padding(20.dp)) {
                     Text(
@@ -749,12 +779,12 @@ private fun ScrollModeOption(
     Column(
         modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(if (selected) Ui.Accent else Color(0xFF1C262A))
+            .background(if (selected) Ui.Accent else Color(0xFF2A2A2E))
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Text(title, color = if (selected) Ui.OnAccent else Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-        Text(subtitle, color = if (selected) Color(0xFF2B3A40) else Color(0xFF999999), style = MaterialTheme.typography.labelSmall)
+        Text(subtitle, color = if (selected) Color(0xFF555555) else Color(0xFF999999), style = MaterialTheme.typography.labelSmall)
     }
 }
 

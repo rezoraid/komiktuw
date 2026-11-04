@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -46,11 +45,12 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.komikta.ui.theme.Mono
+import com.komikta.ui.theme.Poppins
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
-/** Palet role: Owner merah api, Moderator hijau zamrud (penjaga), Premium biru. */
+/** Palet role: Owner merah api, Moderator hijau zamrud (penjaga), Premium putih perak. */
 internal object RoleFx {
     val OwnerCore = Color(0xFFE11D2E)
     val OwnerHot = Color(0xFFFF4B3E)
@@ -60,8 +60,8 @@ internal object RoleFx {
     val ModCore = Color(0xFF1FB878)
     val ModLight = Color(0xFF7CF2B8)
     val ModDeep = Color(0xFF0E7A52)
-    val PremCore = Color(0xFF2F8CFF)
-    val PremLight = Color(0xFF9AD2FF)
+    val PremCore = Color(0xFFE6E6EA)
+    val PremLight = Color.White
 
     fun light(role: String): Color = when (role) {
         "OWNER" -> OwnerEmber
@@ -118,7 +118,7 @@ private fun Modifier.bleed(x: Dp, y: Dp): Modifier = layout { m, c ->
     layout((p.width - 2 * dx).coerceAtLeast(0), (p.height - 2 * dy).coerceAtLeast(0)) { p.place(-dx, -dy) }
 }
 
-/** Kapsul role: Premium berkilau biru, Moderator berdenyut hijau, Owner merah menyala. Cahaya lembut tanpa tepi keras. */
+/** Kapsul role: Premium berkilau putih, Moderator berdenyut hijau, Owner merah menyala. Cahaya lembut tanpa tepi keras. */
 @Composable
 internal fun FxRoleBadge(role: String, tint: Color, modifier: Modifier = Modifier, large: Boolean = false) {
     UseRoleClock()
@@ -166,7 +166,7 @@ internal fun FxRoleBadge(role: String, tint: Color, modifier: Modifier = Modifie
 }
 
 /**
- * Foto profil dengan bingkai khusus role. Premium: cincin biru berkilau. Moderator: cincin hijau berdenyut.
+ * Foto profil dengan bingkai khusus role. Premium: cincin putih berkilau. Moderator: cincin hijau berdenyut.
  * Owner: cincin api merah yang berputar, cahaya berdenyut, dan percikan bara untuk ukuran besar (halaman profil).
  */
 @Composable
@@ -261,6 +261,7 @@ fun RoleName(
     Text(
         text,
         style = TextStyle(
+            fontFamily = Poppins,
             color = Color.White,
             fontSize = fontSize,
             fontWeight = fontWeight,
