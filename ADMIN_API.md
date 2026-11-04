@@ -25,3 +25,7 @@ Semua di bawah `/api/community/admin/*`, wajib `Authorization: Bearer <token>` d
 ```json
 { "items": [ { "id": "", "body": "", "deleted": false, "targetKey": "", "createdAt": 0, "likeCount": 0, "replyCount": 0, "reportCount": 0, "user": { "id": "", "username": "", "role": "USER" } } ], "hasMore": false, "page": 1, "total": 0 }
 ```
+
+## Verified (centang)
+- Semua objek user dari API punya `verified: Boolean`. OWNER selalu `true`.
+- `PUT /api/community/admin/users/:id/verified` body `{ "verified": true|false }` — hanya OWNER. Dipakai dialog "Kelola pengguna" (bagian Verified).

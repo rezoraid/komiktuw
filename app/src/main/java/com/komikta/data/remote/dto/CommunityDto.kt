@@ -9,6 +9,8 @@ data class CommunityUserDto(
     val name: String = "",
     val picture: String = "",
     val role: String = "USER",
+    /** Centang verified: OWNER otomatis, akun lain diberi OWNER lewat panel. */
+    val verified: Boolean = false,
     val level: Int = 1,
     val email: String? = null,
     val xp: Int = 0,

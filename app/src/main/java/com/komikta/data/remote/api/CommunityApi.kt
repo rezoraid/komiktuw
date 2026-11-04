@@ -103,6 +103,9 @@ class CommunityApi @Inject constructor(
     suspend fun adminSetRole(id: String, role: String): ApiResponse<MeResponse> =
         call("PUT", listOf("admin", "users", id, "role"), body = buildJsonObject { put("role", role) })
 
+    suspend fun adminSetVerified(id: String, verified: Boolean): ApiResponse<MeResponse> =
+        call("PUT", listOf("admin", "users", id, "verified"), body = buildJsonObject { put("verified", verified) })
+
     suspend fun adminSetBan(id: String, banned: Boolean): ApiResponse<OkDto> =
         call("PUT", listOf("admin", "users", id, "ban"), body = buildJsonObject { put("banned", banned) })
 

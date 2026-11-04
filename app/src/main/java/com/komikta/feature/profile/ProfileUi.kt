@@ -63,7 +63,7 @@ import com.komikta.ui.components.Avatar
 import com.komikta.ui.components.CoverImage
 import com.komikta.ui.components.agoId
 import com.komikta.ui.components.RoleAvatar
-import com.komikta.ui.components.RoleName
+import com.komikta.ui.components.NameWithBadge
 import com.komikta.ui.components.RoleAura
 import com.komikta.ui.components.FxRoleBadge
 import com.komikta.ui.components.roleName
@@ -241,10 +241,13 @@ private fun ProfileHeader(
                     if (busy) Bone(Modifier.size(AvatarSize), shimmer!!, CircleShape)
                 }
                 if (user == null) Bone(Modifier.padding(top = 18.dp).size(width = 150.dp, height = 22.dp), shimmer!!)
-                else RoleName(
-                    name, user.role, 22.sp, fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(top = 6.dp, start = 24.dp, end = 24.dp)
-                )
+                else {
+                    NameWithBadge(
+                        name, user.role, user.verified, 22.sp, fontWeight = FontWeight.Medium, badgeSize = 20.dp,
+                        modifier = Modifier.padding(top = 6.dp, start = 24.dp, end = 24.dp)
+                    )
+                    if (user.username.isNotBlank()) Text("@${user.username}", fontSize = 13.sp, color = P.Label, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 1.dp, start = 24.dp, end = 24.dp))
+                }
                 Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (user == null) {
                         Bone(Modifier.size(width = 190.dp, height = 34.dp), shimmer!!, CircleShape)

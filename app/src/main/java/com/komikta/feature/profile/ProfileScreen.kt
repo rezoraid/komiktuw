@@ -100,7 +100,7 @@ fun ProfileScreen(
     } else {
         // Identitas (nama, foto, peran, level) selalu dari sesi terbaru; angka statistik dari backend.
         val shown = remember(page, u) {
-            page.copy(stats = page.stats?.copy(name = u.name, username = u.username, picture = u.picture, role = u.role, level = u.level))
+            page.copy(stats = page.stats?.copy(name = u.name, username = u.username, picture = u.picture, role = u.role, verified = u.verified, level = u.level))
         }
         Box(Modifier.fillMaxSize().background(P.Content)) {
             ProfilePage(

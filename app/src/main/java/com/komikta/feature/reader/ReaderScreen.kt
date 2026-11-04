@@ -19,6 +19,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -43,6 +46,11 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.ui.draw.rotate
+import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -793,6 +801,15 @@ private fun chapterLabel(c: Chapter): String =
         ?: c.number?.takeIf { it.isNotBlank() }?.let { "Chapter $it" }
         ?: c.slug
 
+private const val ChapterGridColumns = 5
+private val ChapterCharcoal = Color(0xFF2A2B2F)
+private val ChapterBlue = Color(0xFF2F7BFF)
+private val NumberRegex = Regex("""\d+(\.\d+)?""")
+
+/** Isi kotak grid: hanya nomor chapter ("55", "12.5"); kalau tak ada angka, pakai label aslinya. */
+private fun chapterGridLabel(c: Chapter): String =
+    NumberRegex.find(c.number ?: c.title ?: "")?.value ?: chapterLabel(c)
+
 private fun chapterNumber(c: Chapter): Double? =
     Regex("""\d+(\.\d+)?""").find(c.number ?: c.title ?: "")?.value?.toDoubleOrNull()
 
@@ -817,10 +834,12 @@ private fun ChapterListSheet(
         val q = query.trim()
         if (q.isEmpty()) sorted else sorted.filter { chapterLabel(it).contains(q, ignoreCase = true) }
     }
+    // Buka tepat di baris chapter yang sedang dibaca (satu baris di atasnya tetap kelihatan).
     val startIndex = remember(sorted, currentSlug) {
-        (sorted.indexOfFirst { it.slug == currentSlug } - 2).coerceAtLeast(0)
+        val i = sorted.indexOfFirst { it.slug == currentSlug }
+        if (i < 0) 0 else ((i / ChapterGridColumns) - 1).coerceAtLeast(0) * ChapterGridColumns
     }
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex)
+    val gridState = rememberLazyGridState(initialFirstVisibleItemIndex = startIndex)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -847,10 +866,13 @@ private fun ChapterListSheet(
                         color = Color.White,
                         modifier = Modifier.padding(start = 4.dp)
                     )
-                    TextButton(onClick = { oldestFirst = !oldestFirst }) {
-                        Icon(com.komikta.ui.components.AppIcons.chevronsDown, contentDescription = "Ubah urutan chapter", tint = Ui.Accent, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(if (oldestFirst) "Terlama" else "Terbaru", color = Ui.Accent, fontSize = 13.sp)
+                    IconButton(onClick = { oldestFirst = !oldestFirst }) {
+                        Icon(
+                            com.komikta.ui.components.AppIcons.chevronsDown,
+                            contentDescription = if (oldestFirst) "Urutan terlama, ketuk untuk terbaru" else "Urutan terbaru, ketuk untuk terlama",
+                            tint = Ui.Accent,
+                            modifier = Modifier.size(22.dp).rotate(if (oldestFirst) 180f else 0f)
+                        )
                     }
                 }
                 IconButton(
@@ -895,37 +917,38 @@ private fun ChapterListSheet(
                     Text("Chapter tidak ditemukan", color = Color(0xFF8E8E93))
                 }
             } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(ChapterGridColumns),
+                    state = gridState,
+                    modifier = Modifier.fillMaxSize().imePadding(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 28.dp)
                 ) {
-                    items(filtered, key = { it.slug }) { chapter ->
+                    gridItems(filtered, key = { it.slug }) { chapter ->
                         val isCurrent = chapter.slug == currentSlug
                         val isRead = chapter.slug in readSlugs
+                        val label = remember(chapter) { chapterGridLabel(chapter) }
                         Box(
                             Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(if (isCurrent) Color(0xFF2C2C2E) else Color.Transparent)
-                                .clickable { onSelect(chapter.slug) }
-                                .padding(horizontal = 14.dp, vertical = 16.dp)
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isCurrent) ChapterBlue else ChapterCharcoal)
+                                .clickable { onSelect(chapter.slug) },
+                            contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = chapterLabel(chapter),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
-                                color = when {
-                                    isCurrent -> Color.White
-                                    isRead -> Color(0xFF8E8E93)
-                                    else -> Color.White
-                                },
+                                text = label,
+                                fontSize = if (label.length > 4) 12.sp else 16.sp,
+                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isRead && !isCurrent) Color(0xFF8E8E93) else Color.White,
+                                textAlign = TextAlign.Center,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(horizontal = 2.dp)
                             )
                         }
                     }
-                    item { Spacer(Modifier.height(24.dp)) }
                 }
             }
         }

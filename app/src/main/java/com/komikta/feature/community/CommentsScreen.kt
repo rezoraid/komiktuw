@@ -64,7 +64,7 @@ import com.komikta.ui.components.Avatar
 import com.komikta.ui.components.Chip
 import com.komikta.ui.components.RoleAvatar
 import com.komikta.ui.components.RoleBadge
-import com.komikta.ui.components.RoleName
+import com.komikta.ui.components.NameWithBadge
 import com.komikta.ui.components.SkeletonBlock
 import com.komikta.ui.components.relativeTime
 import com.komikta.ui.theme.Mono
@@ -273,7 +273,7 @@ internal fun CommentRow(
 ) {
     val meId = me?.id
     // Komentar milik sendiri: foto, nama, role, dan level selalu dari sesi terbaru, bukan dari daftar lama (cache).
-    val author = if (me != null && c.user.id == me.id) c.user.copy(name = me.name, username = me.username, picture = me.picture, role = me.role, level = me.level) else c.user
+    val author = if (me != null && c.user.id == me.id) c.user.copy(name = me.name, username = me.username, picture = me.picture, role = me.role, verified = me.verified, level = me.level) else c.user
     val shownName = author.name.ifBlank { author.username }
     val avatar: Dp = if (isReply) 28.dp else 34.dp
     var menu by remember { mutableStateOf(false) }
@@ -290,8 +290,8 @@ internal fun CommentRow(
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                RoleName(
-                    shownName, author.role, 14.sp,
+                NameWithBadge(
+                    shownName, author.role, author.verified, 14.sp, badgeSize = 14.dp,
                     modifier = Modifier.weight(1f, fill = false).clickable(onClick = openProfile)
                 )
                 RoleBadge(author.role)

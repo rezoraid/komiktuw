@@ -45,6 +45,7 @@ import com.komikta.core.common.Result
 import com.komikta.data.remote.dto.CommunityUserDto
 import com.komikta.data.repository.CommunityRepository
 import com.komikta.ui.components.agoId
+import com.komikta.ui.components.VerifiedBadge
 import com.komikta.ui.theme.Ui
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -100,6 +101,7 @@ class OwnerToolsViewModel @Inject constructor(private val repo: CommunityReposit
 
     fun grantXp(amount: Int) = act(if (amount > 0) "XP ditambahkan" else "XP dikurangi") { repo.adminGrantXp(id, amount) }
     fun setRole(role: String) = act("Role diubah") { repo.adminSetRole(id, role) }
+    fun setVerified(verified: Boolean) = act(if (verified) "Akun diverifikasi" else "Verifikasi dicabut") { repo.adminSetVerified(id, verified) }
     fun setBan(banned: Boolean) = act(if (banned) "Akun diblokir" else "Blokir dibuka") { repo.adminSetBan(id, banned) }
     fun resetMedia(avatar: Boolean) = act("Foto dihapus") { repo.adminResetMedia(id, avatar) }
 }
@@ -156,6 +158,19 @@ internal fun OwnerToolsDialog(
                             listOf("USER" to "Member", "PREMIUM" to "Premium", "MODERATOR" to "Moderator").forEach { (role, label) ->
                                 Pill(label, Modifier.weight(1f), selected = u.role == role, enabled = !ui.working && u.role != role) { vm.setRole(role) }
                             }
+                        }
+                    }
+
+                    Section("Verified")
+                    if (isOwner) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            VerifiedBadge(size = 18.dp)
+                            Text("OWNER selalu terverifikasi.", fontSize = 13.sp, color = Ui.Text3)
+                        }
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Pill("Verified", Modifier.weight(1f), selected = u.verified, enabled = !ui.working && !u.verified) { vm.setVerified(true) }
+                            Pill("Belum", Modifier.weight(1f), selected = !u.verified, enabled = !ui.working && u.verified) { vm.setVerified(false) }
                         }
                     }
 

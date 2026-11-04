@@ -2,6 +2,7 @@ package com.komikta.ui.components
 
 import com.komikta.BuildConfig
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -15,7 +16,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -51,6 +57,33 @@ fun RoleBadge(role: String, modifier: Modifier = Modifier) {
         roleName(role), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Mono.Text, maxLines = 1,
         modifier = modifier.clip(CircleShape).background(Mono.CardHigh).border(1.dp, Mono.Line, CircleShape).padding(horizontal = 10.dp, vertical = 3.dp)
     )
+}
+
+/** Centang verified: lencana bergerigi biru dengan tanda centang putih. */
+@Composable
+fun VerifiedBadge(modifier: Modifier = Modifier, size: Dp = 16.dp, color: Color = Color(0xFF1D9BF0)) {
+    Canvas(modifier.size(size)) {
+        val c = Offset(this.size.width / 2f, this.size.height / 2f)
+        val r = this.size.width / 2f
+        for (i in 0 until 8) {
+            val a = i * Math.PI / 4
+            drawCircle(color, r * 0.36f, Offset(c.x + (r * 0.64f * Math.cos(a)).toFloat(), c.y + (r * 0.64f * Math.sin(a)).toFloat()))
+        }
+        drawCircle(color, r * 0.78f, c)
+        val check = Path().apply {
+            moveTo(c.x - r * 0.38f, c.y + r * 0.02f); lineTo(c.x - r * 0.08f, c.y + r * 0.32f); lineTo(c.x + r * 0.4f, c.y - r * 0.26f)
+        }
+        drawPath(check, Color.White, style = Stroke(width = r * 0.2f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    }
+}
+
+/** Nama dengan efek role + centang verified (jika ada). Dipakai di komentar dan profil. */
+@Composable
+fun NameWithBadge(text: String, role: String, verified: Boolean, fontSize: androidx.compose.ui.unit.TextUnit, modifier: Modifier = Modifier, fontWeight: FontWeight = FontWeight.SemiBold, badgeSize: Dp = 16.dp) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        RoleName(text, role, fontSize, Modifier.weight(1f, fill = false), fontWeight)
+        if (verified) VerifiedBadge(Modifier.padding(start = 5.dp), badgeSize)
+    }
 }
 
 /** Kapsul level: bintang putih + angka, netral abu gelap. */

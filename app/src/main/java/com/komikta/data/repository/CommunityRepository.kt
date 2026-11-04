@@ -203,6 +203,8 @@ class CommunityRepository @Inject constructor(
 
     suspend fun adminSetRole(id: String, role: String): Result<CommunityUserDto> = call { api.adminSetRole(id, role) }.map { it.user }
 
+    suspend fun adminSetVerified(id: String, verified: Boolean): Result<CommunityUserDto> = call { api.adminSetVerified(id, verified) }.map { it.user }
+
     suspend fun adminSetBan(id: String, banned: Boolean): Result<Unit> = call { api.adminSetBan(id, banned) }.map { }
 
     fun queueReadingProgress(source: String, slug: String, chapter: String, comicTitle: String, chapterTitle: String, coverUrl: String) {

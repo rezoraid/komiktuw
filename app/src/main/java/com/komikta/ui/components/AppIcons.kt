@@ -193,8 +193,16 @@ object AppIcons {
     }
 
     val diamond: ImageVector by lazy {
+        // Berlian bersegi: mahkota 3 potongan + dasar 3 potongan, dipisah celah tipis supaya bentuknya jelas.
         navIcon("Diamond", true, stroked = false) {
-            moveTo(7f, 4f); lineTo(17f, 4f); lineTo(22f, 10f); lineTo(12f, 21f); lineTo(2f, 10f); close()
+            // mahkota (atas)
+            moveTo(2f, 9.4f); lineTo(6.6f, 4.2f); lineTo(8.3f, 9.4f); close()
+            moveTo(7.7f, 4.2f); lineTo(16.3f, 4.2f); lineTo(15f, 9.4f); lineTo(9f, 9.4f); close()
+            moveTo(17.4f, 4.2f); lineTo(22f, 9.4f); lineTo(15.7f, 9.4f); close()
+            // dasar (bawah)
+            moveTo(2.4f, 10.6f); lineTo(8.4f, 10.6f); lineTo(11.6f, 20.4f); close()
+            moveTo(9.1f, 10.6f); lineTo(14.9f, 10.6f); lineTo(12f, 19.6f); close()
+            moveTo(15.6f, 10.6f); lineTo(21.6f, 10.6f); lineTo(12.4f, 20.4f); close()
         }
     }
 

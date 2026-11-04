@@ -27,7 +27,6 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -37,12 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -63,11 +57,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Komentar untuk SATU chapter, tampil sebagai bottom sheet di atas reader.
- * Awalnya setengah layar; geser/scroll ke atas -> penuh layar. Reader di belakangnya
+ * Selalu penuh layar supaya keyboard tidak membuat tampilan setengah-setengah. Reader di belakangnya
  * tidak ikut berpindah halaman, jadi posisi baca tetap.
- *
- * Kotak tulis komentar ada di atas daftar (bukan di bawah) supaya selalu terlihat
- * saat sheet masih setengah layar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,7 +76,7 @@ fun ChapterCommentsSheet(
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val me by viewModel.user.collectAsStateWithLifecycle()
     val draft by viewModel.draft.collectAsStateWithLifecycle()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     val focus = remember { FocusRequester() }
     var deleteTarget by remember { mutableStateOf<CommentDto?>(null) }
@@ -114,21 +105,12 @@ fun ChapterCommentsSheet(
         contentColor = Color.White,
         dragHandle = { BottomSheetDefaults.DragHandle(color = Mono.TextFaint) }
     ) {
-        // fillMaxHeight: tinggi sheet = layar penuh, posisi awalnya otomatis setengah layar.
-        // Saat sheet setengah layar, bagian bawah kolom ini berada di luar layar. Ukur seberapa banyak yang
-        // keluar layar, lalu naikkan isi (termasuk kotak tulis) sebanyak itu supaya kotak tulis selalu terlihat.
-        val rootHeight = LocalView.current.rootView.height
-        var hiddenPx by remember { mutableIntStateOf(0) }
+        // Sheet selalu penuh layar (tanpa posisi setengah), jadi kotak tulis tidak pernah tertutup keyboard:
+        // isi cukup naik mengikuti tinggi keyboard lewat imePadding.
         Column(
             Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
-                .onGloballyPositioned { c ->
-                    val bottom = c.positionInWindow().y + c.size.height
-                    val hidden = (bottom - rootHeight).toInt().coerceAtLeast(0)
-                    if (kotlin.math.abs(hidden - hiddenPx) > 1) hiddenPx = hidden
-                }
-                .padding(bottom = with(LocalDensity.current) { hiddenPx.toDp() })
                 .navigationBarsPadding()
                 .imePadding()
         ) {
@@ -226,8 +208,6 @@ fun ChapterCommentsSheet(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .focusRequester(focus)
-                                    // Mulai mengetik -> sheet penuh supaya keyboard tidak menutupi daftar.
-                                    .onFocusChanged { if (it.isFocused) scope.launch { sheetState.expand() } }
                             )
                         }
                         val canSend = draft.isNotBlank() && !ui.sending
