@@ -62,7 +62,9 @@ import com.komikta.feature.auth.rememberGoogleSignIn
 import com.komikta.ui.components.AppIcons
 import com.komikta.ui.components.Avatar
 import com.komikta.ui.components.Chip
+import com.komikta.ui.components.RoleAvatar
 import com.komikta.ui.components.RoleBadge
+import com.komikta.ui.components.RoleName
 import com.komikta.ui.components.SkeletonBlock
 import com.komikta.ui.components.relativeTime
 import com.komikta.ui.theme.Mono
@@ -146,7 +148,7 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
                 )
             } else {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Avatar(me?.picture, me?.let { it.name.ifBlank { it.username } }.orEmpty(), 38.dp)
+                    RoleAvatar(me?.picture, me?.let { it.name.ifBlank { it.username } }.orEmpty(), 34.dp, me?.role ?: "USER")
                     Box(Modifier.weight(1f).clip(RoundedCornerShape(24.dp)).background(Mono.CardHigh).padding(horizontal = 18.dp, vertical = 12.dp)) {
                         if (draft.isEmpty()) Text("Tulis komentar…", fontSize = 15.sp, color = Mono.TextFaint)
                         BasicTextField(
@@ -284,13 +286,12 @@ internal fun CommentRow(
         Modifier.fillMaxWidth()
             .padding(start = if (isReply) 50.dp else 14.dp, end = 4.dp, top = 8.dp, bottom = 2.dp)
     ) {
-        Box(Modifier.clip(CircleShape).clickable(onClick = openProfile)) { Avatar(author.picture, shownName, avatar) }
+        Box(Modifier.clip(CircleShape).clickable(onClick = openProfile)) { RoleAvatar(author.picture, shownName, avatar, author.role) }
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    shownName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Mono.Text,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                RoleName(
+                    shownName, author.role, 14.sp,
                     modifier = Modifier.weight(1f, fill = false).clickable(onClick = openProfile)
                 )
                 RoleBadge(author.role)

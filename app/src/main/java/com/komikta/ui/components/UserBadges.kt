@@ -26,9 +26,9 @@ import com.komikta.ui.theme.Ui
 
 /** Warna role. null = role biasa (Member), tampil netral. */
 fun roleTint(role: String): Color? = when (role) {
-    "OWNER" -> Color(0xFF2398F7)
-    "MODERATOR" -> Color(0xFF2FBF9B)
-    "PREMIUM" -> Color(0xFFE0A526)
+    "OWNER" -> RoleFx.OwnerCore
+    "MODERATOR" -> RoleFx.ModCore
+    "PREMIUM" -> RoleFx.PremCore
     else -> null
 }
 
@@ -39,15 +39,17 @@ fun roleName(role: String): String = when (role) {
     else -> "Member"
 }
 
-/** Kapsul role untuk komentar: Owner biru, Moderator hijau, Premium emas, Member abu netral. */
+/** Kapsul role: Member abu netral; Premium/Moderator/Owner memakai efek khusus ([FxRoleBadge]). */
 @Composable
 fun RoleBadge(role: String, modifier: Modifier = Modifier) {
     val tint = roleTint(role)
-    val bg = tint?.copy(alpha = 0.22f) ?: Mono.CardHigh
-    val line = tint?.copy(alpha = 0.8f) ?: Mono.Line
+    if (tint != null) {
+        FxRoleBadge(role, tint, modifier)
+        return
+    }
     Text(
         roleName(role), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Mono.Text, maxLines = 1,
-        modifier = modifier.clip(CircleShape).background(bg).border(1.dp, line, CircleShape).padding(horizontal = 10.dp, vertical = 3.dp)
+        modifier = modifier.clip(CircleShape).background(Mono.CardHigh).border(1.dp, Mono.Line, CircleShape).padding(horizontal = 10.dp, vertical = 3.dp)
     )
 }
 

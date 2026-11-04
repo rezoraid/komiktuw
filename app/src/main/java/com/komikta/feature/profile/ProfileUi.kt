@@ -44,6 +44,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
@@ -60,6 +61,13 @@ import com.komikta.ui.components.AppIcons
 import com.komikta.ui.components.Avatar
 import com.komikta.ui.components.CoverImage
 import com.komikta.ui.components.agoId
+import com.komikta.ui.components.RoleAvatar
+import com.komikta.ui.components.RoleFx
+import com.komikta.ui.components.RoleName
+import com.komikta.ui.components.rememberPhase
+import com.komikta.ui.components.rememberPulse
+import com.komikta.ui.components.roleAura
+import com.komikta.ui.components.sweepShine
 import com.komikta.ui.components.roleName
 import com.komikta.ui.components.roleTint
 import com.komikta.ui.theme.Mono
@@ -219,7 +227,7 @@ private fun ProfileHeader(
 ) {
     val name = user?.let { it.name.ifBlank { it.username } }.orEmpty()
     Column(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth().background(P.Header), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(Modifier.fillMaxWidth().background(P.Header).roleAura(user?.role), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(
                 Modifier.fillMaxWidth().height(60.dp).padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -231,13 +239,13 @@ private fun ProfileHeader(
             val brush = profileShimmer()
             Box(contentAlignment = Alignment.Center) {
                 if (user == null) Bone(Modifier.size(AvatarSize), brush, CircleShape)
-                else Avatar(user.picture, name, AvatarSize, if (onAvatarClick != null) Modifier.clickable(onClick = onAvatarClick) else Modifier)
+                else RoleAvatar(user.picture, name, AvatarSize, user.role, if (onAvatarClick != null) Modifier.clip(CircleShape).clickable(onClick = onAvatarClick) else Modifier)
                 if (busy) Bone(Modifier.size(AvatarSize), brush, CircleShape)
             }
             if (user == null) Bone(Modifier.padding(top = 18.dp).size(width = 150.dp, height = 22.dp), brush)
-            else Text(
-                name, fontSize = 22.sp, color = P.Name, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 14.dp, start = 24.dp, end = 24.dp)
+            else RoleName(
+                name, user.role, 22.sp, fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(top = 6.dp, start = 24.dp, end = 24.dp)
             )
             Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (user == null) {
@@ -278,12 +286,31 @@ private fun Capsule(text: String, onClick: (() -> Unit)? = null) {
     ) { Text(text, fontSize = 14.sp, color = Color.White, maxLines = 1) }
 }
 
-/** Kapsul dua bagian: "Komikta" di latar hitam, lalu nama role dengan sambungan miring (Member abu, role khusus berwarna). */
+/** Kapsul dua bagian: "Komikta" di latar hitam, lalu nama role dengan sambungan miring. Role khusus berkilau dan bercahaya. */
 @Composable
 private fun RoleCapsule(role: String) {
-    val fill = roleTint(role) ?: P.Capsule
+    val tint = roleTint(role)
+    val fill = tint ?: P.Capsule
     val slant = with(LocalDensity.current) { 9.dp.toPx() }
-    Row(Modifier.height(34.dp).clip(CircleShape).background(Color.Black), verticalAlignment = Alignment.CenterVertically) {
+    val sweep = if (tint != null) rememberPhase(if (role == "OWNER") 1800 else 2800, "capsuleSweep") else null
+    val pulse = if (tint != null) rememberPulse(if (role == "OWNER") 900 else 1600, "capsulePulse") else null
+    val icon = when (role) { "OWNER" -> AppIcons.crown; "MODERATOR" -> AppIcons.shield; "PREMIUM" -> AppIcons.diamond; else -> null }
+    Row(
+        Modifier
+            .drawBehind {
+                if (tint != null && pulse != null) {
+                    val g = 0.5f + 0.5f * pulse.value
+                    drawRoundRect(
+                        brush = Brush.radialGradient(listOf(tint.copy(alpha = (if (role == "OWNER") 0.55f else 0.3f) * g), Color.Transparent), center = center, radius = size.width * 0.7f),
+                        topLeft = Offset(-8.dp.toPx(), -6.dp.toPx()),
+                        size = androidx.compose.ui.geometry.Size(size.width + 16.dp.toPx(), size.height + 12.dp.toPx()),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height)
+                    )
+                }
+            }
+            .height(34.dp).clip(CircleShape).background(Color.Black),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Text("Komikta", fontSize = 14.sp, color = Color.White, maxLines = 1, modifier = Modifier.padding(start = 14.dp, end = 18.dp))
         Box(
             Modifier.fillMaxHeight()
@@ -291,11 +318,20 @@ private fun RoleCapsule(role: String) {
                     val path = Path().apply {
                         moveTo(0f, 0f); lineTo(size.width, 0f); lineTo(size.width, size.height); lineTo(-slant, size.height); close()
                     }
-                    drawPath(path, fill)
+                    if (tint != null && sweep != null) {
+                        val brush = if (role == "OWNER") Brush.horizontalGradient(listOf(RoleFx.OwnerDeep, RoleFx.OwnerCore, RoleFx.OwnerHot)) else Brush.horizontalGradient(listOf(tint, RoleFx.light(role).copy(alpha = 0.85f)))
+                        drawPath(path, brush)
+                        clipPath(path) { sweepShine(sweep.value, 0.6f) }
+                    } else drawPath(path, fill)
                 }
                 .padding(start = 6.dp, end = 14.dp),
             contentAlignment = Alignment.Center
-        ) { Text(roleName(role), fontSize = 14.sp, color = Color.White, maxLines = 1) }
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (icon != null) Icon(icon, null, tint = if (role == "OWNER") RoleFx.OwnerGold else Color.White, modifier = Modifier.size(15.dp).padding(end = 0.dp))
+                Text(roleName(role), fontSize = 14.sp, fontWeight = if (tint != null) FontWeight.Bold else FontWeight.Normal, color = Color.White, maxLines = 1, modifier = Modifier.padding(start = if (icon != null) 5.dp else 0.dp))
+            }
+        }
     }
 }
 

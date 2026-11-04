@@ -176,6 +176,28 @@ object AppIcons {
         }
     }
 
+    val crown: ImageVector by lazy {
+        navIcon("Crown", true, stroked = false) {
+            moveTo(3f, 18f); lineTo(2.5f, 7f); lineTo(8f, 11.5f); lineTo(12f, 4.5f); lineTo(16f, 11.5f); lineTo(21.5f, 7f); lineTo(21f, 18f); close()
+            moveTo(4f, 19.5f); lineTo(20f, 19.5f); lineTo(20f, 21.5f); lineTo(4f, 21.5f); close()
+        }
+    }
+
+    val shield: ImageVector by lazy {
+        navIcon("Shield", true, stroked = false) {
+            moveTo(12f, 2.5f); lineTo(20f, 5.5f); lineTo(20f, 12f)
+            curveTo(20f, 16.8f, 16.5f, 20.2f, 12f, 21.8f)
+            curveTo(7.5f, 20.2f, 4f, 16.8f, 4f, 12f)
+            lineTo(4f, 5.5f); close()
+        }
+    }
+
+    val diamond: ImageVector by lazy {
+        navIcon("Diamond", true, stroked = false) {
+            moveTo(7f, 4f); lineTo(17f, 4f); lineTo(22f, 10f); lineTo(12f, 21f); lineTo(2f, 10f); close()
+        }
+    }
+
     val send: ImageVector by lazy {
         navIcon("Send", false, strokeWidth = 1.8f) {
             moveTo(4f, 11.6f); lineTo(20f, 4.4f); lineTo(14f, 20f); lineTo(11.4f, 13.2f); close()
