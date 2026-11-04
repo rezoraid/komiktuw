@@ -179,7 +179,7 @@ class ExploreViewModel @Inject constructor(
             val result = browseComics(browseParams(state, next))
             val batch = (result as? Result.Success)?.data.orEmpty()
             _uiState.update {
-                if (filtersChanged(state, it) || it.query.isNotBlank()) it.copy(isLoadingMore = false) else {
+                if (filtersChanged(state, it) || it.query.isNotBlank() || result is Result.Error) it.copy(isLoadingMore = false) else {
                     val merged = (it.comics + batch).distinctBy { c -> c.slug }
                     it.copy(
                         isLoadingMore = false,
