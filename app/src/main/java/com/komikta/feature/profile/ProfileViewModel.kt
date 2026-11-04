@@ -95,6 +95,18 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    fun changeDisplayName(name: String) {
+        val clean = name.trim().replace(Regex("\\s+"), " ")
+        if (clean == repo.user.value?.name) return
+        viewModelScope.launch {
+            when (val r = repo.updateDisplayName(clean)) {
+                is Result.Success -> _ui.value = ProfileUiState(message = "Nama tampilan diperbarui")
+                is Result.Error -> _ui.value = ProfileUiState(message = r.message)
+                else -> Unit
+            }
+        }
+    }
+
     private suspend fun preloadAvatar(url: String) {
         imageLoader.execute(ImageRequest.Builder(appContext).data(url).size(AVATAR_PX, AVATAR_PX).build())
     }

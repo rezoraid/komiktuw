@@ -64,6 +64,7 @@ fun ProfileScreen(
     val page by pageModel.state.collectAsStateWithLifecycle()
     val signIn = rememberGoogleSignIn(onToken = viewModel::signIn, onError = viewModel::message, onStart = { viewModel.busy(true) }, onDone = { viewModel.busy(false) })
     var editing by remember { mutableStateOf(false) }
+    var editingName by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var confirmLogout by remember { mutableStateOf(false) }
     var showXp by remember { mutableStateOf(false) }
@@ -115,6 +116,7 @@ fun ProfileScreen(
                         u,
                         onPhoto = { avatarPicker.launch("image/*") },
                         onEdit = { editing = true },
+                        onEditName = { editingName = true },
                         onModeration = onModeration,
                         onTerms = { uriHandler.openUri("${BuildConfig.BASE_URL}/terms") },
                         onPrivacy = { uriHandler.openUri("${BuildConfig.BASE_URL}/privacy") },
@@ -190,6 +192,34 @@ fun ProfileScreen(
         )
     }
 
+    if (editingName) {
+        var value by remember { mutableStateOf(user?.name?.ifBlank { user?.username }.orEmpty()) }
+        AlertDialog(
+            onDismissRequest = { editingName = false },
+            containerColor = Mono.Card,
+            title = { Text("Ganti nama tampilan", style = MaterialTheme.typography.titleMedium) },
+            text = {
+                Column {
+                    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Mono.CardHigh).padding(12.dp)) {
+                        BasicTextField(
+                            value = value,
+                            onValueChange = { value = it.replace("\n", " ").take(30) },
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyLarge,
+                            cursorBrush = SolidColor(Color.White),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    Text("2-30 karakter. Nama ini tampil di profil dan komentar, boleh sama dengan pengguna lain.", fontSize = 13.sp, color = Mono.TextFaint, modifier = Modifier.padding(top = 8.dp))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { val n = value; editingName = false; viewModel.changeDisplayName(n) }, enabled = value.trim().length >= 2) { Text("Simpan", color = Color.White) }
+            },
+            dismissButton = { TextButton(onClick = { editingName = false }) { Text("Batal", color = Mono.TextDim) } }
+        )
+    }
+
     if (editing) {
         var value by remember { mutableStateOf(user?.username.orEmpty()) }
         AlertDialog(
@@ -224,6 +254,7 @@ private fun SettingsMenu(
     u: CommunityUserDto,
     onPhoto: () -> Unit,
     onEdit: () -> Unit,
+    onEditName: () -> Unit,
     onModeration: () -> Unit,
     onTerms: () -> Unit,
     onPrivacy: () -> Unit,
@@ -239,6 +270,7 @@ private fun SettingsMenu(
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(Mono.Card)) {
             item("Ganti foto profil", Color.White, onPhoto)
+            item("Ganti nama tampilan", Color.White, onEditName)
             item("Ganti username", Color.White, onEdit)
             if (u.role == "MODERATOR" || u.role == "OWNER") item("Moderasi", Color.White, onModeration)
             item("Ketentuan", Color.White, onTerms)

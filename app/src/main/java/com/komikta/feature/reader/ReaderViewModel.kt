@@ -209,12 +209,14 @@ class ReaderViewModel @Inject constructor(
                 lastReadAt = System.currentTimeMillis()
             )
         )
-        if (community.user.value != null) {
+        // Kirim ke server hanya setelah detail komik dimuat; kalau tidak, judul chapter ikut tersimpan sebagai judul komik.
+        val title = comicTitle
+        if (community.user.value != null && title != null) {
             community.queueReadingProgress(
                 source = source,
                 slug = comicSlug,
                 chapter = content.chapterSlug,
-                comicTitle = comicTitle ?: content.title ?: comicSlug,
+                comicTitle = title,
                 chapterTitle = content.title ?: content.chapterSlug,
                 coverUrl = comicCover.orEmpty()
             )

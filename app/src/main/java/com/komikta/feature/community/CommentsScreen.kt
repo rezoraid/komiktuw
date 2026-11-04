@@ -43,7 +43,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.SpanStyle
@@ -63,7 +62,6 @@ import com.komikta.feature.auth.rememberGoogleSignIn
 import com.komikta.ui.components.AppIcons
 import com.komikta.ui.components.Avatar
 import com.komikta.ui.components.Chip
-import com.komikta.ui.components.LevelChip
 import com.komikta.ui.components.RoleBadge
 import com.komikta.ui.components.SkeletonBlock
 import com.komikta.ui.components.relativeTime
@@ -97,30 +95,24 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
             .navigationBarsPadding()
             .imePadding()
     ) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(AppIcons.chevronLeft, "Back", tint = Color.White, modifier = Modifier.size(24.dp)) }
-            Column(Modifier.weight(1f)) {
-                Text("Komentar", style = MaterialTheme.typography.titleLarge)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(AppIcons.chevronLeft, "Back", tint = Color.White, modifier = Modifier.size(26.dp)) }
+            Column(Modifier.weight(1f).padding(start = 4.dp)) {
+                Text("Komentar", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                 Text(
-                    if (viewModel.chapterLabel != null) "Chapter ${viewModel.chapterLabel}" else "Halaman komik",
-                    fontSize = 13.sp,
+                    listOfNotNull(viewModel.chapterLabel?.let { "Chapter $it" }, if (!ui.loading && ui.error == null) "${ui.total} komentar" else null)
+                        .joinToString(" · ").ifEmpty { "Halaman komik" },
+                    fontSize = 14.sp,
                     color = Mono.TextFaint,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-            }
-            if (!ui.loading && ui.error == null) Row(
-                Modifier.padding(end = 14.dp).clip(CircleShape).background(Mono.CardHigh).padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(AppIcons.comment, null, tint = Mono.Icon, modifier = Modifier.size(15.dp))
-                Text("${ui.total}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Mono.Text)
             }
         }
         Row(Modifier.padding(horizontal = 14.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Chip("Terbaru", selected = ui.sort == "newest", onClick = { viewModel.setSort("newest") })
             Chip("Teratas", selected = ui.sort == "top", onClick = { viewModel.setSort("top") })
         }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
 
         CommentsBody(ui, me, viewModel, { deleteTarget = it }, { reportTarget = it }, onUserClick)
 
@@ -157,8 +149,9 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             } else {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(Modifier.weight(1f).clip(RoundedCornerShape(22.dp)).background(Mono.CardHigh).padding(horizontal = 16.dp, vertical = 11.dp)) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Avatar(me?.picture, me?.let { it.name.ifBlank { it.username } }.orEmpty(), 38.dp)
+                    Box(Modifier.weight(1f).clip(RoundedCornerShape(24.dp)).background(Mono.CardHigh).padding(horizontal = 18.dp, vertical = 12.dp)) {
                         if (draft.isEmpty()) Text("Tulis komentar…", fontSize = 15.sp, color = Mono.TextFaint)
                         BasicTextField(
                             value = draft,
@@ -170,7 +163,7 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
                         )
                     }
                     val canSend = draft.isNotBlank() && !ui.sending
-                    IconButton(onClick = viewModel::submit, enabled = canSend) {
+                    if (draft.isNotBlank() || ui.sending) IconButton(onClick = viewModel::submit, enabled = canSend) {
                         Icon(AppIcons.send, "Kirim", tint = if (canSend) Mono.Icon else Mono.TextFaint, modifier = Modifier.size(26.dp))
                     }
                 }
@@ -205,29 +198,16 @@ internal fun ColumnScope.CommentsBody(
             else -> LazyColumn(Modifier.weight(1f)) {
                 ui.items.forEach { root ->
                     item(key = root.id, contentType = "comment") {
-                        CommentRow(root, false, me, viewModel, onDelete, onReport, onUserClick)
+                        CommentRow(root, false, me, viewModel, onDelete, onReport, onUserClick, repliesOpen = ui.replies[root.id]?.expanded == true)
                     }
                     val rs = ui.replies[root.id]
-                    if (root.replyCount > 0) {
-                        item(key = "toggle-${root.id}", contentType = "toggle") {
-                            val open = rs?.expanded == true
-                            Row(
-                                Modifier.padding(start = 56.dp, top = 2.dp, bottom = 6.dp).clip(CircleShape)
-                                    .clickable { viewModel.toggleReplies(root) }.padding(horizontal = 12.dp, vertical = 7.dp),
-                                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(AppIcons.chevronDown, null, tint = Mono.Icon, modifier = Modifier.size(16.dp).rotate(if (open) 180f else 0f))
-                                Text(if (open) "Sembunyikan balasan" else "Lihat ${root.replyCount} balasan", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Mono.Text)
-                            }
-                        }
-                    }
                     if (rs?.expanded == true) {
                         items(rs.items, key = { it.id }, contentType = { "reply" }) { reply ->
                             CommentRow(reply, true, me, viewModel, onDelete, onReport, onUserClick)
                         }
-                        if (rs.loading) item(key = "rl-${root.id}", contentType = "more") { Text("Memuat balasan…", fontSize = 13.sp, color = Mono.TextFaint, modifier = Modifier.padding(start = 62.dp, bottom = 8.dp)) }
+                        if (rs.loading) item(key = "rl-${root.id}", contentType = "more") { Text("Memuat balasan…", fontSize = 13.sp, color = Mono.TextFaint, modifier = Modifier.padding(start = 68.dp, bottom = 8.dp)) }
                         else if (rs.hasMore && rs.page > 0) item(key = "rm-${root.id}", contentType = "more") {
-                            Text("Balasan lainnya", fontSize = 13.sp, color = Mono.TextDim, modifier = Modifier.padding(start = 62.dp, bottom = 10.dp).clickable { viewModel.loadReplies(root.id) })
+                            Text("Balasan lainnya", fontSize = 13.sp, color = Mono.TextDim, modifier = Modifier.padding(start = 68.dp, bottom = 10.dp).clickable { viewModel.loadReplies(root.id) })
                         }
                     }
                 }
@@ -290,41 +270,52 @@ internal fun CommentRow(
     vm: CommentsViewModel,
     onDelete: (CommentDto) -> Unit,
     onReport: (CommentDto) -> Unit,
-    onUserClick: (String) -> Unit
+    onUserClick: (String) -> Unit,
+    repliesOpen: Boolean = false
 ) {
     val meId = me?.id
     // Komentar milik sendiri: foto, nama, role, dan level selalu dari sesi terbaru, bukan dari daftar lama (cache).
     val author = if (me != null && c.user.id == me.id) c.user.copy(name = me.name, username = me.username, picture = me.picture, role = me.role, level = me.level) else c.user
-    val avatar: Dp = if (isReply) 36.dp else 46.dp
+    val shownName = author.name.ifBlank { author.username }
+    val avatar: Dp = if (isReply) 32.dp else 40.dp
     var menu by remember { mutableStateOf(false) }
     val canReport = !c.deleted && c.user.id != meId
     val openProfile = { if (c.user.id.isNotBlank()) onUserClick(c.user.id) }
     val time = relativeTime(c.createdAt, System.currentTimeMillis()) + if (c.edited && !c.deleted) " · diedit" else ""
 
-    // Setiap komentar berupa kartu abu gelap; balasan menjorok ke kanan dengan foto lebih kecil.
+    // Datar tanpa kartu: foto di kiri; nama + role + waktu, isi, lalu suka / balas / jumlah balasan. Balasan menjorok.
     Row(
         Modifier.fillMaxWidth()
-            .padding(start = if (isReply) 50.dp else 12.dp, end = 12.dp, top = 4.dp, bottom = 4.dp)
-            .clip(RoundedCornerShape(14.dp)).background(Mono.Card).padding(12.dp)
+            .padding(start = if (isReply) 56.dp else 14.dp, end = 4.dp, top = 12.dp, bottom = 6.dp)
     ) {
-        Box(Modifier.clip(CircleShape).clickable(onClick = openProfile)) { Avatar(author.picture, author.name.ifBlank { author.username }, avatar) }
+        Box(Modifier.clip(CircleShape).clickable(onClick = openProfile)) { Avatar(author.picture, shownName, avatar) }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            // Baris 1: username besar + waktu. Baris 2: role dan level.
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    author.username, fontSize = if (isReply) 15.sp else 17.sp, fontWeight = FontWeight.Bold, color = Mono.Text,
+                    shownName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Mono.Text,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false).clickable(onClick = openProfile)
                 )
-                Text(time, fontSize = 12.sp, color = Mono.TextFaint, maxLines = 1, modifier = Modifier.padding(start = 8.dp))
-            }
-            Row(Modifier.padding(top = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 RoleBadge(author.role)
-                LevelChip(author.level)
+                Text("· $time", fontSize = 13.sp, color = Mono.TextFaint, maxLines = 1)
+                Spacer(Modifier.weight(1f))
+                if (!c.deleted && (c.canEdit || c.canDelete || canReport)) Box {
+                    Box(Modifier.size(36.dp).clip(CircleShape).clickable { menu = true }, contentAlignment = Alignment.Center) {
+                        Icon(AppIcons.moreVertical, "Opsi", tint = Mono.TextDim, modifier = Modifier.size(22.dp))
+                    }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, modifier = Modifier.background(Mono.Card)) {
+                        if (c.canEdit) DropdownMenuItem(text = { Text("Edit") }, onClick = { menu = false; vm.startEdit(c) })
+                        if (c.canDelete) DropdownMenuItem(text = { Text("Hapus") }, onClick = { menu = false; onDelete(c) })
+                        if (canReport) DropdownMenuItem(
+                            text = { Text("Laporkan") },
+                            onClick = { menu = false; if (meId == null) vm.notice("Masuk dulu untuk melaporkan") else onReport(c) }
+                        )
+                    }
+                }
             }
             if (c.deleted) {
-                Text("Komentar telah dihapus", fontSize = 14.sp, fontStyle = FontStyle.Italic, color = Mono.TextFaint, modifier = Modifier.padding(top = 8.dp))
+                Text("Komentar telah dihapus", fontSize = 15.sp, fontStyle = FontStyle.Italic, color = Mono.TextFaint, modifier = Modifier.padding(top = 6.dp, bottom = 6.dp))
             } else {
                 val body = remember(c.replyTo, c.body) {
                     buildAnnotatedString {
@@ -334,38 +325,33 @@ internal fun CommentRow(
                         append(c.body)
                     }
                 }
-                Text(body, fontSize = 15.sp, lineHeight = 22.sp, color = Mono.Text, modifier = Modifier.padding(top = 8.dp))
-                Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(body, fontSize = 16.sp, lineHeight = 23.sp, color = Mono.Text, modifier = Modifier.padding(top = 4.dp))
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (!c.deleted) {
                     Row(
-                        Modifier.clip(CircleShape).clickable { vm.toggleLike(c) }.padding(horizontal = 8.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        Modifier.clip(CircleShape).clickable { vm.toggleLike(c) }.padding(end = 18.dp, top = 6.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(AppIcons.heart(c.liked), "Suka", tint = Mono.Icon, modifier = Modifier.size(20.dp))
-                        if (c.likeCount > 0) Text("${c.likeCount}", fontSize = 13.sp, fontWeight = if (c.liked) FontWeight.Bold else FontWeight.Normal, color = Mono.Text)
+                        Icon(AppIcons.heart(c.liked), "Suka", tint = Mono.TextDim, modifier = Modifier.size(22.dp))
+                        Text("${c.likeCount}", fontSize = 15.sp, color = Mono.TextDim)
                     }
                     Row(
                         Modifier.clip(CircleShape)
                             .clickable { if (meId == null) vm.notice("Masuk dulu untuk membalas") else vm.startReply(c) }
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            .padding(end = 18.dp, top = 6.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(AppIcons.comment, "Balas", tint = Mono.Icon, modifier = Modifier.size(19.dp))
-                        Text("Balas", fontSize = 13.sp, color = Mono.Text)
+                        Icon(AppIcons.reply, "Balas", tint = Mono.TextDim, modifier = Modifier.size(22.dp))
+                        Text("Balas", fontSize = 15.sp, color = Mono.TextDim)
                     }
-                    Spacer(Modifier.weight(1f))
-                    if (c.canEdit || c.canDelete || canReport) Box {
-                        Box(Modifier.size(34.dp).clip(CircleShape).clickable { menu = true }, contentAlignment = Alignment.Center) {
-                            Icon(AppIcons.more, "Opsi", tint = Mono.Icon, modifier = Modifier.size(22.dp))
-                        }
-                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, modifier = Modifier.background(Mono.Card)) {
-                            if (c.canEdit) DropdownMenuItem(text = { Text("Edit") }, onClick = { menu = false; vm.startEdit(c) })
-                            if (c.canDelete) DropdownMenuItem(text = { Text("Hapus") }, onClick = { menu = false; onDelete(c) })
-                            if (canReport) DropdownMenuItem(
-                                text = { Text("Laporkan") },
-                                onClick = { menu = false; if (meId == null) vm.notice("Masuk dulu untuk melaporkan") else onReport(c) }
-                            )
-                        }
-                    }
+                }
+                if (!isReply && c.replyCount > 0) {
+                    Text(
+                        if (repliesOpen) "Sembunyikan" else "${c.replyCount} balasan",
+                        fontSize = 15.sp, color = Mono.TextDim,
+                        modifier = Modifier.clip(CircleShape).clickable { vm.toggleReplies(c) }.padding(vertical = 6.dp)
+                    )
                 }
             }
         }

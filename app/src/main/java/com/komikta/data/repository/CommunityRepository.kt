@@ -149,6 +149,14 @@ class CommunityRepository @Inject constructor(
             .also { if (it is Result.Error && before != null) session.replaceLocal(before) }
     }
 
+    suspend fun updateDisplayName(name: String): Result<CommunityUserDto> {
+        val before = session.user.value
+        if (before != null) session.replaceLocal(before.copy(name = name))
+        return call { api.updateDisplayName(name) }
+            .map { session.update(it.user); it.user }
+            .also { if (it is Result.Error && before != null) session.replaceLocal(before) }
+    }
+
     suspend fun updateAvatar(
         imageData: String,
         previewUrl: String? = null,

@@ -63,6 +63,9 @@ class CommunityApi @Inject constructor(
     suspend fun updateUsername(username: String): ApiResponse<MeResponse> =
         call("PATCH", listOf("me"), body = buildJsonObject { put("username", username) })
 
+    suspend fun updateDisplayName(name: String): ApiResponse<MeResponse> =
+        call("PATCH", listOf("me"), body = buildJsonObject { put("name", name) })
+
     suspend fun updateAvatar(imageData: String): ApiResponse<MeResponse> =
         call("PUT", listOf("me", "avatar"), body = buildJsonObject { put("image", imageData) })
 

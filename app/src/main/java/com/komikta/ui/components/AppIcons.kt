@@ -162,6 +162,20 @@ object AppIcons {
         }
     }
 
+    val moreVertical: ImageVector by lazy {
+        navIcon("MoreVertical", true, stroked = false) {
+            circle(12f, 5f, 1.7f); circle(12f, 12f, 1.7f); circle(12f, 19f, 1.7f)
+        }
+    }
+
+    val reply: ImageVector by lazy {
+        navIcon("Reply", false, strokeWidth = 1.8f) {
+            moveTo(9.5f, 6f); lineTo(4f, 11.5f); lineTo(9.5f, 17f)
+            moveTo(4f, 11.5f); lineTo(14f, 11.5f)
+            curveTo(18f, 11.5f, 20.5f, 14f, 20.5f, 18.5f)
+        }
+    }
+
     val send: ImageVector by lazy {
         navIcon("Send", false, strokeWidth = 1.8f) {
             moveTo(4f, 11.6f); lineTo(20f, 4.4f); lineTo(14f, 20f); lineTo(11.4f, 13.2f); close()

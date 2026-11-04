@@ -298,14 +298,6 @@ class CommentsViewModel @Inject constructor(
                     mapAll(tmp.id) { c }
                     if (c.parentId == null) confirmedIds.add(c.id)
                     persist()
-                    notice(
-                        when {
-                            r.data.xpGained > 0 -> "Terkirim · +${r.data.xpGained} XP"
-                            r.data.xpReason == "LOW_QUALITY" -> "Terkirim · komentar terlalu singkat, tidak dapat XP"
-                            r.data.xpReason == "DAILY_CAP" -> "Terkirim · batas XP harian tercapai"
-                            else -> "Terkirim"
-                        }
-                    )
                     if (c.parentId != null && (_ui.value.replies[c.parentId]?.page ?: 0) == 0) loadReplies(c.parentId)
                 }
                 is Result.Error -> {

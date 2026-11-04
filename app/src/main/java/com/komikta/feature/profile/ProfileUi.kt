@@ -111,7 +111,7 @@ private fun ActivitySkeleton(rows: Int) {
     }
 }
 
-private val TabLabels = listOf("All", "Comments", "Likes")
+private val TabLabels = listOf("History", "Comments", "Likes")
 
 /**
  * Halaman profil. Dipakai sama persis untuk profil sendiri dan profil orang lain; bedanya hanya
@@ -156,7 +156,7 @@ internal fun ProfilePage(
         stickyHeader(key = "tabs", contentType = "tabs") { ProfileTabs(state.tab, onTab) }
         item(key = "gap", contentType = "gap") { Spacer(Modifier.height(8.dp)) }
         items(tab.items, key = { it.listKey() }, contentType = { it.kind }) { item ->
-            ActivityRow(item, now, user?.picture, user?.let { it.name.ifBlank { it.username } }.orEmpty()) { onItemClick(item) }
+            ActivityRow(item, now) { onItemClick(item) }
         }
         item(key = "footer", contentType = "footer") {
             Box(Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 8.dp), contentAlignment = Alignment.Center) {
@@ -318,26 +318,20 @@ private fun ProfileTabs(selected: Int, onTab: (Int) -> Unit) {
 private val CoverW = 64.dp
 private val CoverH = 90.dp
 
-/** Baris aktivitas datar: sampul (dengan foto pemilik profil di pojok), judul, chapter • waktu, lalu detail. */
+/** Baris aktivitas datar: sampul, judul, chapter • waktu, lalu detail. Tanpa foto profil di sampul. */
 @Composable
-private fun ActivityRow(item: ActivityItemDto, now: Long, ownerPicture: String?, ownerName: String, onClick: () -> Unit) {
+private fun ActivityRow(item: ActivityItemDto, now: Long, onClick: () -> Unit) {
     val chapter = remember(item.chapter, item.chapterTitle) { chapterLabel(item) }
     val ago = remember(item.at, now) { agoId(item.at, now) }
     Column(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(CoverW + 6.dp, CoverH)) {
-                CoverImage(
-                    url = item.coverUrl.ifBlank { null }, contentDescription = null,
-                    modifier = Modifier.size(CoverW, CoverH).clip(RoundedCornerShape(6.dp)).background(P.Header),
-                    widthPx = 192, heightPx = 270, alignment = Alignment.TopCenter
-                )
-                Avatar(
-                    ownerPicture, ownerName, 34.dp,
-                    Modifier.align(Alignment.BottomEnd).border(2.dp, Color.White, CircleShape)
-                )
-            }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            CoverImage(
+                url = item.coverUrl.ifBlank { null }, contentDescription = null,
+                modifier = Modifier.size(CoverW, CoverH).clip(RoundedCornerShape(8.dp)).background(P.Header),
+                widthPx = 192, heightPx = 270, alignment = Alignment.TopCenter
+            )
             Column(Modifier.weight(1f).padding(start = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(item.comicTitle, fontSize = 16.sp, lineHeight = 21.sp, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(item.comicTitle, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 when (item.kind) {
                     "comment" -> {
                         Meta(chapter, ago + if (item.likeCount > 0) "  •  ${item.likeCount} suka" else "")
@@ -346,21 +340,15 @@ private fun ActivityRow(item: ActivityItemDto, now: Long, ownerPicture: String?,
                     "like" -> {
                         Meta(chapter, "disukai $ago")
                         Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(AppIcons.heart(true), null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Icon(AppIcons.heart(true), null, tint = Color.White, modifier = Modifier.size(16.dp))
                             Text(if (item.type == "chapter") "Chapter" else "Komik", fontSize = 13.sp, color = P.Sub, modifier = Modifier.padding(start = 6.dp))
                         }
                     }
-                    else -> {
-                        Meta(chapter, ago + if (item.chaptersRead > 0) "  •  ${item.chaptersRead} chapter dibaca" else "")
-                        Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                            PlayDot()
-                            Text("Lanjut baca", fontSize = 14.sp, color = P.Sub, modifier = Modifier.padding(start = 10.dp))
-                        }
-                    }
+                    else -> Meta(chapter, ago + if (item.chaptersRead > 0) "  •  ${item.chaptersRead} chapter dibaca" else "")
                 }
             }
         }
-        Box(Modifier.padding(start = 16.dp + CoverW + 20.dp, end = 16.dp).fillMaxWidth().height(1.dp).background(P.Shadow))
+        Box(Modifier.padding(start = 16.dp + CoverW + 14.dp, end = 16.dp).fillMaxWidth().height(1.dp).background(P.Shadow))
     }
 }
 
@@ -377,17 +365,6 @@ private fun Meta(chapter: String?, tail: String) {
         }
     }
     Text(text, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-}
-
-@Composable
-private fun PlayDot() {
-    Box(
-        Modifier.size(22.dp).clip(CircleShape).background(Color.White).drawBehind {
-            val w = size.width
-            val tri = Path().apply { moveTo(w * 0.40f, w * 0.30f); lineTo(w * 0.72f, w * 0.50f); lineTo(w * 0.40f, w * 0.70f); close() }
-            drawPath(tri, Color.Black)
-        }
-    )
 }
 
 private val NumberInSlug = Regex("""\d+(?:[.-]\d+)?""")
