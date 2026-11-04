@@ -35,6 +35,7 @@ fun PublicProfileScreen(
     userId: String,
     onBack: () -> Unit,
     onOpen: (source: String, slug: String, chapter: String?) -> Unit,
+    onComments: (source: String, slug: String, chapter: String?) -> Unit,
     viewModel: ProfilePageViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -51,7 +52,7 @@ fun PublicProfileScreen(
             onTab = viewModel::selectTab,
             onLoadMore = viewModel::loadMore,
             onRetry = viewModel::retry,
-            onItemClick = { onOpen(it.source, it.slug, it.chapter) },
+            onItemClick = { if (it.kind == "comment" && it.source.isNotBlank() && it.slug.isNotBlank()) onComments(it.source, it.slug, it.chapter) else onOpen(it.source, it.slug, it.chapter) },
             onAvatarClick = null,
             onLevelClick = null,
             topLeft = {

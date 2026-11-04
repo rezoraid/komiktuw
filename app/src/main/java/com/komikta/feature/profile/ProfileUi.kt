@@ -33,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -62,12 +63,9 @@ import com.komikta.ui.components.Avatar
 import com.komikta.ui.components.CoverImage
 import com.komikta.ui.components.agoId
 import com.komikta.ui.components.RoleAvatar
-import com.komikta.ui.components.RoleFx
 import com.komikta.ui.components.RoleName
-import com.komikta.ui.components.rememberPhase
-import com.komikta.ui.components.rememberPulse
-import com.komikta.ui.components.roleAura
-import com.komikta.ui.components.sweepShine
+import com.komikta.ui.components.RoleAura
+import com.komikta.ui.components.FxRoleBadge
 import com.komikta.ui.components.roleName
 import com.komikta.ui.components.roleTint
 import com.komikta.ui.theme.Mono
@@ -85,34 +83,32 @@ internal object P {
     val TabOff = Color(0xFFB8BAB9)
 }
 
-/** Kilau abu-hitam untuk placeholder: menggantikan tanda "—" dan spinner saat data dimuat. */
-@Composable
-private fun profileShimmer(): Brush {
-    val x by rememberInfiniteTransition(label = "profileShimmer").animateFloat(
-        initialValue = -500f, targetValue = 1300f,
-        animationSpec = infiniteRepeatable(tween(1200, easing = LinearEasing), RepeatMode.Restart),
-        label = "profileShimmerX"
-    )
-    return Brush.linearGradient(listOf(Color(0xFF2C2D31), Color(0xFF4A4B50), Color(0xFF2C2D31)), Offset(x, 0f), Offset(x + 500f, 220f))
-}
+private val ShimmerColors = listOf(Color(0xFF2C2D31), Color(0xFF4A4B50), Color(0xFF2C2D31))
 
 @Composable
-private fun Bone(modifier: Modifier, brush: Brush, shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(6.dp)) {
-    Box(modifier.clip(shape).background(brush))
+private fun shimmerX(): State<Float> = rememberInfiniteTransition(label = "profileShimmer").animateFloat(
+    initialValue = -500f, targetValue = 1300f,
+    animationSpec = infiniteRepeatable(tween(1200, easing = LinearEasing), RepeatMode.Restart),
+    label = "profileShimmerX"
+)
+
+@Composable
+private fun Bone(modifier: Modifier, x: State<Float>, shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(6.dp)) {
+    Box(modifier.clip(shape).drawBehind { drawRect(Brush.linearGradient(ShimmerColors, Offset(x.value, 0f), Offset(x.value + 500f, 220f))) })
 }
 
 /** Baris aktivitas palsu (sampul + dua baris teks) yang tampil selama daftar dimuat. */
 @Composable
 private fun ActivitySkeleton(rows: Int) {
-    val brush = profileShimmer()
+    val x = shimmerX()
     Column(Modifier.fillMaxWidth()) {
         repeat(rows) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Bone(Modifier.size(CoverW, CoverH), brush)
+                Bone(Modifier.size(CoverW, CoverH), x)
                 Column(Modifier.weight(1f).padding(start = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Bone(Modifier.fillMaxWidth(0.8f).height(16.dp), brush)
-                    Bone(Modifier.fillMaxWidth(0.5f).height(13.dp), brush)
-                    Bone(Modifier.fillMaxWidth(0.35f).height(13.dp), brush)
+                    Bone(Modifier.fillMaxWidth(0.8f).height(16.dp), x)
+                    Bone(Modifier.fillMaxWidth(0.5f).height(13.dp), x)
+                    Bone(Modifier.fillMaxWidth(0.35f).height(13.dp), x)
                 }
             }
         }
@@ -226,41 +222,44 @@ private fun ProfileHeader(
     topRight: @Composable () -> Unit
 ) {
     val name = user?.let { it.name.ifBlank { it.username } }.orEmpty()
+    val shimmer = if (user == null || busy) shimmerX() else null
     Column(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth().background(P.Header).roleAura(user?.role), horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(
-                Modifier.fillMaxWidth().height(60.dp).padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Box { topLeft() }
-                Box { topRight() }
-            }
-            val brush = profileShimmer()
-            Box(contentAlignment = Alignment.Center) {
-                if (user == null) Bone(Modifier.size(AvatarSize), brush, CircleShape)
-                else RoleAvatar(user.picture, name, AvatarSize, user.role, if (onAvatarClick != null) Modifier.clip(CircleShape).clickable(onClick = onAvatarClick) else Modifier)
-                if (busy) Bone(Modifier.size(AvatarSize), brush, CircleShape)
-            }
-            if (user == null) Bone(Modifier.padding(top = 18.dp).size(width = 150.dp, height = 22.dp), brush)
-            else RoleName(
-                name, user.role, 22.sp, fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(top = 6.dp, start = 24.dp, end = 24.dp)
-            )
-            Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (user == null) {
-                    Bone(Modifier.size(width = 190.dp, height = 34.dp), brush, CircleShape)
-                    Bone(Modifier.size(width = 70.dp, height = 34.dp), brush, CircleShape)
-                } else {
-                    RoleCapsule(user.role)
-                    Capsule("Lvl. ${user.level}", onLevelClick)
-                    if (user.publicNo > 0L) Capsule("#${user.publicNo}")
+        Box(Modifier.fillMaxWidth().background(P.Header)) {
+            RoleAura(user?.role, Modifier.matchParentSize())
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(
+                    Modifier.fillMaxWidth().height(60.dp).padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Box { topLeft() }
+                    Box { topRight() }
                 }
-            }
-            Row(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 20.dp, start = 8.dp, end = 8.dp)) {
-                Stat(stats?.chaptersRead?.takeIf { it >= 0 }?.toString(), "chapter\ndibaca", Modifier.weight(1f))
-                Stat(stats?.commentCount?.takeIf { it >= 0 }?.toString(), "jumlah\nkomentar", Modifier.weight(1f))
-                Stat(stats?.monthsJoined?.takeIf { it >= 0 }?.toString(), "bulan\nbergabung", Modifier.weight(1f))
+                Box(contentAlignment = Alignment.Center) {
+                    if (user == null) Bone(Modifier.size(AvatarSize), shimmer!!, CircleShape)
+                    else RoleAvatar(user.picture, name, AvatarSize, user.role, if (onAvatarClick != null) Modifier.clip(CircleShape).clickable(onClick = onAvatarClick) else Modifier)
+                    if (busy) Bone(Modifier.size(AvatarSize), shimmer!!, CircleShape)
+                }
+                if (user == null) Bone(Modifier.padding(top = 18.dp).size(width = 150.dp, height = 22.dp), shimmer!!)
+                else RoleName(
+                    name, user.role, 22.sp, fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(top = 6.dp, start = 24.dp, end = 24.dp)
+                )
+                Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (user == null) {
+                        Bone(Modifier.size(width = 190.dp, height = 34.dp), shimmer!!, CircleShape)
+                        Bone(Modifier.size(width = 70.dp, height = 34.dp), shimmer, CircleShape)
+                    } else {
+                        RoleCapsule(user.role)
+                        Capsule("Lvl. ${user.level}", onLevelClick)
+                        if (user.publicNo > 0L) Capsule("#${user.publicNo}")
+                    }
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 20.dp, start = 8.dp, end = 8.dp)) {
+                    Stat(stats?.chaptersRead?.takeIf { it >= 0 }?.toString(), "chapter\ndibaca", Modifier.weight(1f))
+                    Stat(stats?.commentCount?.takeIf { it >= 0 }?.toString(), "jumlah\nkomentar", Modifier.weight(1f))
+                    Stat(stats?.monthsJoined?.takeIf { it >= 0 }?.toString(), "bulan\nbergabung", Modifier.weight(1f))
+                }
             }
         }
         Box(Modifier.fillMaxWidth().height(1.5.dp).background(P.Shadow))
@@ -270,7 +269,7 @@ private fun ProfileHeader(
 @Composable
 private fun Stat(value: String?, label: String, modifier: Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        if (value == null) Bone(Modifier.size(width = 34.dp, height = 24.dp), profileShimmer())
+        if (value == null) Bone(Modifier.size(width = 34.dp, height = 24.dp), shimmerX())
         else Text(value, fontSize = 22.sp, color = P.Name, maxLines = 1)
         Text(label, fontSize = 13.sp, lineHeight = 16.sp, color = P.Label, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 3.dp))
     }
@@ -286,53 +285,11 @@ private fun Capsule(text: String, onClick: (() -> Unit)? = null) {
     ) { Text(text, fontSize = 14.sp, color = Color.White, maxLines = 1) }
 }
 
-/** Kapsul dua bagian: "Komikta" di latar hitam, lalu nama role dengan sambungan miring. Role khusus berkilau dan bercahaya. */
+/** Kapsul role: langsung nama role. Role khusus berkilau dan bercahaya, Member abu netral. */
 @Composable
 private fun RoleCapsule(role: String) {
     val tint = roleTint(role)
-    val fill = tint ?: P.Capsule
-    val slant = with(LocalDensity.current) { 9.dp.toPx() }
-    val sweep = if (tint != null) rememberPhase(if (role == "OWNER") 1800 else 2800, "capsuleSweep") else null
-    val pulse = if (tint != null) rememberPulse(if (role == "OWNER") 900 else 1600, "capsulePulse") else null
-    val icon = when (role) { "OWNER" -> AppIcons.crown; "MODERATOR" -> AppIcons.shield; "PREMIUM" -> AppIcons.diamond; else -> null }
-    Row(
-        Modifier
-            .drawBehind {
-                if (tint != null && pulse != null) {
-                    val g = 0.5f + 0.5f * pulse.value
-                    drawRoundRect(
-                        brush = Brush.radialGradient(listOf(tint.copy(alpha = (if (role == "OWNER") 0.55f else 0.3f) * g), Color.Transparent), center = center, radius = size.width * 0.7f),
-                        topLeft = Offset(-8.dp.toPx(), -6.dp.toPx()),
-                        size = androidx.compose.ui.geometry.Size(size.width + 16.dp.toPx(), size.height + 12.dp.toPx()),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height)
-                    )
-                }
-            }
-            .height(34.dp).clip(CircleShape).background(Color.Black),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text("Komikta", fontSize = 14.sp, color = Color.White, maxLines = 1, modifier = Modifier.padding(start = 14.dp, end = 18.dp))
-        Box(
-            Modifier.fillMaxHeight()
-                .drawBehind {
-                    val path = Path().apply {
-                        moveTo(0f, 0f); lineTo(size.width, 0f); lineTo(size.width, size.height); lineTo(-slant, size.height); close()
-                    }
-                    if (tint != null && sweep != null) {
-                        val brush = if (role == "OWNER") Brush.horizontalGradient(listOf(RoleFx.OwnerDeep, RoleFx.OwnerCore, RoleFx.OwnerHot)) else Brush.horizontalGradient(listOf(tint, RoleFx.light(role).copy(alpha = 0.85f)))
-                        drawPath(path, brush)
-                        clipPath(path) { sweepShine(sweep.value, 0.6f) }
-                    } else drawPath(path, fill)
-                }
-                .padding(start = 6.dp, end = 14.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (icon != null) Icon(icon, null, tint = if (role == "OWNER") RoleFx.OwnerGold else Color.White, modifier = Modifier.size(15.dp).padding(end = 0.dp))
-                Text(roleName(role), fontSize = 14.sp, fontWeight = if (tint != null) FontWeight.Bold else FontWeight.Normal, color = Color.White, maxLines = 1, modifier = Modifier.padding(start = if (icon != null) 5.dp else 0.dp))
-            }
-        }
-    }
+    if (tint == null) Capsule(roleName(role)) else FxRoleBadge(role, tint, large = true)
 }
 
 @Composable

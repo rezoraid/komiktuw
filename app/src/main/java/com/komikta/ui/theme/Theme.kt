@@ -1,6 +1,7 @@
 package com.komikta.ui.theme
 
 import com.komikta.R
+import com.komikta.ui.components.RoleClockDriver
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -76,5 +77,8 @@ object Ui {
 
 @Composable
 fun KomiktaTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = Scheme, typography = Type, content = content)
+    MaterialTheme(colorScheme = Scheme, typography = Type) {
+        RoleClockDriver()
+        content()
+    }
 }

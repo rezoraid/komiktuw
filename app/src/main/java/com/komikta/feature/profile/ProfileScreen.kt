@@ -57,6 +57,7 @@ fun ProfileScreen(
     onOpen: (source: String, slug: String, chapter: String?) -> Unit = { _, _, _ -> },
     onModeration: () -> Unit = {},
     onAdmin: () -> Unit = {},
+    onComments: (source: String, slug: String, chapter: String?) -> Unit = { _, _, _ -> },
     viewModel: ProfileViewModel = hiltViewModel(),
     pageModel: ProfilePageViewModel = hiltViewModel()
 ) {
@@ -109,7 +110,7 @@ fun ProfileScreen(
                 onTab = pageModel::selectTab,
                 onLoadMore = pageModel::loadMore,
                 onRetry = pageModel::retry,
-                onItemClick = { onOpen(it.source, it.slug, it.chapter) },
+                onItemClick = { if (it.kind == "comment" && it.source.isNotBlank() && it.slug.isNotBlank()) onComments(it.source, it.slug, it.chapter) else onOpen(it.source, it.slug, it.chapter) },
                 onAvatarClick = { avatarPicker.launch("image/*") },
                 onLevelClick = { showXp = true },
                 topLeft = {

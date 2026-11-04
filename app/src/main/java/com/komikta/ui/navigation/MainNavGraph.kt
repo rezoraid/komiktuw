@@ -107,7 +107,8 @@ fun MainNavGraph() {
                         if (chapter != null) navController.navigate("reader/$s/$slug/$chapter") else navController.navigate("detail/$s/$slug")
                     },
                     onModeration = { navController.navigate("moderation") },
-                    onAdmin = { navController.navigate("admin") }
+                    onAdmin = { navController.navigate("admin") },
+                    onComments = { s, slug, chapter -> navController.navigate(if (chapter != null) "comments/$s/$slug/$chapter" else "comments/$s/$slug") }
                 ) }
 
             composable("moderation") { ModerationScreen(onBack = { navController.popBackStack() }) }
@@ -123,7 +124,8 @@ fun MainNavGraph() {
                     onBack = { navController.popBackStack() },
                     onOpen = { source, slug, chapter ->
                         if (chapter != null) navController.navigate("reader/$source/$slug/$chapter") else navController.navigate("detail/$source/$slug")
-                    }
+                    },
+                    onComments = { source, slug, chapter -> navController.navigate(if (chapter != null) "comments/$source/$slug/$chapter" else "comments/$source/$slug") }
                 )
             }
 
