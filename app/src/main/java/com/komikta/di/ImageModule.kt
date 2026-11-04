@@ -27,8 +27,8 @@ object ImageModule {
     ): ImageLoader {
         val imageClient = okHttpClient.newBuilder()
             .dispatcher(Dispatcher().apply {
-                maxRequests = 24
-                maxRequestsPerHost = 8
+                maxRequests = 32
+                maxRequestsPerHost = 12
             })
             .connectTimeout(12, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
@@ -45,13 +45,13 @@ object ImageModule {
             .okHttpClient(imageClient)
             .memoryCache {
                 MemoryCache.Builder(context)
-                    .maxSizePercent(0.25)
+                    .maxSizePercent(0.35)
                     .build()
             }
             .diskCache {
                 DiskCache.Builder()
                     .directory(context.cacheDir.resolve("image_cache"))
-                    .maxSizeBytes(100L * 1024 * 1024)
+                    .maxSizeBytes(400L * 1024 * 1024)
                     .build()
             }
             .memoryCachePolicy(CachePolicy.ENABLED)

@@ -97,6 +97,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.aspectRatio
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.sync.Semaphore
 import com.komikta.domain.model.ChapterContent
 import com.komikta.feature.community.CommentsViewModel
 import com.komikta.ui.components.AppIcons
@@ -126,7 +129,9 @@ import kotlin.math.abs
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 
-private const val PRELOAD_AHEAD = 4
+private const val PRELOAD_MEMORY = 5
+private const val PRELOAD_DISK = 14
+private const val PRELOAD_PARALLEL = 4
 
 enum class ScrollMode { Smooth, Swipe }
 
@@ -243,17 +248,33 @@ fun ReaderScreen(
             .collect { viewModel.setCurrent(it) }
     }
 
-    LaunchedEffect(readerItems) {
-        val requested = HashSet<String>()
+    // Muat gambar di depan sebelum terlihat: halaman terdekat didecode ke memori (langsung tampil, tanpa layar hitam),
+    // halaman yang lebih jauh diunduh ke disk. Semuanya paralel, dibatasi supaya tidak berebut dengan halaman yang sedang tampil.
+    LaunchedEffect(readerItems, screenWidthPx) {
+        val inMemory = HashSet<String>()
+        val onDisk = HashSet<String>()
+        val gate = Semaphore(PRELOAD_PARALLEL)
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
             .distinctUntilChanged()
             .collectLatest { last ->
                 if (last < 0) return@collectLatest
-                val end = minOf(readerItems.lastIndex, last + PRELOAD_AHEAD)
-                for (i in last + 1..end) {
-                    val page = readerItems[i] as? ReaderItem.Page ?: continue
-                    if (page.url in ratios || !requested.add(page.url)) continue
-                    fetchToDisk(context, page.url, ratios)
+                val end = minOf(readerItems.lastIndex, last + PRELOAD_DISK)
+                coroutineScope {
+                    for (i in last + 1..end) {
+                        val page = readerItems[i] as? ReaderItem.Page ?: continue
+                        val toMemory = i <= last + PRELOAD_MEMORY
+                        if (toMemory) { if (!inMemory.add(page.url)) continue } else { if (page.url in ratios || !onDisk.add(page.url)) continue }
+                        launch {
+                            gate.withPermit {
+                                if (toMemory) {
+                                    val r = context.imageLoader.execute(pageRequest(context, page.url, screenWidthPx)) as? SuccessResult
+                                    val d = r?.drawable
+                                    if (d != null && d.intrinsicWidth > 0 && d.intrinsicHeight > 0) ratios[page.url] = d.intrinsicWidth.toFloat() / d.intrinsicHeight
+                                    else inMemory.remove(page.url)
+                                } else fetchToDisk(context, page.url, ratios)
+                            }
+                        }
+                    }
                 }
             }
     }
@@ -277,10 +298,13 @@ fun ReaderScreen(
         }
     }
 
-    val nearEnd by remember(totalPages) { derivedStateOf { totalPages > 0 && currentPage >= totalPages - 8 } }
+    val nearEnd by remember(totalPages) { derivedStateOf { totalPages > 0 && currentPage >= totalPages - 14 } }
     LaunchedEffect(uiState.upcoming?.chapterSlug, autoNext, nearEnd) {
-        if (autoNext || !nearEnd) return@LaunchedEffect
-        uiState.upcoming?.imageUrls?.take(3)?.forEach { fetchToDisk(context, it, ratios) }
+        if (!nearEnd) return@LaunchedEffect
+        val gate = Semaphore(PRELOAD_PARALLEL)
+        coroutineScope {
+            uiState.upcoming?.imageUrls?.take(8)?.forEach { url -> launch { gate.withPermit { fetchToDisk(context, url, ratios) } } }
+        }
     }
 
     LaunchedEffect(autoScroll, scrollMode, scrollSpeed, commentsFor) {

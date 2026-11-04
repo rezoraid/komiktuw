@@ -27,6 +27,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -38,6 +39,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -109,10 +114,20 @@ fun ChapterCommentsSheet(
         dragHandle = { BottomSheetDefaults.DragHandle(color = Mono.TextFaint) }
     ) {
         // fillMaxHeight: tinggi sheet = layar penuh, posisi awalnya otomatis setengah layar.
+        // Saat sheet setengah layar, bagian bawah kolom ini berada di luar layar. Ukur seberapa banyak yang
+        // keluar layar, lalu naikkan isi (termasuk kotak tulis) sebanyak itu supaya kotak tulis selalu terlihat.
+        val rootHeight = LocalView.current.rootView.height
+        var hiddenPx by remember { mutableIntStateOf(0) }
         Column(
             Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
+                .onGloballyPositioned { c ->
+                    val bottom = c.positionInWindow().y + c.size.height
+                    val hidden = (bottom - rootHeight).toInt().coerceAtLeast(0)
+                    if (kotlin.math.abs(hidden - hiddenPx) > 1) hiddenPx = hidden
+                }
+                .padding(bottom = with(LocalDensity.current) { hiddenPx.toDp() })
                 .navigationBarsPadding()
                 .imePadding()
         ) {
