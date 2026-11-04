@@ -217,7 +217,9 @@ fun ReaderScreen(
                 }
             }
             controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            controller.hide(WindowInsetsCompat.Type.systemBars())
+            controller.isAppearanceLightStatusBars = false
+            controller.show(WindowInsetsCompat.Type.statusBars())
+            controller.hide(WindowInsetsCompat.Type.navigationBars())
         }
         onDispose {
             if (window != null && controller != null) {
@@ -424,6 +426,14 @@ fun ReaderScreen(
         val barShape = RoundedCornerShape(26.dp)
         val barColor = Color(0xF21A1A1C)
         val barBorder = Color.White.copy(alpha = 0.10f)
+
+        Box(
+            Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(with(density) { WindowInsets.statusBars.getTop(density).toDp() })
+                .background(Color.Black.copy(alpha = 0.55f))
+        )
 
         AnimatedVisibility(
             visible = controlsVisible,

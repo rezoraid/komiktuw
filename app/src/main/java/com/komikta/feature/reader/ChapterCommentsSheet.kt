@@ -25,7 +25,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,16 +38,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.DialogWindowProvider
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.komikta.data.remote.dto.CommentDto
 import com.komikta.feature.auth.rememberGoogleSignIn
@@ -105,16 +99,6 @@ fun ChapterCommentsSheet(
         contentColor = Color.White,
         dragHandle = { BottomSheetDefaults.DragHandle(color = Mono.TextFaint) }
     ) {
-        val view = LocalView.current
-        DisposableEffect(view) {
-            val window = ((view as? DialogWindowProvider) ?: (view.parent as? DialogWindowProvider))?.window
-            window?.let {
-                val controller = WindowCompat.getInsetsController(it, view)
-                controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                controller.hide(WindowInsetsCompat.Type.systemBars())
-            }
-            onDispose {}
-        }
         Column(
             Modifier
                 .fillMaxWidth()
