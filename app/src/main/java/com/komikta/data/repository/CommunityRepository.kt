@@ -79,7 +79,7 @@ class CommunityRepository @Inject constructor(
             call { api.comments(source, slug, chapter, sort, 1) }
         }
 
-    fun prefetchComments(source: String, slug: String, chapter: String?, sort: String = "newest") {
+    fun prefetchComments(source: String, slug: String, chapter: String?, sort: String = "top") {
         background.launch {
             cache.load(commentKey(source, slug, chapter, sort), CommentPageDto.serializer(), TTL_COMMENTS) {
                 call { api.comments(source, slug, chapter, sort, 1) }

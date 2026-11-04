@@ -51,7 +51,6 @@ import com.komikta.feature.community.CommentDialogs
 import com.komikta.feature.community.CommentsBody
 import com.komikta.feature.community.CommentsViewModel
 import com.komikta.ui.components.AppIcons
-import com.komikta.ui.components.Chip
 import com.komikta.ui.theme.Mono
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -144,14 +143,15 @@ fun ChapterCommentsSheet(
                 }
             }
 
-            // Urutan
-            Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Chip("Terbaru", selected = ui.sort == "newest", onClick = { viewModel.setSort("newest") })
-                Chip("Teratas", selected = ui.sort == "top", onClick = { viewModel.setSort("top") })
-            }
+            Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
 
+            // Daftar komentar (populer di atas)
+            CommentsBody(ui, me, viewModel, { deleteTarget = it }, { reportTarget = it }, onUserClick)
+
+            // Kotak tulis komentar di bawah
+            Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
             // Kotak tulis komentar (di atas daftar)
-            Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            Column(Modifier.fillMaxWidth().background(Mono.Bar).padding(top = 4.dp)) {
                 ui.notice?.let {
                     Text(it, fontSize = 13.sp, color = Mono.TextDim, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 }
@@ -228,10 +228,6 @@ fun ChapterCommentsSheet(
                     }
                 }
             }
-            Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
-
-            // Daftar komentar (scroll ke atas saat setengah layar -> sheet melebar penuh dulu)
-            CommentsBody(ui, me, viewModel, { deleteTarget = it }, { reportTarget = it }, onUserClick)
         }
     }
 

@@ -32,7 +32,7 @@ data class CommentsUiState(
     val page: Int = 0,
     val hasMore: Boolean = false,
     val loadingMore: Boolean = false,
-    val sort: String = "newest",
+    val sort: String = "top",
     val replies: Map<String, RepliesState> = emptyMap(),
     val sending: Boolean = false,
     val notice: String? = null,
@@ -73,7 +73,7 @@ class CommentsViewModel @Inject constructor(
     }
 
     private fun start() {
-        val cached = repo.cachedComments(source, slug, chapter, "newest")
+        val cached = repo.cachedComments(source, slug, chapter, "top")
         if (cached != null) {
             _ui.value = CommentsUiState(loading = false, items = cached.items, total = cached.total, page = 1, hasMore = cached.hasMore)
         }

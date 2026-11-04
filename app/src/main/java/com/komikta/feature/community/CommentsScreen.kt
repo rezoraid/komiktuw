@@ -109,11 +109,7 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
                 )
             }
         }
-        Row(Modifier.padding(horizontal = 14.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Chip("Terbaru", selected = ui.sort == "newest", onClick = { viewModel.setSort("newest") })
-            Chip("Teratas", selected = ui.sort == "top", onClick = { viewModel.setSort("top") })
-        }
-
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
         CommentsBody(ui, me, viewModel, { deleteTarget = it }, { reportTarget = it }, onUserClick)
 
         Column(Modifier.fillMaxWidth().background(Mono.Bar)) {
@@ -205,9 +201,9 @@ internal fun ColumnScope.CommentsBody(
                         items(rs.items, key = { it.id }, contentType = { "reply" }) { reply ->
                             CommentRow(reply, true, me, viewModel, onDelete, onReport, onUserClick)
                         }
-                        if (rs.loading) item(key = "rl-${root.id}", contentType = "more") { Text("Memuat balasan…", fontSize = 13.sp, color = Mono.TextFaint, modifier = Modifier.padding(start = 68.dp, bottom = 8.dp)) }
+                        if (rs.loading) item(key = "rl-${root.id}", contentType = "more") { Text("Memuat balasan…", fontSize = 13.sp, color = Mono.TextFaint, modifier = Modifier.padding(start = 60.dp, bottom = 8.dp)) }
                         else if (rs.hasMore && rs.page > 0) item(key = "rm-${root.id}", contentType = "more") {
-                            Text("Balasan lainnya", fontSize = 13.sp, color = Mono.TextDim, modifier = Modifier.padding(start = 68.dp, bottom = 10.dp).clickable { viewModel.loadReplies(root.id) })
+                            Text("Balasan lainnya", fontSize = 13.sp, color = Mono.TextDim, modifier = Modifier.padding(start = 60.dp, bottom = 10.dp).clickable { viewModel.loadReplies(root.id) })
                         }
                     }
                 }
@@ -277,7 +273,7 @@ internal fun CommentRow(
     // Komentar milik sendiri: foto, nama, role, dan level selalu dari sesi terbaru, bukan dari daftar lama (cache).
     val author = if (me != null && c.user.id == me.id) c.user.copy(name = me.name, username = me.username, picture = me.picture, role = me.role, level = me.level) else c.user
     val shownName = author.name.ifBlank { author.username }
-    val avatar: Dp = if (isReply) 32.dp else 40.dp
+    val avatar: Dp = if (isReply) 28.dp else 34.dp
     var menu by remember { mutableStateOf(false) }
     val canReport = !c.deleted && c.user.id != meId
     val openProfile = { if (c.user.id.isNotBlank()) onUserClick(c.user.id) }
@@ -286,23 +282,23 @@ internal fun CommentRow(
     // Datar tanpa kartu: foto di kiri; nama + role + waktu, isi, lalu suka / balas / jumlah balasan. Balasan menjorok.
     Row(
         Modifier.fillMaxWidth()
-            .padding(start = if (isReply) 56.dp else 14.dp, end = 4.dp, top = 12.dp, bottom = 6.dp)
+            .padding(start = if (isReply) 50.dp else 14.dp, end = 4.dp, top = 8.dp, bottom = 2.dp)
     ) {
         Box(Modifier.clip(CircleShape).clickable(onClick = openProfile)) { Avatar(author.picture, shownName, avatar) }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    shownName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Mono.Text,
+                    shownName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Mono.Text,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false).clickable(onClick = openProfile)
                 )
                 RoleBadge(author.role)
-                Text("· $time", fontSize = 13.sp, color = Mono.TextFaint, maxLines = 1)
+                Text("· $time", fontSize = 12.sp, color = Mono.TextFaint, maxLines = 1)
                 Spacer(Modifier.weight(1f))
                 if (!c.deleted && (c.canEdit || c.canDelete || canReport)) Box {
-                    Box(Modifier.size(36.dp).clip(CircleShape).clickable { menu = true }, contentAlignment = Alignment.Center) {
-                        Icon(AppIcons.moreVertical, "Opsi", tint = Mono.TextDim, modifier = Modifier.size(22.dp))
+                    Box(Modifier.size(30.dp).clip(CircleShape).clickable { menu = true }, contentAlignment = Alignment.Center) {
+                        Icon(AppIcons.moreVertical, "Opsi", tint = Mono.TextDim, modifier = Modifier.size(18.dp))
                     }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, modifier = Modifier.background(Mono.Card)) {
                         if (c.canEdit) DropdownMenuItem(text = { Text("Edit") }, onClick = { menu = false; vm.startEdit(c) })
@@ -315,7 +311,7 @@ internal fun CommentRow(
                 }
             }
             if (c.deleted) {
-                Text("Komentar telah dihapus", fontSize = 15.sp, fontStyle = FontStyle.Italic, color = Mono.TextFaint, modifier = Modifier.padding(top = 6.dp, bottom = 6.dp))
+                Text("Komentar telah dihapus", fontSize = 13.sp, fontStyle = FontStyle.Italic, color = Mono.TextFaint, modifier = Modifier.padding(top = 6.dp, bottom = 6.dp))
             } else {
                 val body = remember(c.replyTo, c.body) {
                     buildAnnotatedString {
@@ -325,32 +321,32 @@ internal fun CommentRow(
                         append(c.body)
                     }
                 }
-                Text(body, fontSize = 16.sp, lineHeight = 23.sp, color = Mono.Text, modifier = Modifier.padding(top = 4.dp))
+                Text(body, fontSize = 14.sp, lineHeight = 20.sp, color = Mono.Text, modifier = Modifier.padding(top = 2.dp))
             }
-            Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (!c.deleted) {
                     Row(
-                        Modifier.clip(CircleShape).clickable { vm.toggleLike(c) }.padding(end = 18.dp, top = 6.dp, bottom = 6.dp),
+                        Modifier.clip(CircleShape).clickable { vm.toggleLike(c) }.padding(end = 16.dp, top = 5.dp, bottom = 5.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(AppIcons.heart(c.liked), "Suka", tint = Mono.TextDim, modifier = Modifier.size(22.dp))
-                        Text("${c.likeCount}", fontSize = 15.sp, color = Mono.TextDim)
+                        Icon(AppIcons.heart(c.liked), "Suka", tint = Mono.TextDim, modifier = Modifier.size(18.dp))
+                        Text("${c.likeCount}", fontSize = 13.sp, color = Mono.TextDim)
                     }
                     Row(
                         Modifier.clip(CircleShape)
                             .clickable { if (meId == null) vm.notice("Masuk dulu untuk membalas") else vm.startReply(c) }
-                            .padding(end = 18.dp, top = 6.dp, bottom = 6.dp),
+                            .padding(end = 16.dp, top = 5.dp, bottom = 5.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(AppIcons.reply, "Balas", tint = Mono.TextDim, modifier = Modifier.size(22.dp))
-                        Text("Balas", fontSize = 15.sp, color = Mono.TextDim)
+                        Icon(AppIcons.reply, "Balas", tint = Mono.TextDim, modifier = Modifier.size(18.dp))
+                        Text("Balas", fontSize = 13.sp, color = Mono.TextDim)
                     }
                 }
                 if (!isReply && c.replyCount > 0) {
                     Text(
                         if (repliesOpen) "Sembunyikan" else "${c.replyCount} balasan",
-                        fontSize = 15.sp, color = Mono.TextDim,
-                        modifier = Modifier.clip(CircleShape).clickable { vm.toggleReplies(c) }.padding(vertical = 6.dp)
+                        fontSize = 13.sp, color = Mono.TextDim,
+                        modifier = Modifier.clip(CircleShape).clickable { vm.toggleReplies(c) }.padding(vertical = 5.dp)
                     )
                 }
             }
