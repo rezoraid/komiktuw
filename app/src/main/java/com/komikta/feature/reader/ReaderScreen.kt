@@ -28,6 +28,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
+import com.komikta.ui.system.ImmersiveDialogEffect
+import com.komikta.ui.system.stableNavigationBarsPadding
+import com.komikta.ui.system.stableSheetInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
@@ -204,34 +208,8 @@ fun ReaderScreen(
 
     val context = LocalContext.current
 
-    // Fullscreen immersive: sembunyikan status bar + nav bar, konten sampai ke area poni/cutout
-    val view = LocalView.current
-    DisposableEffect(Unit) {
-        val window = (view.context as? Activity)?.window
-        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
-        if (window != null && controller != null) {
-            WindowCompat.setDecorFitsSystemWindows(window, false)
-            if (Build.VERSION.SDK_INT >= 28) {
-                window.attributes = window.attributes.apply {
-                    layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-                }
-            }
-            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            controller.isAppearanceLightStatusBars = false
-            controller.show(WindowInsetsCompat.Type.statusBars())
-            controller.hide(WindowInsetsCompat.Type.navigationBars())
-        }
-        onDispose {
-            if (window != null && controller != null) {
-                controller.show(WindowInsetsCompat.Type.systemBars())
-                if (Build.VERSION.SDK_INT >= 28) {
-                    window.attributes = window.attributes.apply {
-                        layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
-                    }
-                }
-            }
-        }
-    }
+    // Fullscreen (status bar + nav bar) dikontrol satu tempat di MainNavGraph via ImmersiveEffect,
+    // jadi tidak ada hide/show per-layar yang bikin kedip saat pindah reader <-> komentar.
     val screenWidthPx = with(density) { LocalConfiguration.current.screenWidthDp.dp.roundToPx() }
     val readerItems = remember(uiState.loaded) { buildReaderItems(uiState.loaded) }
     val ratios = remember { HashMap<String, Float>() }
@@ -444,7 +422,7 @@ fun ReaderScreen(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Top))
+                    .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility.union(WindowInsets.displayCutout).only(WindowInsetsSides.Top))
                     .padding(horizontal = 12.dp, vertical = 8.dp)
                     .shadow(12.dp, barShape, clip = false)
                     .clip(barShape)
@@ -483,7 +461,7 @@ fun ReaderScreen(
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .navigationBarsPadding()
+                    .stableNavigationBarsPadding()
                     .padding(horizontal = 12.dp, vertical = 12.dp)
                     .shadow(12.dp, barShape, clip = false)
                     .clip(barShape)
@@ -577,8 +555,10 @@ fun ReaderScreen(
             ModalBottomSheet(
                 onDismissRequest = { showSettings = false },
                 sheetState = rememberModalBottomSheetState(),
-                containerColor = Color(0xFF1A1A1C)
+                containerColor = Color(0xFF1A1A1C),
+                windowInsets = stableSheetInsets()
             ) {
+                ImmersiveDialogEffect()
                 Column(Modifier.padding(20.dp)) {
                     Text(
                         "Reading Settings",
@@ -855,8 +835,10 @@ private fun ChapterListSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = Color(0xFF1C1C1E),
-        contentColor = Color.White
+        contentColor = Color.White,
+        windowInsets = stableSheetInsets()
     ) {
+        ImmersiveDialogEffect()
         Column(
             Modifier
                 .fillMaxWidth()

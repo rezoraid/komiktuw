@@ -1,5 +1,8 @@
 package com.komikta.feature.community
 
+import com.komikta.ui.system.ImmersiveDialogEffect
+import com.komikta.ui.system.stableStatusBarsPadding
+import com.komikta.ui.system.stableNavigationBarsPadding
 import com.komikta.ui.components.ErrorState
 import com.komikta.ui.components.EmptyState
 import androidx.compose.foundation.background
@@ -93,8 +96,8 @@ fun CommentsScreen(onBack: () -> Unit, onUserClick: (String) -> Unit = {}, viewM
         Modifier
             .fillMaxSize()
             .background(Mono.Bg)
-            .statusBarsPadding()
-            .navigationBarsPadding()
+            .stableStatusBarsPadding()
+            .stableNavigationBarsPadding()
             .imePadding()
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -239,7 +242,7 @@ internal fun CommentDialogs(
         AlertDialog(
             onDismissRequest = { onDeleteDismiss() },
             containerColor = Mono.Card,
-            title = { Text("Hapus komentar?", style = MaterialTheme.typography.titleMedium) },
+            title = { ImmersiveDialogEffect(); Text("Hapus komentar?", style = MaterialTheme.typography.titleMedium) },
             text = { Text("Komentar yang dihapus tidak bisa dikembalikan.", color = Mono.TextDim, fontSize = 15.sp) },
             confirmButton = { TextButton(onClick = { viewModel.delete(c); onDeleteDismiss() }) { Text("Hapus", color = Color(0xFFE08F8F)) } },
             dismissButton = { TextButton(onClick = { onDeleteDismiss() }) { Text("Batal", color = Mono.TextDim) } }
@@ -251,7 +254,7 @@ internal fun CommentDialogs(
         AlertDialog(
             onDismissRequest = { onReportDismiss() },
             containerColor = Mono.Card,
-            title = { Text("Laporkan komentar", style = MaterialTheme.typography.titleMedium) },
+            title = { ImmersiveDialogEffect(); Text("Laporkan komentar", style = MaterialTheme.typography.titleMedium) },
             text = {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     ReportReasons.forEach { (key, label) -> Chip(label, selected = reason == key, onClick = { reason = key }) }

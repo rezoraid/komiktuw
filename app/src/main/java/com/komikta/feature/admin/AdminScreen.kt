@@ -1,5 +1,7 @@
 package com.komikta.feature.admin
 
+import com.komikta.ui.system.stableStatusBarsPadding
+import com.komikta.ui.system.stableNavigationBarsPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -77,7 +79,7 @@ private fun adminError(m: String?) = if (m?.contains("404") == true) "Fitur admi
 fun AdminScreen(onBack: () -> Unit, onOpenProfile: (String) -> Unit, stats: AdminStatsViewModel = hiltViewModel()) {
     val viewer by stats.viewer.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    Column(Modifier.fillMaxSize().background(Ui.Bg).statusBarsPadding().navigationBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(Ui.Bg).stableStatusBarsPadding().stableNavigationBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(AppIcons.chevronLeft, "Back", tint = Color.White, modifier = Modifier.size(24.dp)) }
             Text("Panel Admin", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))

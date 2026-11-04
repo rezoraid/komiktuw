@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import com.komikta.ui.system.ImmersiveDialogEffect
+import com.komikta.ui.system.stableNavigationBarsPadding
+import com.komikta.ui.system.stableSheetInsets
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -97,13 +100,15 @@ fun ChapterCommentsSheet(
         sheetState = sheetState,
         containerColor = Mono.Bg,
         contentColor = Color.White,
-        dragHandle = { BottomSheetDefaults.DragHandle(color = Mono.TextFaint) }
+        dragHandle = { BottomSheetDefaults.DragHandle(color = Mono.TextFaint) },
+        windowInsets = stableSheetInsets()
     ) {
+        ImmersiveDialogEffect()
         Column(
             Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.92f)
-                .navigationBarsPadding()
+                .stableNavigationBarsPadding()
                 .imePadding()
         ) {
             Row(

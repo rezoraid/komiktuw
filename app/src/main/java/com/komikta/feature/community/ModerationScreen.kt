@@ -1,5 +1,7 @@
 package com.komikta.feature.community
 
+import com.komikta.ui.system.stableStatusBarsPadding
+import com.komikta.ui.system.stableNavigationBarsPadding
 import com.komikta.ui.components.ErrorState
 import com.komikta.ui.components.EmptyState
 import androidx.compose.foundation.background
@@ -47,7 +49,7 @@ private val ReasonLabel = mapOf("spam" to "Spam", "abuse" to "Kasar / pelecehan"
 
 @Composable
 fun ModerationScreen(onBack: () -> Unit, viewModel: ModerationViewModel = hiltViewModel()) {
-    Column(Modifier.fillMaxSize().background(Ui.Bg).statusBarsPadding().navigationBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(Ui.Bg).stableStatusBarsPadding().stableNavigationBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(AppIcons.chevronLeft, "Back", tint = Color.White, modifier = Modifier.size(24.dp)) }
             Text("Moderasi", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))

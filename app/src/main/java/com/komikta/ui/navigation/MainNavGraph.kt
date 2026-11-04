@@ -5,7 +5,12 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
+import androidx.compose.runtime.CompositionLocalProvider
+import com.komikta.ui.system.ImmersiveEffect
+import com.komikta.ui.system.LocalImmersive
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +41,12 @@ import androidx.compose.runtime.getValue
 
 private val tabRoutes = bottomNavItems.map { it.route }
 
+private const val READER_ROUTE = "reader/{source}/{comicSlug}/{chapterSlug}"
+private const val CHAPTER_COMMENTS_ROUTE = "comments/{source}/{slug}/{chapter}"
+
+/** Reader dan komentar chapter memakai mode fullscreen (status bar disembunyikan). */
+private fun isImmersiveRoute(route: String?) = route == READER_ROUTE || route == CHAPTER_COMMENTS_ROUTE
+
 private fun NavHostController.goToTab(route: String) {
     navigate(route) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
@@ -49,11 +60,15 @@ fun MainNavGraph() {
     val navController = rememberNavController()
     val route = navController.currentBackStackEntryAsState().value?.destination?.route
     val showBottomBar = route in tabRoutes
+    val immersive = isImmersiveRoute(route)
+    ImmersiveEffect(immersive)
     val isDetail = route?.startsWith("detail") == true || route?.startsWith("comments") == true || route == "moderation" || route == "admin" || route?.startsWith("public-profile") == true
     var focusSearch by remember { mutableStateOf(false) }
 
+    CompositionLocalProvider(LocalImmersive provides immersive) {
     Scaffold(
         containerColor = if (route == BottomNavItem.Profile.route) Mono.Header else Ui.Bg,
+        contentWindowInsets = WindowInsets.systemBarsIgnoringVisibility,
         bottomBar = {
             if (showBottomBar) {
                 BottomBar(
@@ -67,15 +82,24 @@ fun MainNavGraph() {
         NavHost(
             navController = navController,
             startDestination = BottomNavItem.Home.route,
-            modifier = if (isDetail) Modifier else Modifier.padding(innerPadding),
+            modifier = if (isDetail || immersive) Modifier else Modifier.padding(innerPadding),
             // Pindah antar tab: fade halus. Buka layar lain (detail, reader, komentar): geser tipis + fade.
+            // Transisi yang melibatkan reader/komentar chapter: fade saja (tanpa geser) supaya tidak terasa kedip.
             enterTransition = {
-                if (initialState.destination.route in tabRoutes && targetState.destination.route in tabRoutes) fadeIn(tween(180))
-                else slideInHorizontally(tween(240)) { it / 10 } + fadeIn(tween(240))
+                val from = initialState.destination.route
+                val to = targetState.destination.route
+                when {
+                    isImmersiveRoute(from) || isImmersiveRoute(to) -> fadeIn(tween(200))
+                    from in tabRoutes && to in tabRoutes -> fadeIn(tween(180))
+                    else -> slideInHorizontally(tween(240)) { it / 10 } + fadeIn(tween(240))
+                }
             },
             exitTransition = { fadeOut(tween(120)) },
             popEnterTransition = { fadeIn(tween(200)) },
-            popExitTransition = { slideOutHorizontally(tween(220)) { it / 10 } + fadeOut(tween(200)) }
+            popExitTransition = {
+                if (isImmersiveRoute(initialState.destination.route) || isImmersiveRoute(targetState.destination.route)) fadeOut(tween(160))
+                else slideOutHorizontally(tween(220)) { it / 10 } + fadeOut(tween(200))
+            }
         ) {
             composable(BottomNavItem.Home.route) {
                 HomeScreen(
@@ -176,5 +200,6 @@ fun MainNavGraph() {
                 )
             ) { CommentsScreen(onBack = { navController.popBackStack() }, onUserClick = { id -> navController.navigate("public-profile/$id") }) }
         }
+    }
     }
 }

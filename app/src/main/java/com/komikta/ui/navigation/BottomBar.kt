@@ -1,5 +1,6 @@
 package com.komikta.ui.navigation
 
+import com.komikta.ui.system.stableNavigationBarsPadding
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -32,7 +33,7 @@ import com.komikta.ui.theme.Ui
 
 @Composable
 fun BottomBar(items: List<BottomNavItem>, selectedRoute: String?, onSelect: (String) -> Unit) {
-    Row(Modifier.fillMaxWidth().background(Ui.Bar).navigationBarsPadding().height(72.dp)) {
+    Row(Modifier.fillMaxWidth().background(Ui.Bar).stableNavigationBarsPadding().height(72.dp)) {
         items.forEach { item ->
             val selected = item.route == selectedRoute
             val pill by animateColorAsState(if (selected) Ui.NavPill else Color.Transparent, tween(180), label = "navPill")

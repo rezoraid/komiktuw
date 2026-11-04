@@ -1,5 +1,7 @@
 package com.komikta.feature.detail
 
+import com.komikta.ui.system.stableStatusBarsPadding
+import com.komikta.ui.system.stableNavigationBarsPadding
 import com.komikta.ui.components.ErrorState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -91,8 +93,8 @@ fun DetailScreen(
         Modifier
             .fillMaxSize()
             .background(Ui.Bg)
-            .statusBarsPadding()
-            .navigationBarsPadding()
+            .stableStatusBarsPadding()
+            .stableNavigationBarsPadding()
     ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 4.dp),

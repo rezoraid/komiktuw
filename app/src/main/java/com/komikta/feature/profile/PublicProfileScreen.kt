@@ -1,5 +1,6 @@
 package com.komikta.feature.profile
 
+import com.komikta.ui.system.stableStatusBarsPadding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -44,7 +45,7 @@ fun PublicProfileScreen(
     val canManage = viewer?.role == "OWNER" && viewer?.id != userId
     LaunchedEffect(userId) { viewModel.load(userId) }
 
-    Box(Modifier.fillMaxSize().background(P.Content).statusBarsPadding()) {
+    Box(Modifier.fillMaxSize().background(P.Content).stableStatusBarsPadding()) {
         ProfilePage(
             state = state,
             fallbackUser = null,
