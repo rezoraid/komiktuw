@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -65,6 +66,9 @@ internal object RoleFx {
     val PremLight = Color(0xFF9AD2FF)
     val PremIce = Color(0xFFEAF8FF)
     val PremDeep = Color(0xFF1B5FCC)
+    val PremViolet = Color(0xFFB9A4FF)
+    val PremCyan = Color(0xFF7FF0FF)
+    val ModMint = Color(0xFFD4FFE9)
 
     fun light(role: String): Color = when (role) {
         "OWNER" -> OwnerEmber
@@ -107,6 +111,83 @@ private fun organic(periodMs: Int, seed: Float = 0f): Float {
 }
 
 private fun smooth(x: Float): Float = x * x * (3f - 2f * x)
+
+private const val TAU = 6.2831855f
+
+/** Komet kecil yang mengorbit cincin: kepala terang dengan ekor memudar kuadratik. */
+private fun DrawScope.comet(c: Offset, radius: Float, headR: Float, angle: Float, dir: Float, color: Color, tail: Float = 1.0f) {
+    val steps = 12
+    for (i in steps - 1 downTo 0) {
+        val k = i / steps.toFloat()
+        val a = angle - dir * k * tail
+        val pos = Offset(c.x + cos(a) * radius, c.y + sin(a) * radius)
+        val fade = (1f - k) * (1f - k)
+        drawCircle(color.copy(alpha = fade * 0.85f), headR * (1f - k * 0.65f), pos)
+    }
+    val head = Offset(c.x + cos(angle) * radius, c.y + sin(angle) * radius)
+    drawCircle(color.copy(alpha = 0.35f), headR * 2.4f, head)
+    drawCircle(Color.White.copy(alpha = 0.95f), headR * 0.55f, head)
+}
+
+/** Partikel melayang naik di latar: bara (Owner), titik pindai (Moderator), kristal es (Premium). */
+private fun DrawScope.motes(role: String, count: Int, t: Float) {
+    val w = size.width
+    val h = size.height
+    for (i in 0 until count) {
+        val seed = i * 0.61803f
+        val speed = 0.55f + (i % 4) * 0.18f
+        val p = (t * speed + seed) % 1f
+        val x = w * ((seed * 7.13f) % 1f) + sin(p * 9.42f + i) * 7.dp.toPx()
+        val y = h * (1.05f - p * 1.1f)
+        val r = (0.9f + (i % 3) * 0.6f).dp.toPx() * (1f - p * 0.4f)
+        val a = sin(p * 3.1415927f) * 0.85f
+        when (role) {
+            "OWNER" -> drawCircle((if (i % 3 == 0) RoleFx.OwnerGold else if (i % 2 == 0) RoleFx.OwnerEmber else RoleFx.OwnerHot).copy(alpha = a), r, Offset(x, y))
+            "MODERATOR" -> drawCircle(RoleFx.ModLight.copy(alpha = a * 0.7f), r * 0.9f, Offset(x, y))
+            else -> twinkle(Offset(x, y), r * 1.7f, a * 0.8f, if (i % 2 == 0) RoleFx.PremIce else RoleFx.PremCyan)
+        }
+    }
+}
+
+/**
+ * Latar kartu komentar milik Owner/Moderator/Premium: wash warna dari kiri, garis aksen vertikal berkilau,
+ * dan kilau tipis yang menyapu tepi atas. Member biasa tidak digambar apa pun.
+ */
+@Composable
+fun Modifier.roleCard(role: String): Modifier {
+    val tint = roleTint(role) ?: return this
+    UseRoleClock()
+    val owner = role == "OWNER"
+    val light = RoleFx.light(role)
+    val shape = RoundedCornerShape(16.dp)
+    return this
+        .clip(shape)
+        .drawBehind {
+            val a = if (owner) 0.20f else 0.13f
+            drawRect(Brush.horizontalGradient(listOf(tint.copy(alpha = a), tint.copy(alpha = a * 0.35f), Color.Transparent)))
+            val breathe = 0.7f + 0.3f * organic(if (owner) 2400 else 3600, 0.4f)
+            drawRoundRect(tint.copy(alpha = 0.26f * breathe), cornerRadius = CornerRadius(16.dp.toPx()), style = Stroke(1.dp.toPx()))
+
+            val barW = 2.5.dp.toPx()
+            val h = size.height
+            val off = phaseOf(if (owner) 2600 else 4200) * h * 2f
+            drawRect(
+                Brush.verticalGradient(
+                    listOf(tint.copy(alpha = 0.25f), light, Color.White.copy(alpha = 0.9f), light, tint.copy(alpha = 0.25f)),
+                    startY = -h + off, endY = off + h * 0.4f, tileMode = TileMode.Mirror
+                ),
+                topLeft = Offset(0f, 10.dp.toPx()), size = Size(barW, (h - 20.dp.toPx()).coerceAtLeast(0f))
+            )
+
+            val p = smooth((phaseOf(if (owner) 3200 else 5200) / 0.6f).coerceAtMost(1f))
+            val bw = size.width * 0.35f
+            val x = -bw + p * (size.width + bw * 2f)
+            drawRect(
+                Brush.horizontalGradient(listOf(Color.Transparent, light.copy(alpha = 0.75f), Color.Transparent), startX = x, endX = x + bw),
+                topLeft = Offset(x, 0f), size = Size(bw, 1.2.dp.toPx())
+            )
+        }
+}
 
 /** Kilatan singkat (sekitar seperlima periode) lalu padam lama, seperti pantulan cahaya di sisi berlian. Hasil 0..1. */
 private fun flash(periodMs: Int, seed: Float): Float {
@@ -237,8 +318,8 @@ fun RoleAvatar(url: String?, name: String, size: Dp, role: String, modifier: Mod
     val pulseMs = if (owner) 950 else 1800
     val colors = when (role) {
         "OWNER" -> listOf(RoleFx.OwnerHot, RoleFx.OwnerEmber, RoleFx.OwnerGold, RoleFx.OwnerEmber, RoleFx.OwnerCore, RoleFx.OwnerDeep, RoleFx.OwnerHot)
-        "MODERATOR" -> listOf(RoleFx.ModCore, RoleFx.ModLight, RoleFx.ModCore, RoleFx.ModDeep, RoleFx.ModCore)
-        else -> listOf(RoleFx.PremCore, RoleFx.PremLight, RoleFx.PremIce, RoleFx.PremLight, RoleFx.PremCore, RoleFx.PremDeep, RoleFx.PremCore)
+        "MODERATOR" -> listOf(RoleFx.ModCore, RoleFx.ModLight, RoleFx.ModMint, RoleFx.ModLight, RoleFx.ModCore, RoleFx.ModDeep, RoleFx.ModCore)
+        else -> listOf(RoleFx.PremCore, RoleFx.PremCyan, RoleFx.PremIce, RoleFx.PremViolet, RoleFx.PremCore, RoleFx.PremDeep, RoleFx.PremLight, RoleFx.PremCore)
     }
     Box(modifier.size(total), contentAlignment = Alignment.Center) {
         Box(
@@ -316,6 +397,63 @@ fun RoleAvatar(url: String?, name: String, size: Dp, role: String, modifier: Mod
                 }
             }
         )
+        // Komet pengorbit: Owner dua (api + emas, arah berlawanan), Moderator satu hijau, Premium satu putih-es.
+        Box(
+            Modifier.matchParentSize().drawBehind {
+                val c = center
+                val outer = this.size.minDimension / 2f - halo.toPx() - ring.toPx() / 2f
+                val headR = (if (big) 2.6f else 1.7f).dp.toPx()
+                val base = phaseOf(if (owner) 3400 else 5200) * TAU
+                when (role) {
+                    "OWNER" -> {
+                        comet(c, outer, headR, base, 1f, RoleFx.OwnerGold, 1.1f)
+                        comet(c, outer, headR * 0.8f, -base * 0.7f + 3.14f, -1f, RoleFx.OwnerHot, 0.9f)
+                    }
+                    "MODERATOR" -> comet(c, outer, headR, base, 1f, RoleFx.ModLight, 1.2f)
+                    else -> comet(c, outer, headR, base, 1f, RoleFx.PremIce, 1.3f)
+                }
+            }
+        )
+        // Moderator: gelombang radar memancar keluar dari cincin (ukuran besar).
+        if (role == "MODERATOR" && big) Box(
+            Modifier.matchParentSize().drawBehind {
+                val outer = this.size.minDimension / 2f - halo.toPx()
+                for (j in 0..1) {
+                    val p = (phaseOf(3000) + j * 0.5f) % 1f
+                    val a = (1f - p) * (1f - p) * 0.55f
+                    drawCircle(RoleFx.ModLight.copy(alpha = a), outer + p * halo.toPx() * 0.95f, center, style = Stroke(1.4.dp.toPx()))
+                }
+            }
+        )
+        // Lambang di atas foto besar: mahkota (Owner), perisai (Moderator), berlian (Premium); melayang pelan dengan kilau.
+        if (big) {
+            val emblem = when (role) {
+                "OWNER" -> AppIcons.crown
+                "MODERATOR" -> AppIcons.shield
+                else -> AppIcons.diamond
+            }
+            val emblemTint = when (role) {
+                "OWNER" -> RoleFx.OwnerGold
+                "MODERATOR" -> RoleFx.ModMint
+                else -> RoleFx.PremIce
+            }
+            Box(
+                Modifier.matchParentSize().drawBehind {
+                    val glowC = Offset(center.x, 9.dp.toPx())
+                    drawCircle(
+                        Brush.radialGradient(listOf(tint.copy(alpha = 0.55f * (0.6f + 0.4f * organic(1800, 1.1f))), Color.Transparent), glowC, 16.dp.toPx()),
+                        16.dp.toPx(), glowC
+                    )
+                },
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Icon(
+                    emblem, null, tint = emblemTint,
+                    modifier = Modifier.size(if (owner) 20.dp else 17.dp).padding(top = 0.dp)
+                        .graphicsLayer { translationY = (organic(2600, 0.3f) - 0.5f) * 3.dp.toPx() }
+                )
+            }
+        }
         Avatar(url, name, size)
     }
 }
@@ -364,6 +502,13 @@ fun RoleName(
                 drawContent()
                 val dx = phaseOf(periodMs) * 520f
                 translate(left = dx) { drawRect(brush, Offset(-dx, 0f), size, blendMode = BlendMode.SrcIn) }
+                val bandW = size.width * 0.3f + 28f
+                val p = smooth((phaseOf(if (owner) 3000 else 4400) / 0.5f).coerceAtMost(1f))
+                val x = -bandW + p * (size.width + bandW * 2f)
+                drawRect(
+                    Brush.horizontalGradient(listOf(Color.Transparent, Color.White.copy(alpha = if (owner) 0.95f else 0.8f), Color.Transparent), startX = x, endX = x + bandW),
+                    topLeft = Offset(x, 0f), size = Size(bandW, size.height), blendMode = BlendMode.SrcAtop
+                )
             }
             .padding(horizontal = 6.dp, vertical = 3.dp)
     )
@@ -399,6 +544,7 @@ fun RoleAura(role: String?, modifier: Modifier = Modifier) {
                 onDrawBehind {
                     if (vertical != null) drawRect(vertical)
                     drawCircle(radial, r, c)
+                    motes(role.orEmpty(), if (owner) 22 else 14, phaseOf(if (owner) 5200 else 7600))
                 }
             }
     )

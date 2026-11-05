@@ -1,6 +1,7 @@
 # Komikta Android
 
 ## UI dan performa
+- Efek role (Owner api-emas, Moderator zamrud, Premium berlian prisma): komet pengorbit di cincin foto, lambang melayang di atas foto besar, gelombang radar (Moderator), kilau spekular di nama, kartu komentar bergradasi dengan aksen berkilau, dan partikel melayang di header profil.
 - Cache HTTP OkHttp 50 MB (`http_cache`): GET API selalu revalidasi dengan ETag (`no-cache`), jadi server (stale-while-revalidate) menjawab 304 tanpa body. Gambar memakai cache Coil sendiri.
 - Sheet komentar/pengaturan: tanpa padding status bar di atas, drag handle ringkas, tinggi 94%.
 - Tema gelap dengan aksen violet (`Ui.Accent`) dan font Poppins, tanpa glassmorphism dan tanpa navigasi mengambang.
