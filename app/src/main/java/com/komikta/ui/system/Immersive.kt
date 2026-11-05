@@ -93,8 +93,11 @@ fun Modifier.stableNavigationBarsPadding(): Modifier = composed {
     windowInsetsPadding(WindowInsets.navigationBarsIgnoringVisibility)
 }
 
-/** Insets vertikal sheet yang stabil (tidak ikut berubah saat system bar disembunyikan). */
+/** Inset sheet yang stabil: hanya navigation bar bawah, tanpa padding status bar di atas sheet. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun stableSheetInsets(): WindowInsets =
-    WindowInsets.systemBarsIgnoringVisibility.only(WindowInsetsSides.Vertical)
+    WindowInsets.systemBarsIgnoringVisibility.only(WindowInsetsSides.Bottom)
+
+/** Sheet tidak menambah padding atas/bawah sendiri; konten mengatur inset-nya sendiri. */
+fun noSheetInsets(): WindowInsets = WindowInsets(0, 0, 0, 0)

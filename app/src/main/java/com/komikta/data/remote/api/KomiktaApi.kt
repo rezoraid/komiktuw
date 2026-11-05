@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
+import okhttp3.CacheControl
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.HttpUrl
@@ -108,6 +109,7 @@ class KomiktaApi @Inject constructor(
         val call = http.newCall(
             Request.Builder()
                 .url(url)
+                .cacheControl(CacheControl.Builder().noCache().build())
                 .header("Accept", "application/json")
                 .header("User-Agent", userAgent)
                 .build()

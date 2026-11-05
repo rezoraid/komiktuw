@@ -26,6 +26,7 @@ object ImageModule {
         okHttpClient: OkHttpClient
     ): ImageLoader {
         val imageClient = okHttpClient.newBuilder()
+            .cache(null)
             .dispatcher(Dispatcher().apply {
                 maxRequests = 32
                 maxRequestsPerHost = 12

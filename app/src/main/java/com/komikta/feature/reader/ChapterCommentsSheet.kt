@@ -12,14 +12,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import com.komikta.ui.system.ImmersiveDialogEffect
 import com.komikta.ui.system.stableNavigationBarsPadding
-import com.komikta.ui.system.stableSheetInsets
+import com.komikta.ui.system.noSheetInsets
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -100,14 +99,21 @@ fun ChapterCommentsSheet(
         sheetState = sheetState,
         containerColor = Mono.Bg,
         contentColor = Color.White,
-        dragHandle = { BottomSheetDefaults.DragHandle(color = Mono.TextFaint) },
-        contentWindowInsets = { stableSheetInsets() }
+        dragHandle = {
+            Box(
+                Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(Modifier.size(width = 36.dp, height = 4.dp).clip(CircleShape).background(Mono.TextFaint))
+            }
+        },
+        contentWindowInsets = { noSheetInsets() }
     ) {
         ImmersiveDialogEffect()
         Column(
             Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.92f)
+                .fillMaxHeight(0.94f)
                 .stableNavigationBarsPadding()
                 .imePadding()
         ) {

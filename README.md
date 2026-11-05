@@ -1,6 +1,8 @@
 # Komikta Android
 
 ## UI dan performa
+- Cache HTTP OkHttp 50 MB (`http_cache`): GET API selalu revalidasi dengan ETag (`no-cache`), jadi server (stale-while-revalidate) menjawab 304 tanpa body. Gambar memakai cache Coil sendiri.
+- Sheet komentar/pengaturan: tanpa padding status bar di atas, drag handle ringkas, tinggi 94%.
 - Tema gelap dengan aksen violet (`Ui.Accent`) dan font Poppins, tanpa glassmorphism dan tanpa navigasi mengambang.
 - Transisi navigasi berupa fade singkat; loading memakai skeleton shimmer hanya saat belum ada data sama sekali.
 - Cache dua lapis (`ResponseCache`): memori LRU + Room (`cache_entries`, maksimal 400 entri, usia maksimal 14 hari). Daftar 2 menit, pencarian 5 menit, detail 10 menit, chapter 6 jam, genre 12 jam.
