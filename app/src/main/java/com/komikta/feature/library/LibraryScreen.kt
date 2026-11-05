@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.draw.clipToBounds
+import com.komikta.feature.profile.HalftoneBackdrop
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -49,9 +52,12 @@ fun LibraryScreen(
     var tab by remember { mutableIntStateOf(0) }
 
     Column(Modifier.fillMaxSize().background(Ui.Bg)) {
-        Column(Modifier.padding(start = 14.dp, end = 14.dp, top = 18.dp, bottom = 14.dp)) {
-            Text("Library", fontSize = 27.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text("${bookmarks.size} bookmark · ${history.size} riwayat baca", fontSize = 14.sp, color = Ui.Text2, modifier = Modifier.padding(top = 2.dp))
+        Box(Modifier.fillMaxWidth().clipToBounds()) {
+            HalftoneBackdrop(Color.White, Modifier.matchParentSize(), 0.5f)
+            Column(Modifier.padding(start = 14.dp, end = 14.dp, top = 18.dp, bottom = 14.dp)) {
+                Text("Library", fontSize = 27.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("${bookmarks.size} bookmark · ${history.size} riwayat baca", fontSize = 14.sp, color = Ui.Text2, modifier = Modifier.padding(top = 2.dp))
+            }
         }
         SegmentedTabs(listOf("Bookmarks (${bookmarks.size})", "History (${history.size})"), tab, { tab = it }, Modifier.padding(horizontal = 14.dp))
         Spacer(Modifier.height(14.dp))

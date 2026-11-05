@@ -45,7 +45,7 @@ fun PublicProfileScreen(
     val canManage = viewer?.role == "OWNER" && viewer?.id != userId
     LaunchedEffect(userId) { viewModel.load(userId) }
 
-    Box(Modifier.fillMaxSize().background(P.Content).stableStatusBarsPadding()) {
+    Box(Modifier.fillMaxSize().background(P.Header).stableStatusBarsPadding()) {
         ProfilePage(
             state = state,
             fallbackUser = null,
@@ -56,17 +56,8 @@ fun PublicProfileScreen(
             onItemClick = { if (it.kind == "comment" && it.source.isNotBlank() && it.slug.isNotBlank()) onComments(it.source, it.slug, it.chapter) else onOpen(it.source, it.slug, it.chapter) },
             onAvatarClick = null,
             onLevelClick = null,
-            topLeft = {
-                Box(Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onBack), contentAlignment = Alignment.Center) {
-                    Icon(AppIcons.chevronLeft, "Kembali", tint = Color.White, modifier = Modifier.size(26.dp))
-                }
-            },
-            topRight = {
-                if (canManage) Text(
-                    "Kelola", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White,
-                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { showTools = true }.padding(horizontal = 12.dp, vertical = 10.dp)
-                )
-            }
+            topLeft = { TopCircle(AppIcons.chevronLeft, "Kembali", onBack) },
+            topRight = { if (canManage) TopPill("Kelola") { showTools = true } }
         )
         if (showTools && canManage) OwnerToolsDialog(userId = userId, onDismiss = { showTools = false }, onChanged = viewModel::refresh)
         if (state.stats == null && state.statsError != null) {
