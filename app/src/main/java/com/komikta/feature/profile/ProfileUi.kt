@@ -67,6 +67,8 @@ import com.komikta.ui.components.RoleAvatar
 import com.komikta.ui.components.NameWithBadge
 import com.komikta.ui.components.RoleAura
 import com.komikta.ui.components.FxRoleBadge
+import com.komikta.ui.components.PremiumPerks
+import com.komikta.ui.components.RoleFx
 import com.komikta.ui.components.roleName
 import com.komikta.ui.components.roleTint
 import com.komikta.ui.theme.Mono
@@ -136,6 +138,7 @@ internal fun ProfilePage(
     onLevelClick: (() -> Unit)?,
     topLeft: @Composable () -> Unit,
     topRight: @Composable () -> Unit,
+    onPremiumClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -156,7 +159,7 @@ internal fun ProfilePage(
 
     LazyColumn(state = listState, modifier = modifier.fillMaxSize().background(P.Content)) {
         item(key = "header", contentType = "header") {
-            ProfileHeader(user, state.stats, if (state.self) fallbackUser else null, busy, onAvatarClick, onLevelClick, topLeft, topRight)
+            ProfileHeader(user, state.stats, if (state.self) fallbackUser else null, busy, onAvatarClick, onLevelClick, onPremiumClick, topLeft, topRight)
         }
         stickyHeader(key = "tabs", contentType = "tabs") { ProfileTabs(state.tab, onTab) }
         item(key = "gap", contentType = "gap") { Spacer(Modifier.height(8.dp)) }
@@ -221,6 +224,7 @@ private fun ProfileHeader(
     busy: Boolean,
     onAvatarClick: (() -> Unit)?,
     onLevelClick: (() -> Unit)?,
+    onPremiumClick: (() -> Unit)?,
     topLeft: @Composable () -> Unit,
     topRight: @Composable () -> Unit
 ) {
@@ -262,7 +266,7 @@ private fun ProfileHeader(
                     }
                 }
                 // Level OWNER tetap (tidak bergantung XP), jadi tidak ada bar. xpNextLevel 0 = data belum dimuat.
-                if (xpUser != null && xpUser.role != "OWNER" && xpUser.xpNextLevel > 0) XpProgress(xpUser, onLevelClick)
+                if (xpUser != null && xpUser.role != "OWNER" && xpUser.xpNextLevel > 0) XpProgress(xpUser, onLevelClick, onPremiumClick)
                 Row(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 20.dp, start = 8.dp, end = 8.dp)) {
                     Stat(stats?.chaptersRead?.takeIf { it >= 0 }?.toString(), "chapter\ndibaca", Modifier.weight(1f))
                     Stat(stats?.commentCount?.takeIf { it >= 0 }?.toString(), "jumlah\nkomentar", Modifier.weight(1f))
@@ -274,24 +278,47 @@ private fun ProfileHeader(
     }
 }
 
-/** Progres XP menuju level berikutnya: label kiri, "xp / target XP" kanan, lalu bar tipis. Ketuk membuka rincian XP. */
+/**
+ * Progres XP menuju level berikutnya: label kiri, "xp / target XP" kanan, lalu bar tipis (ketuk = rincian XP).
+ * Di bawahnya: Premium aktif menampilkan pengali XP dari server; Member melihat ajakan ke keuntungan Premium.
+ */
 @Composable
-private fun XpProgress(user: CommunityUserDto, onClick: (() -> Unit)?) {
+private fun XpProgress(user: CommunityUserDto, onClick: (() -> Unit)?, onPremium: (() -> Unit)?) {
     val span = (user.xpNextLevel - user.xpCurrentLevel).coerceAtLeast(1)
     val into = (user.xp - user.xpCurrentLevel).coerceIn(0, span)
     val progress by animateFloatAsState(into.toFloat() / span, tween(600), label = "xpProgress")
-    Column(
-        Modifier.fillMaxWidth().padding(top = 16.dp, start = 20.dp, end = 20.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Menuju Lv ${user.level + 1}", fontSize = 13.sp, color = P.Label, maxLines = 1)
-            Text("${user.xp} / ${user.xpNextLevel} XP", fontSize = 13.sp, color = P.Label, maxLines = 1)
+    Column(Modifier.fillMaxWidth().padding(top = 16.dp, start = 20.dp, end = 20.dp)) {
+        Column(
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Menuju Lv ${user.level + 1}", fontSize = 13.sp, color = P.Label, maxLines = 1)
+                Text("${user.xp} / ${user.xpNextLevel} XP", fontSize = 13.sp, color = P.Label, maxLines = 1)
+            }
+            Box(Modifier.padding(top = 7.dp).fillMaxWidth().height(6.dp).clip(CircleShape).background(P.Capsule)) {
+                Box(Modifier.fillMaxWidth(progress).fillMaxHeight().clip(CircleShape).background(Color.White))
+            }
         }
-        Box(Modifier.padding(top = 7.dp).fillMaxWidth().height(6.dp).clip(CircleShape).background(P.Capsule)) {
-            Box(Modifier.fillMaxWidth(progress).fillMaxHeight().clip(CircleShape).background(Color.White))
+        val boosted = user.xpMultiplier > 1
+        val teaser = !boosted && user.role == "USER" && onPremium != null
+        if (boosted || teaser) {
+            Row(
+                Modifier.padding(start = 8.dp, top = 4.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .then(if (teaser) Modifier.clickable(onClick = onPremium!!) else Modifier)
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(AppIcons.diamond, null, tint = RoleFx.PremLight, modifier = Modifier.size(13.dp))
+                Text(
+                    if (boosted) "Premium · XP ×${user.xpMultiplier} aktif" else "Premium: XP ${PremiumPerks.XP_MULTIPLIER}× lebih cepat",
+                    fontSize = 12.sp, color = RoleFx.PremLight, maxLines = 1, modifier = Modifier.padding(start = 5.dp)
+                )
+                if (teaser) Icon(AppIcons.chevronRight, null, tint = RoleFx.PremLight, modifier = Modifier.padding(start = 1.dp).size(14.dp))
+            }
         }
     }
 }

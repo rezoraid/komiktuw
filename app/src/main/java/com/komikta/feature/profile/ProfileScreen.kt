@@ -47,6 +47,9 @@ import com.komikta.BuildConfig
 import com.komikta.data.remote.dto.CommunityUserDto
 import com.komikta.feature.auth.rememberGoogleSignIn
 import com.komikta.ui.components.AppIcons
+import com.komikta.ui.components.PremiumPerks
+import com.komikta.ui.components.PremiumSheet
+import com.komikta.ui.components.RoleFx
 import com.komikta.ui.navigation.BottomNavItem
 import com.komikta.ui.theme.Mono
 import kotlinx.coroutines.delay
@@ -70,6 +73,7 @@ fun ProfileScreen(
     var confirmDelete by remember { mutableStateOf(false) }
     var confirmLogout by remember { mutableStateOf(false) }
     var showXp by remember { mutableStateOf(false) }
+    var showPremium by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) viewModel.changeAvatar(uri)
@@ -113,12 +117,14 @@ fun ProfileScreen(
                 onItemClick = { if (it.kind == "comment" && it.source.isNotBlank() && it.slug.isNotBlank()) onComments(it.source, it.slug, it.chapter) else onOpen(it.source, it.slug, it.chapter) },
                 onAvatarClick = { avatarPicker.launch("image/*") },
                 onLevelClick = { showXp = true },
+                onPremiumClick = { showPremium = true },
                 topLeft = {
                     SettingsMenu(
                         u,
                         onPhoto = { avatarPicker.launch("image/*") },
                         onEdit = { editing = true },
                         onEditName = { editingName = true },
+                        onPremium = { showPremium = true },
                         onModeration = onModeration,
                         onAdmin = onAdmin,
                         onTerms = { uriHandler.openUri("${BuildConfig.BASE_URL}/terms") },
@@ -162,14 +168,32 @@ fun ProfileScreen(
                         Box(Modifier.padding(top = 10.dp).fillMaxWidth().height(6.dp).clip(CircleShape).background(Mono.CardHigh)) {
                             Box(Modifier.fillMaxWidth(into.toFloat() / span).height(6.dp).background(Color.White))
                         }
+                        val mult = u.xpMultiplier.coerceAtLeast(1)
                         Text(
-                            "XP didapat dengan membaca chapter (+8 XP tiap chapter baru, maksimal 80 XP per hari), menulis komentar, dan saat komentarmu disukai.",
+                            "XP didapat dengan membaca chapter (+${PremiumPerks.BASE_CHAPTER_XP * mult} XP tiap chapter baru, maksimal ${PremiumPerks.BASE_DAILY_XP * mult} XP per hari), menulis komentar, dan saat komentarmu disukai.",
                             fontSize = 13.sp, lineHeight = 18.sp, color = Mono.TextFaint, modifier = Modifier.padding(top = 14.dp)
                         )
+                        if (mult > 1) {
+                            Text("Premium aktif: XP ×$mult.", fontSize = 13.sp, color = RoleFx.PremLight, modifier = Modifier.padding(top = 8.dp))
+                        } else if (u.role == "USER") {
+                            Text(
+                                "Premium: XP ${PremiumPerks.XP_MULTIPLIER}× lebih cepat. Lihat keuntungan",
+                                fontSize = 13.sp, color = RoleFx.PremLight,
+                                modifier = Modifier.padding(top = 8.dp).clip(RoundedCornerShape(6.dp)).clickable { showXp = false; showPremium = true }.padding(vertical = 4.dp)
+                            )
+                        }
                     }
                 }
             },
             confirmButton = { TextButton(onClick = { showXp = false }) { Text("Tutup", color = Color.White) } }
+        )
+    }
+
+    if (showPremium && u != null) {
+        PremiumSheet(
+            isPremium = u.role == "PREMIUM",
+            onSubscribe = { showPremium = false; uriHandler.openUri("${BuildConfig.BASE_URL}/premium") },
+            onDismiss = { showPremium = false }
         )
     }
 
@@ -258,6 +282,7 @@ private fun SettingsMenu(
     onPhoto: () -> Unit,
     onEdit: () -> Unit,
     onEditName: () -> Unit,
+    onPremium: () -> Unit,
     onModeration: () -> Unit,
     onAdmin: () -> Unit,
     onTerms: () -> Unit,
@@ -276,6 +301,7 @@ private fun SettingsMenu(
             item("Ganti foto profil", Color.White, onPhoto)
             item("Ganti nama tampilan", Color.White, onEditName)
             item("Ganti username", Color.White, onEdit)
+            if (u.role == "USER" || u.role == "PREMIUM") item("Keuntungan Premium", RoleFx.PremLight, onPremium)
             if (u.role == "OWNER") item("Panel admin", Color.White, onAdmin)
             if (u.role == "MODERATOR" || u.role == "OWNER") item("Moderasi", Color.White, onModeration)
             item("Ketentuan", Color.White, onTerms)

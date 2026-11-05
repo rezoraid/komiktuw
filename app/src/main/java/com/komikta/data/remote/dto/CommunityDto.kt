@@ -16,6 +16,8 @@ data class CommunityUserDto(
     val xp: Int = 0,
     val xpCurrentLevel: Int = 0,
     val xpNextLevel: Int = 0,
+    /** Pengali XP dari server (Premium = 2, lainnya 1). Hanya untuk tampilan; perhitungan XP ada di server. */
+    val xpMultiplier: Int = 1,
     val usernameChangeableAt: Long = 0L,
     val commentCount: Int = -1,
     val joinedAt: Long = 0L,
