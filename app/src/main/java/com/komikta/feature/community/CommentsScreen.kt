@@ -67,7 +67,6 @@ import com.komikta.ui.components.Avatar
 import com.komikta.ui.components.Chip
 import com.komikta.ui.components.RoleAvatar
 import com.komikta.ui.components.RoleBadge
-import com.komikta.ui.components.roleCard
 import com.komikta.ui.components.NameWithBadge
 import com.komikta.ui.components.SkeletonBlock
 import com.komikta.ui.components.relativeTime
@@ -291,9 +290,7 @@ internal fun CommentRow(
     // Datar tanpa kartu: foto di kiri; nama + role + waktu, isi, lalu suka / balas / jumlah balasan. Balasan menjorok.
     Row(
         Modifier.fillMaxWidth()
-            .padding(start = if (isReply) 44.dp else 8.dp, end = 2.dp, top = 4.dp, bottom = 0.dp)
-            .roleCard(author.role)
-            .padding(start = 6.dp, end = 2.dp, top = 6.dp, bottom = 2.dp)
+            .padding(start = if (isReply) 50.dp else 14.dp, end = 4.dp, top = 8.dp, bottom = 2.dp)
     ) {
         Box(Modifier.clip(CircleShape).clickable(onClick = openProfile)) { RoleAvatar(author.picture, shownName, avatar, author.role) }
         Spacer(Modifier.width(10.dp))
