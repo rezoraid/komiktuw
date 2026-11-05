@@ -67,6 +67,7 @@ import com.komikta.ui.components.Avatar
 import com.komikta.ui.components.Chip
 import com.komikta.ui.components.RoleAvatar
 import com.komikta.ui.components.RoleBadge
+import com.komikta.ui.components.roleSpotlight
 import com.komikta.ui.components.NameWithBadge
 import com.komikta.ui.components.SkeletonBlock
 import com.komikta.ui.components.relativeTime
@@ -287,10 +288,13 @@ internal fun CommentRow(
     val openProfile = { if (c.user.id.isNotBlank()) onUserClick(c.user.id) }
     val time = relativeTime(c.createdAt, System.currentTimeMillis()) + if (c.edited && !c.deleted) " · diedit" else ""
 
-    // Datar tanpa kartu: foto di kiri; nama + role + waktu, isi, lalu suka / balas / jumlah balasan. Balasan menjorok.
+    // Datar tanpa kartu (role punya cahaya halus di belakang): foto di kiri; nama + role + waktu, isi, lalu suka / balas / jumlah balasan. Balasan menjorok.
+    val startPad = if (isReply) 50.dp else 14.dp
     Row(
         Modifier.fillMaxWidth()
-            .padding(start = if (isReply) 50.dp else 14.dp, end = 4.dp, top = 8.dp, bottom = 2.dp)
+            // Cahaya role (C): pusatnya di tengah avatar. Diterapkan sebelum padding agar koordinatnya dari tepi baris.
+            .roleSpotlight(author.role, startPad + avatar / 2, 8.dp + avatar / 2)
+            .padding(start = startPad, end = 4.dp, top = 8.dp, bottom = 2.dp)
     ) {
         Box(Modifier.clip(CircleShape).clickable(onClick = openProfile)) { RoleAvatar(author.picture, shownName, avatar, author.role) }
         Spacer(Modifier.width(10.dp))
