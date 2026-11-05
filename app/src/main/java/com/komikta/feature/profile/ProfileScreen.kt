@@ -1,14 +1,6 @@
 package com.komikta.feature.profile
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.border
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -94,13 +86,17 @@ fun ProfileScreen(
 
     val u = user
     if (u == null) {
-        GuestScreen(
-            busy = ui.busy,
-            message = ui.message,
-            onSignIn = signIn,
-            onTerms = { uriHandler.openUri("${BuildConfig.BASE_URL}/terms") },
-            onPrivacy = { uriHandler.openUri("${BuildConfig.BASE_URL}/privacy") }
-        )
+        Column(
+            Modifier.fillMaxSize().background(Mono.Bg).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp)
+        ) {
+            GuestContent(
+                busy = ui.busy,
+                message = ui.message,
+                onSignIn = signIn,
+                onTerms = { uriHandler.openUri("${BuildConfig.BASE_URL}/terms") },
+                onPrivacy = { uriHandler.openUri("${BuildConfig.BASE_URL}/privacy") }
+            )
+        }
     } else {
         // Identitas (nama, foto, peran, level) selalu dari sesi terbaru; angka statistik dari backend.
         val shown = remember(page, u) {
@@ -130,12 +126,17 @@ fun ProfileScreen(
                         onDelete = { confirmDelete = true }
                     )
                 },
-                topRight = { TopPill("Logout") { confirmLogout = true } }
+                topRight = {
+                    Text(
+                        "Logout", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White,
+                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { confirmLogout = true }.padding(horizontal = 12.dp, vertical = 10.dp)
+                    )
+                }
             )
             ui.message?.let {
                 Text(
                     it, fontSize = 14.sp, color = Color.White,
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp).clip(RoundedCornerShape(14.dp)).background(Mono.CardHigh).border(1.dp, GlassLine, RoundedCornerShape(14.dp)).padding(horizontal = 18.dp, vertical = 11.dp)
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp).clip(RoundedCornerShape(10.dp)).background(Mono.CardHigh).padding(horizontal = 16.dp, vertical = 10.dp)
                 )
             }
         }
@@ -268,7 +269,9 @@ private fun SettingsMenu(
         DropdownMenuItem(text = { Text(label, fontSize = 15.sp, color = color) }, onClick = { open = false; action() })
     }
     Box {
-        TopCircle(AppIcons.settings, "Pengaturan") { open = true }
+        Box(Modifier.size(44.dp).clip(CircleShape).clickable { open = true }, contentAlignment = Alignment.Center) {
+            Icon(AppIcons.settings, "Pengaturan", tint = Color.White, modifier = Modifier.size(24.dp))
+        }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.background(Mono.Card)) {
             item("Ganti foto profil", Color.White, onPhoto)
             item("Ganti nama tampilan", Color.White, onEditName)
@@ -284,64 +287,42 @@ private fun SettingsMenu(
 }
 
 @Composable
-private fun GuestScreen(busy: Boolean, message: String?, onSignIn: () -> Unit, onTerms: () -> Unit, onPrivacy: () -> Unit) {
-    val card = RoundedCornerShape(18.dp)
-    val src = remember { MutableInteractionSource() }
-    val pressed by src.collectIsPressedAsState()
-    val press = animateFloatAsState(if (pressed) 0.97f else 1f, tween(110), label = "signPress")
-    Column(Modifier.fillMaxSize().background(P.Content).verticalScroll(rememberScrollState())) {
-        Box(Modifier.fillMaxWidth().clipToBounds().background(P.Header)) {
-            HalftoneBackdrop(Color.White, Modifier.matchParentSize(), 0.4f)
-            FocusLines(Color.White, Modifier.matchParentSize(), 0.4f)
-            Column(Modifier.fillMaxWidth().padding(top = 44.dp, bottom = 30.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                InkFrame(96.dp) {
-                    Box(Modifier.size(96.dp).clip(CircleShape).background(Mono.CardHigh), contentAlignment = Alignment.Center) {
-                        Icon(BottomNavItem.Profile.unselectedIcon, null, tint = Mono.Icon, modifier = Modifier.size(42.dp))
-                    }
-                }
-                Text("Pembaca tamu", fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = Color.White, modifier = Modifier.padding(top = 14.dp))
-                Text("Bookmark dan riwayat baca tersimpan di perangkat ini", fontSize = 13.sp, color = P.Sub, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp, start = 32.dp, end = 32.dp))
-            }
+private fun GuestContent(busy: Boolean, message: String?, onSignIn: () -> Unit, onTerms: () -> Unit, onPrivacy: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(top = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(84.dp).clip(CircleShape).background(Mono.CardHigh), contentAlignment = Alignment.Center) {
+            Icon(BottomNavItem.Profile.unselectedIcon, null, tint = Mono.Icon, modifier = Modifier.size(38.dp))
         }
-        HalftoneEdge(P.Header, P.Content)
-        Column(Modifier.padding(horizontal = 14.dp).padding(top = 10.dp, bottom = 28.dp)) {
-            Column(Modifier.fillMaxWidth().clip(card).background(CardBg).border(1.dp, CardLine, card).padding(16.dp)) {
-                Text("Masuk untuk ikut komunitas", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                Text("Tulis komentar, balas, beri like, dan kumpulkan XP di setiap chapter.", fontSize = 13.sp, lineHeight = 19.sp, color = P.Sub, modifier = Modifier.padding(top = 4.dp))
-                Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Perk(AppIcons.comment, "Komentar", Modifier.weight(1f))
-                    Perk(AppIcons.heart(false), "Like", Modifier.weight(1f))
-                    Perk(AppIcons.star, "XP & level", Modifier.weight(1f))
-                }
-                Box(
-                    Modifier.padding(top = 16.dp).fillMaxWidth().height(48.dp)
-                        .graphicsLayer { scaleX = press.value; scaleY = press.value }
-                        .clip(RoundedCornerShape(14.dp)).background(Color.White)
-                        .clickable(interactionSource = src, indication = null, enabled = !busy, onClick = onSignIn),
-                    contentAlignment = Alignment.Center
-                ) { Text(if (busy) "Memproses…" else "Masuk dengan Google", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Ink) }
-                message?.let { Text(it, fontSize = 13.sp, color = P.Sub, modifier = Modifier.padding(top = 10.dp)) }
-            }
-            Text("TENTANG APLIKASI", fontSize = 12.sp, letterSpacing = 1.sp, color = P.Label, modifier = Modifier.padding(top = 26.dp, bottom = 8.dp, start = 2.dp))
-            Column(Modifier.fillMaxWidth().clip(card).background(CardBg).border(1.dp, CardLine, card)) {
-                InfoLine("Ketentuan", null, onTerms)
-                Box(Modifier.fillMaxWidth().height(1.dp).background(CardLine))
-                InfoLine("Kebijakan Privasi", null, onPrivacy)
-                Box(Modifier.fillMaxWidth().height(1.dp).background(CardLine))
-                InfoLine("Versi", BuildConfig.VERSION_NAME, null)
-                Box(Modifier.fillMaxWidth().height(1.dp).background(CardLine))
-                InfoLine("Sumber", "Lumos · Manta · Shinigami", null)
-            }
-        }
+        Text("Pembaca tamu", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
+        Text("Bookmark dan riwayat baca tersimpan di perangkat ini", fontSize = 14.sp, color = Mono.TextDim, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
     }
-}
-
-@Composable
-private fun Perk(icon: ImageVector, label: String, modifier: Modifier) {
-    val shape = RoundedCornerShape(12.dp)
-    Column(modifier.clip(shape).background(Glass).border(1.dp, GlassLine, shape).padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
-        Text(label, fontSize = 12.sp, color = P.Sub, maxLines = 1)
+    Column(Modifier.padding(top = 28.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Mono.Card).padding(16.dp)) {
+        Text("Masuk untuk ikut komunitas", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text("Tulis komentar, balas, beri like, dan kumpulkan XP di setiap chapter.", fontSize = 14.sp, lineHeight = 20.sp, color = Mono.TextDim, modifier = Modifier.padding(top = 4.dp))
+        Text(
+            if (busy) "Memproses…" else "Masuk dengan Google",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.Black,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .padding(top = 16.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.White)
+                .clickable(enabled = !busy, onClick = onSignIn)
+                .padding(vertical = 13.dp)
+        )
+        message?.let { Text(it, fontSize = 13.sp, color = Mono.TextDim, modifier = Modifier.padding(top = 10.dp)) }
+    }
+    Text("TENTANG APLIKASI", fontSize = 12.sp, letterSpacing = 1.sp, color = Mono.TextFaint, modifier = Modifier.padding(top = 28.dp, bottom = 8.dp, start = 2.dp))
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Mono.Card)) {
+        InfoLine("Ketentuan", null, onTerms)
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
+        InfoLine("Kebijakan Privasi", null, onPrivacy)
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
+        InfoLine("Versi", BuildConfig.VERSION_NAME, null)
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
+        InfoLine("Sumber", "Lumos · Manta · Shinigami", null)
     }
 }
 
