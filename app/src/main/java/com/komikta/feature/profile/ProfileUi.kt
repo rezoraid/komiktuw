@@ -3,6 +3,7 @@ package com.komikta.feature.profile
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -155,7 +156,7 @@ internal fun ProfilePage(
 
     LazyColumn(state = listState, modifier = modifier.fillMaxSize().background(P.Content)) {
         item(key = "header", contentType = "header") {
-            ProfileHeader(user, state.stats, busy, onAvatarClick, onLevelClick, topLeft, topRight)
+            ProfileHeader(user, state.stats, if (state.self) fallbackUser else null, busy, onAvatarClick, onLevelClick, topLeft, topRight)
         }
         stickyHeader(key = "tabs", contentType = "tabs") { ProfileTabs(state.tab, onTab) }
         item(key = "gap", contentType = "gap") { Spacer(Modifier.height(8.dp)) }
@@ -215,6 +216,8 @@ private val AvatarSize = 120.dp
 private fun ProfileHeader(
     user: CommunityUserDto?,
     stats: CommunityUserDto?,
+    /** Sesi akun sendiri (sumber XP terbaru). Null di profil orang lain, jadi bar XP tidak tampil. */
+    xpUser: CommunityUserDto?,
     busy: Boolean,
     onAvatarClick: (() -> Unit)?,
     onLevelClick: (() -> Unit)?,
@@ -258,6 +261,8 @@ private fun ProfileHeader(
                         if (user.publicNo > 0L) Capsule("#${user.publicNo}")
                     }
                 }
+                // Level OWNER tetap (tidak bergantung XP), jadi tidak ada bar. xpNextLevel 0 = data belum dimuat.
+                if (xpUser != null && xpUser.role != "OWNER" && xpUser.xpNextLevel > 0) XpProgress(xpUser, onLevelClick)
                 Row(Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 20.dp, start = 8.dp, end = 8.dp)) {
                     Stat(stats?.chaptersRead?.takeIf { it >= 0 }?.toString(), "chapter\ndibaca", Modifier.weight(1f))
                     Stat(stats?.commentCount?.takeIf { it >= 0 }?.toString(), "jumlah\nkomentar", Modifier.weight(1f))
@@ -266,6 +271,28 @@ private fun ProfileHeader(
             }
         }
         Box(Modifier.fillMaxWidth().height(1.5.dp).background(P.Shadow))
+    }
+}
+
+/** Progres XP menuju level berikutnya: label kiri, "xp / target XP" kanan, lalu bar tipis. Ketuk membuka rincian XP. */
+@Composable
+private fun XpProgress(user: CommunityUserDto, onClick: (() -> Unit)?) {
+    val span = (user.xpNextLevel - user.xpCurrentLevel).coerceAtLeast(1)
+    val into = (user.xp - user.xpCurrentLevel).coerceIn(0, span)
+    val progress by animateFloatAsState(into.toFloat() / span, tween(600), label = "xpProgress")
+    Column(
+        Modifier.fillMaxWidth().padding(top = 16.dp, start = 20.dp, end = 20.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Menuju Lv ${user.level + 1}", fontSize = 13.sp, color = P.Label, maxLines = 1)
+            Text("${user.xp} / ${user.xpNextLevel} XP", fontSize = 13.sp, color = P.Label, maxLines = 1)
+        }
+        Box(Modifier.padding(top = 7.dp).fillMaxWidth().height(6.dp).clip(CircleShape).background(P.Capsule)) {
+            Box(Modifier.fillMaxWidth(progress).fillMaxHeight().clip(CircleShape).background(Color.White))
+        }
     }
 }
 
