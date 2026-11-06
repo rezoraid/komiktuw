@@ -163,8 +163,8 @@ fun DetailScreen(
                         DetailHeader(detail)
                     }
 
-                    // Hanya muncul kalau serial ini punya lebih dari satu bahasa (MANGA Plus).
-                    if (detail.languages.size > 1) {
+                    // Khusus komik MANGA Plus; sumber lain memakai bahasa aslinya tanpa pilihan.
+                    if (detail.source == SourcePrefs.MANGAPLUS) {
                         item(key = "language", contentType = "language") {
                             LanguageRow(detail.language, detail.languages) { variant ->
                                 if (variant.slug != detail.slug) {
@@ -345,12 +345,20 @@ private fun LanguageRow(current: String?, options: List<LanguageVariant>, onSele
     }
     Column(Modifier.padding(top = 6.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Bahasa", fontSize = 13.sp, color = Ui.Text2, modifier = Modifier.padding(horizontal = 14.dp))
-        Row(
-            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            ordered.forEach { v -> Chip(SourcePrefs.languageLabel(v.code), current == v.code, { onSelect(v) }) }
+        if (ordered.isNotEmpty()) {
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ordered.forEach { v -> Chip(SourcePrefs.languageLabel(v.code), current == v.code, { onSelect(v) }) }
+            }
         }
+        val note = when {
+            ordered.isEmpty() -> "Pilihan bahasa belum tersedia dari server"
+            ordered.size == 1 -> "Hanya tersedia dalam bahasa ini"
+            else -> null
+        }
+        if (note != null) Text(note, fontSize = 12.sp, color = Ui.Text3, modifier = Modifier.padding(horizontal = 14.dp))
     }
 }
 
