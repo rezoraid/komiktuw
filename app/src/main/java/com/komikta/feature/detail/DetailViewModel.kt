@@ -1,8 +1,10 @@
 package com.komikta.feature.detail
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.komikta.core.cache.ComicPreviewCache
 import com.komikta.core.common.Result
 import com.komikta.data.local.ReaderPrefs
 import com.komikta.data.local.dao.BookmarkDao
@@ -10,8 +12,14 @@ import com.komikta.data.local.dao.ReadChapterDao
 import com.komikta.data.local.entity.BookmarkEntity
 import com.komikta.data.repository.CommunityRepository
 import com.komikta.domain.model.ComicDetail
+import com.komikta.domain.usecase.GetChapterContentUseCase
 import com.komikta.domain.usecase.GetComicDetailUseCase
+import coil.ImageLoader
+import coil.request.CachePolicy
+import coil.request.ImageRequest
+import coil.size.Size
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,12 +37,17 @@ data class DetailUiState(
     val isLoading: Boolean = true,
     val detail: ComicDetail? = null,
     val errorMessage: String? = null,
-    val chaptersNewestFirst: Boolean = true
+    val chaptersNewestFirst: Boolean = true,
+    /** Info dasar dari daftar (sampul, judul) untuk tampil seketika selagi detail lengkap dimuat. */
+    val preview: ComicDetail? = null
 )
 
 @HiltViewModel
 class DetailViewModel @Inject constructor(
     private val getComicDetail: GetComicDetailUseCase,
+    private val getChapterContent: GetChapterContentUseCase,
+    @ApplicationContext private val appContext: Context,
+    private val imageLoader: ImageLoader,
     private val bookmarkDao: BookmarkDao,
     readChapterDao: ReadChapterDao,
     private val prefs: ReaderPrefs,
@@ -46,7 +59,9 @@ class DetailViewModel @Inject constructor(
     private val slug: String = savedStateHandle["slug"] ?: ""
     private val bookmarkId = "${source}_$slug"
 
-    private val _uiState = MutableStateFlow(DetailUiState(chaptersNewestFirst = prefs.chaptersNewestFirst.value))
+    private val _uiState = MutableStateFlow(
+        DetailUiState(chaptersNewestFirst = prefs.chaptersNewestFirst.value, preview = ComicPreviewCache.detailPreview(source, slug))
+    )
     val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
 
     private val _chapterComments = MutableStateFlow<Map<String, Int>>(emptyMap())
@@ -151,11 +166,48 @@ class DetailViewModel @Inject constructor(
         detailJob = viewModelScope.launch {
             getComicDetail.observe(source, slug, refresh).collect { result ->
                 when (result) {
-                    is Result.Success -> _uiState.update { it.copy(isLoading = false, detail = result.data, errorMessage = null) }
+                    is Result.Success -> {
+                        _uiState.update { it.copy(isLoading = false, detail = result.data, errorMessage = null) }
+                        prefetchChapters(result.data)
+                    }
                     is Result.Error -> _uiState.update {
                         if (it.detail != null) it.copy(isLoading = false) else it.copy(isLoading = false, errorMessage = result.message)
                     }
                     else -> _uiState.update { it.copy(isLoading = false) }
+                }
+            }
+        }
+    }
+
+    private var prefetchedFor: String? = null
+
+    /**
+     * Begitu daftar chapter ada, data chapter yang paling mungkin dibuka (lanjut/mulai baca + terbaru) dimuat
+     * ke cache di belakang layar, jadi Reader terbuka tanpa menunggu jaringan.
+     */
+    private fun prefetchChapters(detail: ComicDetail) {
+        val newest = detail.chapters.firstOrNull() ?: return
+        if (prefetchedFor == newest.slug) return
+        prefetchedFor = newest.slug
+        val asc = detail.chapters.reversed()
+        val read = readChapters.value
+        val resume = asc.firstOrNull { it.slug !in read } ?: asc.last()
+        val picks = listOf(resume.slug, newest.slug).distinct()
+        viewModelScope.launch {
+            picks.forEachIndexed { index, chapterSlug ->
+                val loaded = getChapterContent(source, slug, chapterSlug)
+                // halaman-halaman pertama chapter yang paling mungkin dibuka ikut diunduh ke cache gambar
+                if (index == 0 && loaded is Result.Success) {
+                    loaded.data.imageUrls.take(3).forEach { url ->
+                        imageLoader.enqueue(
+                            ImageRequest.Builder(appContext)
+                                .data(url)
+                                .diskCacheKey(url)
+                                .memoryCachePolicy(CachePolicy.DISABLED)
+                                .size(Size(16, 16))
+                                .build()
+                        )
+                    }
                 }
             }
         }

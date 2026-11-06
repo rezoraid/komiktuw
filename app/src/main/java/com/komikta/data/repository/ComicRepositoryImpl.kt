@@ -1,5 +1,6 @@
 package com.komikta.data.repository
 
+import com.komikta.core.cache.ComicPreviewCache
 import com.komikta.core.cache.ResponseCache
 import com.komikta.core.common.Result
 import com.komikta.core.network.HttpException
@@ -35,8 +36,13 @@ class ComicRepositoryImpl @Inject constructor(
     private val sourceList = ListSerializer(Source.serializer())
     private val stringList = ListSerializer(String.serializer())
 
-    private fun <T> listResult(items: List<T>): Result<List<T>> =
-        if (items.isEmpty()) Result.Empty else Result.Success(items)
+    // Setiap daftar komik yang tampil dicatat ringan di memori agar Detail bisa menampilkan sampul + judul seketika.
+    private fun <T> note(items: List<T>) = ComicPreviewCache.remember(items.filterIsInstance<Comic>())
+
+    private fun <T> listResult(items: List<T>): Result<List<T>> {
+        note(items)
+        return if (items.isEmpty()) Result.Empty else Result.Success(items)
+    }
 
     override suspend fun getSources(): Result<List<Source>> =
         cache.load("sources", sourceList, TTL_STATIC) {
@@ -89,8 +95,10 @@ class ComicRepositoryImpl @Inject constructor(
     override fun observeDetail(source: String, slug: String, refresh: Boolean): Flow<Result<ComicDetail>> =
         cache.stream(detailKey(source, slug), ComicDetail.serializer(), TTL_DETAIL, refresh) { fetchDetail(source, slug) }
 
-    private fun <T> emptyAware(result: Result<List<T>>): Result<List<T>> =
-        if (result is Result.Success && result.data.isEmpty()) Result.Empty else result
+    private fun <T> emptyAware(result: Result<List<T>>): Result<List<T>> {
+        if (result is Result.Success) note(result.data)
+        return if (result is Result.Success && result.data.isEmpty()) Result.Empty else result
+    }
 
     private fun latestKey(source: String, page: Int) = "latest|$source|$page"
     private fun popularKey(source: String) = "popular|$source"

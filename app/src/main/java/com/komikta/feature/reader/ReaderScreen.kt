@@ -122,6 +122,8 @@ import kotlinx.coroutines.sync.Semaphore
 import com.komikta.domain.model.ChapterContent
 import com.komikta.feature.community.CommentsViewModel
 import com.komikta.ui.components.AppIcons
+import com.komikta.ui.components.SkeletonBlock
+import com.komikta.ui.components.shimmerBrush
 import com.komikta.ui.theme.Ui
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -336,11 +338,7 @@ fun ReaderScreen(
             .pointerInput(Unit) { detectTapGestures { controlsVisible = !controlsVisible } }
     ) {
         when {
-            uiState.isLoading -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Ui.Accent)
-                }
-            }
+            uiState.isLoading -> ReaderPageSkeleton()
             uiState.errorMessage != null -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -438,7 +436,7 @@ fun ReaderScreen(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
                 }
                 Text(
-                    text = uiState.content?.title ?: "Reader",
+                    text = readerTitle(uiState),
                     color = Color.White,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
@@ -661,6 +659,29 @@ private fun buildReaderItems(chapters: List<ChapterContent>): List<ReaderItem> =
 }
 
 private fun pageKey(url: String, widthPx: Int) = "$url@$widthPx"
+
+/** Judul bilah atas: langsung "Chapter N" dari slug/daftar chapter, tidak pernah menunggu isi chapter dimuat. */
+private fun readerTitle(state: ReaderUiState): String {
+    state.content?.title?.takeIf { it.isNotBlank() }?.let { return it }
+    val slug = state.content?.chapterSlug ?: state.chapterSlug
+    state.chapterInfo[slug]?.let { c ->
+        c.title?.takeIf { it.isNotBlank() }?.let { return it }
+        c.number?.takeIf { it.isNotBlank() }?.let { n ->
+            return if (n.any { ch -> ch.isDigit() } && !n.contains("chapter", ignoreCase = true)) "Chapter $n" else n
+        }
+    }
+    val num = Regex("""\d+(?:[.-]\d+)?""").find(slug)?.value?.replace('-', '.')
+    return if (num != null) "Chapter $num" else "Chapter"
+}
+
+/** Placeholder halaman (bukan spinner) selagi chapter pertama kali dimuat; langsung hilang saat gambar tiba. */
+@Composable
+private fun ReaderPageSkeleton() {
+    val brush = shimmerBrush()
+    Column(Modifier.fillMaxSize()) {
+        repeat(3) { SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(0.7f).padding(vertical = 1.dp), brush) }
+    }
+}
 
 private fun pageRequest(context: android.content.Context, url: String, widthPx: Int) =
     ImageRequest.Builder(context)

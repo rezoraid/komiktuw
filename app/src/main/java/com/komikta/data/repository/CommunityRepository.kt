@@ -346,6 +346,15 @@ class CommunityRepository @Inject constructor(
             call { api.replies(rootId, page) }
         }
 
+    /** Muat halaman pertama balasan di belakang layar, jadi ketukan "N balasan" langsung menampilkan isinya. */
+    fun prefetchReplies(rootIds: List<String>) {
+        rootIds.take(REPLY_PREFETCH_MAX).forEach { id ->
+            background.launch {
+                cache.load(repliesKey(id, 1), CommentPageDto.serializer(), TTL_COMMENTS) { call { api.replies(id, 1) } }
+            }
+        }
+    }
+
     fun invalidateReplies(rootId: String) {
         cache.clearPrefix("${scope()}replies|$rootId|")
     }
@@ -370,6 +379,7 @@ class CommunityRepository @Inject constructor(
         val TTL_COUNTS = TimeUnit.SECONDS.toMillis(60)
         const val PIN_MS = 6L * 60 * 60 * 1000
         const val PIN_MAX = 20
+        const val REPLY_PREFETCH_MAX = 8
         const val ME_FRESH_MS = 30_000L
         const val AVATAR_PRELOAD_MS = 4_000L
         const val PROGRESS_DEBOUNCE_MS = 1_200L

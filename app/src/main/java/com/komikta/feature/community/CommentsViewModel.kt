@@ -109,12 +109,19 @@ class CommentsViewModel @Inject constructor(
             pinned = runCatching { repo.pinned(src, sl, ch) }.getOrDefault(emptyList())
             repo.observeComments(src, sl, ch, sort, refresh).collect { r ->
                 when (r) {
-                    is Result.Success -> _ui.update { st -> if (st.sort != sort) st else mergeServerPage(st, r.data) }
+                    is Result.Success -> {
+                        _ui.update { st -> if (st.sort != sort) st else mergeServerPage(st, r.data) }
+                        prefetchReplies(r.data.items)
+                    }
                     is Result.Error -> _ui.update { if (it.items.isNotEmpty()) it.copy(loading = false) else it.copy(loading = false, error = r.message) }
                     else -> _ui.update { it.copy(loading = false) }
                 }
             }
         }
+    }
+
+    private fun prefetchReplies(items: List<CommentDto>) {
+        repo.prefetchReplies(items.filter { it.parentId == null && it.replyCount > 0 && !it.id.startsWith(TMP) }.map { it.id })
     }
 
     private fun mergeServerPage(st: CommentsUiState, page: CommentPageDto): CommentsUiState {

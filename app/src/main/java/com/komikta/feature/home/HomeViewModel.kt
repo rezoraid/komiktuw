@@ -7,6 +7,7 @@ import com.komikta.core.network.ApiConfig
 import com.komikta.data.local.dao.ReadingHistoryDao
 import com.komikta.data.local.entity.ReadingHistoryEntity
 import com.komikta.domain.model.Comic
+import com.komikta.domain.usecase.GetComicDetailUseCase
 import com.komikta.domain.usecase.GetLatestComicsUseCase
 import com.komikta.domain.usecase.GetPopularComicsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,6 +32,7 @@ data class HomeUiState(
 class HomeViewModel @Inject constructor(
     private val getLatestComics: GetLatestComicsUseCase,
     private val getPopularComics: GetPopularComicsUseCase,
+    private val getComicDetail: GetComicDetailUseCase,
     historyDao: ReadingHistoryDao
 ) : ViewModel() {
 
@@ -44,8 +46,19 @@ class HomeViewModel @Inject constructor(
     private var job: Job? = null
     private var latestDone = false
     private var popularDone = false
+    private val prefetched = HashSet<String>()
 
     init { loadHome() }
+
+    /**
+     * Detail komik teratas dimuat diam-diam begitu daftar Home tampil (server sudah menyimpannya hangat),
+     * jadi mengetuk komik langsung membuka detail + chapter lengkap dari cache, tanpa menunggu jaringan.
+     */
+    private fun prefetchDetails(items: List<Comic>) {
+        val todo = items.take(PREFETCH_DETAILS).filter { prefetched.add(it.slug) }
+        if (todo.isEmpty()) return
+        viewModelScope.launch { todo.forEach { getComicDetail(ApiConfig.DEFAULT_SOURCE, it.slug) } }
+    }
 
     fun loadHome(refresh: Boolean = false) {
         job?.cancel()
@@ -76,7 +89,10 @@ class HomeViewModel @Inject constructor(
     private fun applyResult(result: Result<List<Comic>>, merge: (HomeUiState, List<Comic>) -> HomeUiState) {
         _uiState.update { st ->
             val merged = when (result) {
-                is Result.Success -> merge(st, result.data)
+                is Result.Success -> {
+                    prefetchDetails(result.data)
+                    merge(st, result.data)
+                }
                 is Result.Empty -> merge(st, emptyList())
                 else -> st
             }
@@ -87,5 +103,9 @@ class HomeViewModel @Inject constructor(
                 errorMessage = if (hasData) null else error ?: merged.errorMessage
             )
         }
+    }
+
+    private companion object {
+        const val PREFETCH_DETAILS = 8
     }
 }

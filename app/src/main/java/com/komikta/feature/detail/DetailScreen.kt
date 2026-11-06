@@ -50,10 +50,13 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.komikta.domain.model.Chapter
+import com.komikta.domain.model.ComicDetail
 import com.komikta.ui.components.AppIcons
 import com.komikta.ui.components.Chip
 import com.komikta.ui.components.CoverImage
 import com.komikta.ui.components.DetailSkeleton
+import com.komikta.ui.components.SkeletonBlock
+import com.komikta.ui.components.shimmerBrush
 import com.komikta.ui.theme.Ui
 import java.text.NumberFormat
 import java.util.Locale
@@ -118,7 +121,25 @@ fun DetailScreen(
         likeMessage?.let { Text(it, fontSize = 13.sp, color = Ui.Text2, modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp)) }
 
         when {
-            uiState.isLoading && detail == null -> DetailSkeleton()
+            uiState.isLoading && detail == null -> {
+                val preview = uiState.preview
+                if (preview == null) DetailSkeleton() else {
+                    // Sampul + judul tampil duluan dari daftar; chapter menyusul begitu detail lengkap tiba.
+                    val early = remember(preview.chapters) { preview.chapters.distinctBy { it.slug } }
+                    LazyColumn(Modifier.weight(1f)) {
+                        item(key = "info", contentType = "info") { DetailHeader(preview) }
+                        items(early, key = { it.slug }, contentType = { "chapter" }) { chapter ->
+                            ChapterRow(
+                                chapter = chapter,
+                                isRead = chapter.slug in readChapters,
+                                comments = 0,
+                                onClick = { onChapterClick(preview.source, preview.slug, chapter.slug) }
+                            )
+                        }
+                        item(key = "chapters-skeleton", contentType = "skeleton") { ChapterSkeletonRows() }
+                    }
+                }
+            }
             uiState.errorMessage != null && detail == null -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     ErrorState(uiState.errorMessage ?: "Terjadi kesalahan", { viewModel.loadDetail(refresh = true) })
@@ -134,42 +155,7 @@ fun DetailScreen(
 
                 LazyColumn(Modifier.weight(1f)) {
                     item(key = "info", contentType = "info") {
-                        Row(Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) {
-                            CoverImage(
-                                url = detail.coverUrl,
-                                contentDescription = detail.title,
-                                widthPx = 330,
-                                heightPx = 462,
-                                modifier = Modifier
-                                    .width(110.dp)
-                                    .height(154.dp)
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(Ui.Card)
-                            )
-                            Spacer(Modifier.width(14.dp))
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(
-                                    text = detail.title,
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontSize = 21.sp,
-                                    lineHeight = 27.sp,
-                                    maxLines = 4,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                detail.alternativeTitles.firstOrNull()?.takeIf { it.isNotBlank() }?.let {
-                                    Text(it, fontSize = 13.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                }
-                                val line = listOfNotNull(
-                                    detail.status?.takeIf { it.isNotBlank() },
-                                    detail.type?.takeIf { it.isNotBlank() },
-                                    detail.year?.takeIf { it.isNotBlank() }
-                                ).joinToString(" · ")
-                                if (line.isNotEmpty()) Text(line, fontSize = 13.sp, color = Soft)
-                                detail.rating?.takeIf { it > 0.0 }?.let {
-                                    Text("★ ${fmtRating(it)}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ui.Star)
-                                }
-                            }
-                        }
+                        DetailHeader(detail)
                     }
 
                     if (detail.chapters.isNotEmpty()) {
@@ -330,6 +316,54 @@ fun DetailScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DetailHeader(detail: ComicDetail) {
+    Row(Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) {
+        CoverImage(
+            url = detail.coverUrl,
+            contentDescription = detail.title,
+            widthPx = 330,
+            heightPx = 462,
+            modifier = Modifier
+                .width(110.dp)
+                .height(154.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Ui.Card)
+        )
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = detail.title,
+                style = MaterialTheme.typography.headlineMedium,
+                fontSize = 21.sp,
+                lineHeight = 27.sp,
+                maxLines = 4,
+                overflow = TextOverflow.Ellipsis
+            )
+            detail.alternativeTitles.firstOrNull()?.takeIf { it.isNotBlank() }?.let {
+                Text(it, fontSize = 13.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            val line = listOfNotNull(
+                detail.status?.takeIf { it.isNotBlank() },
+                detail.type?.takeIf { it.isNotBlank() },
+                detail.year?.takeIf { it.isNotBlank() }
+            ).joinToString(" · ")
+            if (line.isNotEmpty()) Text(line, fontSize = 13.sp, color = Soft)
+            detail.rating?.takeIf { it > 0.0 }?.let {
+                Text("★ ${fmtRating(it)}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ui.Star)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChapterSkeletonRows() {
+    val brush = shimmerBrush()
+    Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        repeat(6) { SkeletonBlock(Modifier.fillMaxWidth().height(44.dp), brush) }
     }
 }
 

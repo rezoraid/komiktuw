@@ -37,7 +37,9 @@ data class ReaderUiState(
     val chapterInfo: Map<String, Chapter> = emptyMap(),
     val errorMessage: String? = null,
     val source: String = "",
-    val comicSlug: String = ""
+    val comicSlug: String = "",
+    /** Chapter yang sedang dibuka/dimuat; dipakai untuk judul langsung ("Chapter 12") sebelum isi tiba. */
+    val chapterSlug: String = ""
 )
 
 @HiltViewModel
@@ -60,7 +62,7 @@ class ReaderViewModel @Inject constructor(
     private var comicTitle: String? = null
     private var comicCover: String? = null
 
-    private val _uiState = MutableStateFlow(ReaderUiState(source = source, comicSlug = comicSlug))
+    private val _uiState = MutableStateFlow(ReaderUiState(source = source, comicSlug = comicSlug, chapterSlug = chapterSlug))
     val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
 
     val autoNext: StateFlow<Boolean> = prefs.autoNext
@@ -112,7 +114,10 @@ class ReaderViewModel @Inject constructor(
     }
 
     fun loadChapter(newChapterSlug: String? = null) {
-        if (newChapterSlug != null) chapterSlug = newChapterSlug
+        if (newChapterSlug != null) {
+            chapterSlug = newChapterSlug
+            _uiState.update { it.copy(chapterSlug = newChapterSlug) }
+        }
         // Batalkan pemuatan chapter sebelumnya agar respons lambat tidak menimpa pilihan terbaru.
         chapterLoadJob?.cancel()
         if (comicSlug.isBlank() || chapterSlug.isBlank()) {
@@ -136,7 +141,7 @@ class ReaderViewModel @Inject constructor(
         flushReadingTime()
         chapterSlug = content.chapterSlug
         _uiState.update {
-            it.copy(isLoading = false, errorMessage = null, content = content, loaded = listOf(content), upcoming = null)
+            it.copy(isLoading = false, errorMessage = null, content = content, chapterSlug = content.chapterSlug, loaded = listOf(content), upcoming = null)
         }
         viewModelScope.launch { saveHistory(content) }
         prefetchNext(content)
@@ -181,7 +186,7 @@ class ReaderViewModel @Inject constructor(
         val target = st.loaded.firstOrNull { it.chapterSlug == slug } ?: return
         flushReadingTime()
         chapterSlug = slug
-        _uiState.update { it.copy(content = target) }
+        _uiState.update { it.copy(content = target, chapterSlug = slug) }
         viewModelScope.launch { saveHistory(target) }
     }
 
