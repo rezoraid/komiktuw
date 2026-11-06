@@ -3,7 +3,8 @@ package com.komikta.feature.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.komikta.core.common.Result
-import com.komikta.core.network.ApiConfig
+import com.komikta.data.local.SourceChoice
+import com.komikta.data.local.SourcePrefs
 import com.komikta.data.local.dao.ReadingHistoryDao
 import com.komikta.data.local.entity.ReadingHistoryEntity
 import com.komikta.domain.model.Comic
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -33,7 +35,8 @@ class HomeViewModel @Inject constructor(
     private val getLatestComics: GetLatestComicsUseCase,
     private val getPopularComics: GetPopularComicsUseCase,
     private val getComicDetail: GetComicDetailUseCase,
-    historyDao: ReadingHistoryDao
+    historyDao: ReadingHistoryDao,
+    private val sourcePrefs: SourcePrefs
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -48,7 +51,20 @@ class HomeViewModel @Inject constructor(
     private var popularDone = false
     private val prefetched = HashSet<String>()
 
-    init { loadHome() }
+    val sourceChoice: StateFlow<SourceChoice> = sourcePrefs.choice
+
+    init {
+        loadHome()
+        viewModelScope.launch {
+            sourcePrefs.choice.drop(1).collect {
+                prefetched.clear()
+                _uiState.value = HomeUiState()
+                loadHome(refresh = true)
+            }
+        }
+    }
+
+    fun selectSource(source: String, lang: String) = sourcePrefs.select(source, lang)
 
     /**
      * Detail komik teratas dimuat diam-diam begitu daftar Home tampil (server sudah menyimpannya hangat),
@@ -57,7 +73,7 @@ class HomeViewModel @Inject constructor(
     private fun prefetchDetails(items: List<Comic>) {
         val todo = items.take(PREFETCH_DETAILS).filter { prefetched.add(it.slug) }
         if (todo.isEmpty()) return
-        viewModelScope.launch { todo.forEach { getComicDetail(ApiConfig.DEFAULT_SOURCE, it.slug) } }
+        viewModelScope.launch { todo.forEach { getComicDetail(sourcePrefs.source, it.slug) } }
     }
 
     fun loadHome(refresh: Boolean = false) {
@@ -65,7 +81,7 @@ class HomeViewModel @Inject constructor(
         latestDone = false
         popularDone = false
         _uiState.update { it.copy(isLoading = it.latestComics.isEmpty(), errorMessage = null) }
-        val source = ApiConfig.DEFAULT_SOURCE
+        val source = sourcePrefs.source
         job = viewModelScope.launch {
             launch {
                 getLatestComics.observe(source, 1, refresh).collect { r ->

@@ -59,6 +59,7 @@ import com.komikta.ui.components.ComicCard
 import com.komikta.ui.components.CoverImage
 import com.komikta.ui.components.NewBadge
 import com.komikta.ui.components.PosterRowSkeleton
+import com.komikta.ui.components.SourcePickerDialog
 import com.komikta.ui.components.SegmentedTabs
 import com.komikta.ui.components.TypeBadge
 import com.komikta.ui.components.chapterShort
@@ -84,6 +85,9 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val history by viewModel.continueReading.collectAsStateWithLifecycle()
+    val choice by viewModel.sourceChoice.collectAsStateWithLifecycle()
+    var showPicker by remember { mutableStateOf(false) }
+    if (showPicker) SourcePickerDialog(choice, { showPicker = false }, viewModel::selectSource)
 
     LifecycleResumeEffect(Unit) {
         viewModel.revalidate()
@@ -92,7 +96,7 @@ fun HomeScreen(
 
     when {
         uiState.isLoading && uiState.latestComics.isEmpty() -> Column(Modifier.fillMaxSize().background(Ui.Bg)) {
-            HomeHeader(onSearchClick)
+            HomeHeader(onSearchClick) { showPicker = true }
             PosterRowSkeleton(rows = 3)
         }
         uiState.errorMessage != null && uiState.latestComics.isEmpty() -> Box(Modifier.fillMaxSize().background(Ui.Bg), contentAlignment = Alignment.Center) {
@@ -118,7 +122,7 @@ fun HomeScreen(
             val open = { c: Comic -> onComicClick(c.source, c.slug) }
 
             LazyColumn(Modifier.fillMaxSize().background(Ui.Bg), contentPadding = PaddingValues(bottom = 24.dp)) {
-                item(key = "header") { HomeHeader(onSearchClick) }
+                item(key = "header") { HomeHeader(onSearchClick) { showPicker = true } }
                 if (hero != null) item(key = "hero") { Hero(hero) { open(hero) } }
                 if (history.isNotEmpty()) {
                     item(key = "continue-title") { SectionHeader("Continue reading", null, "History", onContinueViewAll) }
@@ -184,10 +188,11 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeHeader(onSearch: () -> Unit) {
+private fun HomeHeader(onSearch: () -> Unit, onPick: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = Pad, end = 6.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Image(painterResource(R.drawable.ic_logo), "Komikta", Modifier.size(width = 112.dp, height = 36.dp), contentScale = ContentScale.Fit, alignment = Alignment.CenterStart)
         Box(Modifier.weight(1f))
+        IconButton(onClick = onPick) { Icon(AppIcons.settings, "Sumber dan bahasa", tint = Color.White, modifier = Modifier.size(22.dp)) }
         IconButton(onClick = onSearch) { Icon(AppIcons.search, "Cari", tint = Color.White, modifier = Modifier.size(24.dp)) }
     }
 }

@@ -3,7 +3,7 @@ package com.komikta.feature.explore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.komikta.core.common.Result
-import com.komikta.core.network.ApiConfig
+import com.komikta.data.local.SourcePrefs
 import com.komikta.domain.model.BrowseParams
 import com.komikta.domain.model.Comic
 import com.komikta.domain.model.SearchParams
@@ -16,6 +16,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -51,7 +52,8 @@ private val CURATED_GENRES = listOf(
 class ExploreViewModel @Inject constructor(
     private val searchComics: SearchComicsUseCase,
     private val browseComics: BrowseComicsUseCase,
-    private val getGenres: GetGenresUseCase
+    private val getGenres: GetGenresUseCase,
+    private val sourcePrefs: SourcePrefs
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ExploreUiState())
@@ -59,18 +61,30 @@ class ExploreViewModel @Inject constructor(
 
     private var listJob: Job? = null
     private var moreJob: Job? = null
+    private var genresJob: Job? = null
 
     init {
         loadGenres()
         loadInitial()
+        viewModelScope.launch {
+            sourcePrefs.choice.drop(1).collect {
+                _uiState.value = ExploreUiState()
+                loadGenres()
+                loadInitial(refresh = true)
+            }
+        }
     }
 
     private fun loadGenres() {
-        viewModelScope.launch {
-            getGenres.observe(ApiConfig.DEFAULT_SOURCE).collect { result ->
+        genresJob?.cancel()
+        val source = sourcePrefs.source
+        genresJob = viewModelScope.launch {
+            getGenres.observe(source).collect { result ->
                 val remote = (result as? Result.Success)?.data.orEmpty()
                 val keys = remote.map { it.trim().lowercase() }.toSet()
-                val curated = if (remote.isEmpty() || CURATED_GENRES.any { it.lowercase() in keys }) {
+                val curated = if (source == SourcePrefs.MANGAPLUS && remote.isNotEmpty()) {
+                    remote.map { it.titleCase() }
+                } else if (remote.isEmpty() || CURATED_GENRES.any { it.lowercase() in keys }) {
                     CURATED_GENRES
                 } else {
                     remote.take(30).map { it.titleCase() }
@@ -95,7 +109,7 @@ class ExploreViewModel @Inject constructor(
     }
 
     private fun browseParams(state: ExploreUiState, page: Int) = BrowseParams(
-        source = ApiConfig.DEFAULT_SOURCE,
+        source = sourcePrefs.source,
         page = page,
         type = state.type,
         status = state.status,
@@ -151,7 +165,7 @@ class ExploreViewModel @Inject constructor(
 
     private suspend fun runSearch(query: String) {
         _uiState.update { it.copy(isLoading = it.comics.isEmpty(), isLoadingMore = false, errorMessage = null, canLoadMore = false) }
-        searchComics.observe(SearchParams(source = ApiConfig.DEFAULT_SOURCE, query = query, page = 1))
+        searchComics.observe(SearchParams(source = sourcePrefs.source, query = query, page = 1))
             .collect { result -> applyFirstPage(result, false) }
     }
 

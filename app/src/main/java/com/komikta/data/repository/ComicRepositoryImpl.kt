@@ -4,6 +4,7 @@ import com.komikta.core.cache.ComicPreviewCache
 import com.komikta.core.cache.ResponseCache
 import com.komikta.core.common.Result
 import com.komikta.core.network.HttpException
+import com.komikta.data.local.SourcePrefs
 import com.komikta.data.remote.api.KomiktaApi
 import com.komikta.data.remote.dto.ApiResponse
 import com.komikta.data.remote.dto.ComicListResponse
@@ -29,7 +30,8 @@ import javax.inject.Singleton
 @Singleton
 class ComicRepositoryImpl @Inject constructor(
     private val api: KomiktaApi,
-    private val cache: ResponseCache
+    private val cache: ResponseCache,
+    private val prefs: SourcePrefs
 ) : ComicRepository {
 
     private val comicList = ListSerializer(Comic.serializer())
@@ -100,13 +102,14 @@ class ComicRepositoryImpl @Inject constructor(
         return if (result is Result.Success && result.data.isEmpty()) Result.Empty else result
     }
 
-    private fun latestKey(source: String, page: Int) = "latest|$source|$page"
-    private fun popularKey(source: String) = "popular|$source"
-    private fun genresKey(source: String) = "genres|$source"
-    private fun detailKey(source: String, slug: String) = "detail|$source|$slug"
-    private fun chapterKey(source: String, comic: String, chapter: String) = "chapter|$source|$comic|$chapter"
-    private fun searchKey(p: SearchParams) = "search|${p.source}|${p.query.trim().lowercase()}|${p.page}"
-    private fun browseKey(p: BrowseParams) = "browse|${p.source}|${p.page}|${p.type}|${p.status}|${p.sort}|${p.genres}"
+    private fun tag(source: String) = prefs.langFor(source)?.let { "$source.$it" } ?: source
+    private fun latestKey(source: String, page: Int) = "latest|${tag(source)}|$page"
+    private fun popularKey(source: String) = "popular|${tag(source)}"
+    private fun genresKey(source: String) = "genres|${tag(source)}"
+    private fun detailKey(source: String, slug: String) = "detail|${tag(source)}|$slug"
+    private fun chapterKey(source: String, comic: String, chapter: String) = "chapter|${tag(source)}|$comic|$chapter"
+    private fun searchKey(p: SearchParams) = "search|${tag(p.source)}|${p.query.trim().lowercase()}|${p.page}"
+    private fun browseKey(p: BrowseParams) = "browse|${tag(p.source)}|${p.page}|${p.type}|${p.status}|${p.sort}|${p.genres}"
 
     private suspend fun fetchLatest(source: String, page: Int): Result<List<Comic>> =
         guarded { mapList(api.getLatest(source, page), source) }

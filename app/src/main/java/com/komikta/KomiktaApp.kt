@@ -3,7 +3,7 @@ package com.komikta
 import android.app.Application
 import coil.ImageLoader
 import coil.ImageLoaderFactory
-import com.komikta.core.network.ApiConfig
+import com.komikta.data.local.SourcePrefs
 import com.komikta.data.repository.CommunityRepository
 import com.komikta.domain.repository.ComicRepository
 import dagger.hilt.android.HiltAndroidApp
@@ -26,6 +26,9 @@ class KomiktaApp : Application(), ImageLoaderFactory {
     @Inject
     lateinit var community: dagger.Lazy<CommunityRepository>
 
+    @Inject
+    lateinit var sourcePrefs: SourcePrefs
+
     private val warmupScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onCreate() {
@@ -36,7 +39,7 @@ class KomiktaApp : Application(), ImageLoaderFactory {
     override fun newImageLoader(): ImageLoader = imageLoader.get()
 
     private suspend fun warmUp() = coroutineScope {
-        val source = ApiConfig.DEFAULT_SOURCE
+        val source = sourcePrefs.source
         val repo = comics.get()
         val session = community.get()
         launch { repo.observeLatest(source).collect {} }

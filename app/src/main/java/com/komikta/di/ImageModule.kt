@@ -5,12 +5,14 @@ import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.CachePolicy
+import com.komikta.core.network.ApiConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.Dispatcher
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
@@ -34,7 +36,12 @@ object ImageModule {
             .connectTimeout(12, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .addInterceptor { chain ->
-                val request = chain.request().newBuilder()
+                val original = chain.request()
+                val viaProxy = original.url.host.endsWith("tokyo-cdn.com")
+                val request = original.newBuilder()
+                    .apply {
+                        if (viaProxy) url(ApiConfig.BASE_URL.toHttpUrl().newBuilder().addPathSegments("api/image").addQueryParameter("url", original.url.toString()).build())
+                    }
                     .header("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36")
                     .header("Accept", "image/webp,image/apng,image/*,*/*;q=0.8")
                     .build()
