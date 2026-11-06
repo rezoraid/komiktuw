@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.komikta.core.cache.ComicPreviewCache
 import com.komikta.core.common.Result
 import com.komikta.data.local.ReaderPrefs
+import com.komikta.data.local.SourcePrefs
 import com.komikta.data.local.dao.BookmarkDao
 import com.komikta.data.local.dao.ReadChapterDao
 import com.komikta.data.local.entity.BookmarkEntity
@@ -52,6 +53,7 @@ class DetailViewModel @Inject constructor(
     readChapterDao: ReadChapterDao,
     private val prefs: ReaderPrefs,
     private val community: CommunityRepository,
+    private val sourcePrefs: SourcePrefs,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -81,6 +83,7 @@ class DetailViewModel @Inject constructor(
     val likeMessage: StateFlow<String?> = _likeMessage.asStateFlow()
 
     private var detailJob: Job? = null
+    private var prefetchedFor: String? = null
     private var chapterCommentsJob: Job? = null
     private var likeStateJob: Job? = null
     private var confirmed = LikeUi()
@@ -91,6 +94,9 @@ class DetailViewModel @Inject constructor(
         loadDetail()
         loadLike()
     }
+
+    /** Bahasa yang dipilih di sini jadi bahasa utama daftar (Home/Explore) untuk judul MANGA Plus berikutnya. */
+    fun rememberLanguage(code: String) = sourcePrefs.selectLang(code)
 
     fun loadChapterComments() {
         if (slug.isBlank()) return
@@ -178,8 +184,6 @@ class DetailViewModel @Inject constructor(
             }
         }
     }
-
-    private var prefetchedFor: String? = null
 
     /**
      * Begitu daftar chapter ada, data chapter yang paling mungkin dibuka (lanjut/mulai baca + terbaru) dimuat

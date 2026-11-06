@@ -167,7 +167,11 @@ fun MainNavGraph() {
                     onChapterClick = { source, comicSlug, chapterSlug ->
                         navController.navigate("reader/$source/$comicSlug/$chapterSlug")
                     },
-                    onCommentsClick = { source, slug -> navController.navigate("comments/$source/$slug") }
+                    onCommentsClick = { source, slug -> navController.navigate("comments/$source/$slug") },
+                    // Ganti bahasa = buka versi bahasa itu menggantikan halaman ini (back tetap kembali ke daftar).
+                    onLanguageChange = { source, slug ->
+                        navController.navigate("detail/$source/$slug") { popUpTo("detail/{source}/{slug}") { inclusive = true } }
+                    }
                 )
             }
 

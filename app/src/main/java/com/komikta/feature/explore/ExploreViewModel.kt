@@ -3,7 +3,6 @@ package com.komikta.feature.explore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.komikta.core.common.Result
-import com.komikta.data.local.SourceChoice
 import com.komikta.data.local.SourcePrefs
 import com.komikta.domain.model.BrowseParams
 import com.komikta.domain.model.Comic
@@ -69,8 +68,7 @@ class ExploreViewModel @Inject constructor(
         loadInitial()
         viewModelScope.launch {
             sourcePrefs.choice.drop(1).collect {
-                // Ganti sumber/bahasa: filter direset, tapi kata kunci dipertahankan supaya
-                // pencarian yang sama langsung dijalankan di sumber baru.
+                // Bahasa MANGA Plus berubah: filter direset, kata kunci dipertahankan dan pencarian diulang.
                 val q = _uiState.value.query
                 moreJob?.cancel()
                 listJob?.cancel()
@@ -80,10 +78,6 @@ class ExploreViewModel @Inject constructor(
             }
         }
     }
-
-    val sourceChoice: StateFlow<SourceChoice> = sourcePrefs.choice
-
-    fun selectSource(source: String, lang: String) = sourcePrefs.select(source, lang)
 
     private fun loadGenres() {
         genresJob?.cancel()

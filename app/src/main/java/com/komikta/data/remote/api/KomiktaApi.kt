@@ -66,7 +66,7 @@ class KomiktaApi @Inject constructor(
     ): ApiResponse<ComicListResponse> = get(
         url("api", source, "browse") {
             addQueryParameter("page", page.toString())
-            type?.let { addQueryParameter("type", it) }
+            if (source != SourcePrefs.MANGAPLUS) type?.let { addQueryParameter("type", it) }
             lang(source)
             status?.let { addQueryParameter("status", it) }
             sort?.let { addQueryParameter("sort", it) }

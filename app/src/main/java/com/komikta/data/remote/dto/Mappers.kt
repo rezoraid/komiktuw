@@ -4,6 +4,7 @@ import com.komikta.domain.model.Chapter
 import com.komikta.domain.model.ChapterContent
 import com.komikta.domain.model.Comic
 import com.komikta.domain.model.ComicDetail
+import com.komikta.domain.model.LanguageVariant
 import com.komikta.domain.model.Source
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
@@ -70,7 +71,9 @@ fun ComicDetailDto.toDomain(source: String): ComicDetail = ComicDetail(
     genres = genres,
     totalChapters = totalChapters,
     chapters = chapters.map { it.toDomain() },
-    source = source
+    source = source,
+    language = language?.takeIf { it.isNotBlank() },
+    languages = languages.filter { it.code.isNotBlank() && it.slug.isNotBlank() }.map { LanguageVariant(it.code, it.slug) }
 )
 
 fun ChapterContentDto.toDomain(source: String, comicSlug: String, chapterSlug: String): ChapterContent {

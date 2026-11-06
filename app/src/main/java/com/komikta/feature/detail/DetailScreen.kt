@@ -23,6 +23,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import com.komikta.data.local.SourcePrefs
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -51,6 +54,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.komikta.domain.model.Chapter
 import com.komikta.domain.model.ComicDetail
+import com.komikta.domain.model.LanguageVariant
 import com.komikta.ui.components.AppIcons
 import com.komikta.ui.components.Chip
 import com.komikta.ui.components.CoverImage
@@ -73,6 +77,7 @@ fun DetailScreen(
     onBack: () -> Unit,
     onChapterClick: (source: String, comicSlug: String, chapterSlug: String) -> Unit,
     onCommentsClick: (source: String, slug: String) -> Unit,
+    onLanguageChange: (source: String, slug: String) -> Unit,
     viewModel: DetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -156,6 +161,18 @@ fun DetailScreen(
                 LazyColumn(Modifier.weight(1f)) {
                     item(key = "info", contentType = "info") {
                         DetailHeader(detail)
+                    }
+
+                    // Hanya muncul kalau serial ini punya lebih dari satu bahasa (MANGA Plus).
+                    if (detail.languages.size > 1) {
+                        item(key = "language", contentType = "language") {
+                            LanguageRow(detail.language, detail.languages) { variant ->
+                                if (variant.slug != detail.slug) {
+                                    viewModel.rememberLanguage(variant.code)
+                                    onLanguageChange(detail.source, variant.slug)
+                                }
+                            }
+                        }
                     }
 
                     if (detail.chapters.isNotEmpty()) {
@@ -315,6 +332,24 @@ fun DetailScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+/** Bahasa yang benar-benar tersedia untuk serial ini; memilih membuka versi bahasa itu (chapter-nya sendiri). */
+@Composable
+private fun LanguageRow(current: String?, options: List<LanguageVariant>, onSelect: (LanguageVariant) -> Unit) {
+    val ordered = remember(options) {
+        val order = SourcePrefs.LANGUAGES.map { it.code }
+        options.sortedBy { order.indexOf(it.code).let { i -> if (i < 0) Int.MAX_VALUE else i } }
+    }
+    Column(Modifier.padding(top = 6.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Bahasa", fontSize = 13.sp, color = Ui.Text2, modifier = Modifier.padding(horizontal = 14.dp))
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ordered.forEach { v -> Chip(SourcePrefs.languageLabel(v.code), current == v.code, { onSelect(v) }) }
         }
     }
 }

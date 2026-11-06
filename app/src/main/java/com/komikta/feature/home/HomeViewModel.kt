@@ -3,7 +3,6 @@ package com.komikta.feature.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.komikta.core.common.Result
-import com.komikta.data.local.SourceChoice
 import com.komikta.data.local.SourcePrefs
 import com.komikta.data.local.dao.ReadingHistoryDao
 import com.komikta.data.local.entity.ReadingHistoryEntity
@@ -49,9 +48,7 @@ class HomeViewModel @Inject constructor(
     private var job: Job? = null
     private var latestDone = false
     private var popularDone = false
-    private val prefetched = HashSet<String>()
-
-    val sourceChoice: StateFlow<SourceChoice> = sourcePrefs.choice
+    private val prefetched = HashSet<String>() // "source:slug"
 
     init {
         loadHome()
@@ -64,16 +61,14 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun selectSource(source: String, lang: String) = sourcePrefs.select(source, lang)
-
     /**
      * Detail komik teratas dimuat diam-diam begitu daftar Home tampil (server sudah menyimpannya hangat),
      * jadi mengetuk komik langsung membuka detail + chapter lengkap dari cache, tanpa menunggu jaringan.
      */
     private fun prefetchDetails(items: List<Comic>) {
-        val todo = items.take(PREFETCH_DETAILS).filter { prefetched.add(it.slug) }
+        val todo = items.take(PREFETCH_DETAILS).filter { prefetched.add("${it.source}:${it.slug}") }
         if (todo.isEmpty()) return
-        viewModelScope.launch { todo.forEach { getComicDetail(sourcePrefs.source, it.slug) } }
+        viewModelScope.launch { todo.forEach { getComicDetail(it.source, it.slug) } }
     }
 
     fun loadHome(refresh: Boolean = false) {

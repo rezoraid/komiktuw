@@ -17,6 +17,9 @@ import com.komikta.domain.model.SearchParams
 import com.komikta.domain.model.Source
 import com.komikta.domain.repository.ComicRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
@@ -102,32 +105,69 @@ class ComicRepositoryImpl @Inject constructor(
         return if (result is Result.Success && result.data.isEmpty()) Result.Empty else result
     }
 
-    private fun tag(source: String) = prefs.langFor(source)?.let { "$source.$it" } ?: source
+    // Kunci cache gabungan ikut bahasa MANGA Plus, supaya ganti bahasa tidak menampilkan daftar lama.
+    private fun tag(source: String) =
+        if (source == ALL) "$ALL.${prefs.langFor(SourcePrefs.MANGAPLUS)}" else prefs.langFor(source)?.let { "$source.$it" } ?: source
     private fun latestKey(source: String, page: Int) = "latest|${tag(source)}|$page"
     private fun popularKey(source: String) = "popular|${tag(source)}"
     private fun genresKey(source: String) = "genres|${tag(source)}"
-    private fun detailKey(source: String, slug: String) = "detail|${tag(source)}|$slug"
-    private fun chapterKey(source: String, comic: String, chapter: String) = "chapter|${tag(source)}|$comic|$chapter"
+    // Detail & chapter: slug MANGA Plus sudah unik per bahasa, jadi kunci cache tidak perlu memuat bahasa.
+    private fun detailKey(source: String, slug: String) = "detail|$source|$slug"
+    private fun chapterKey(source: String, comic: String, chapter: String) = "chapter|$source|$comic|$chapter"
     private fun searchKey(p: SearchParams) = "search|${tag(p.source)}|${p.query.trim().lowercase()}|${p.page}"
     private fun browseKey(p: BrowseParams) = "browse|${tag(p.source)}|${p.page}|${p.type}|${p.status}|${p.sort}|${p.genres}"
 
+    /**
+     * Ambil dari beberapa sumber paralel lalu selang-seling (Lumos, MANGA Plus, Lumos, ...).
+     * Satu sumber gagal tidak menggagalkan yang lain; error baru dikembalikan kalau semuanya gagal.
+     */
+    private suspend fun fanOut(sources: List<String>, block: suspend (String) -> Result<List<Comic>>): Result<List<Comic>> {
+        val results = coroutineScope { sources.map { s -> async { block(s) } }.awaitAll() }
+        val lists = results.mapNotNull { (it as? Result.Success)?.data }
+        if (lists.isNotEmpty()) return Result.Success(interleave(lists))
+        return results.firstOrNull { it is Result.Error } ?: Result.Success(emptyList())
+    }
+
+    private fun interleave(lists: List<List<Comic>>): List<Comic> {
+        val out = ArrayList<Comic>(lists.sumOf { it.size })
+        val seen = HashSet<String>()
+        for (i in 0 until (lists.maxOfOrNull { it.size } ?: 0)) {
+            for (l in lists) if (i < l.size && seen.add("${l[i].source}:${l[i].slug}")) out.add(l[i])
+        }
+        return out
+    }
+
+    private val allSources = SourcePrefs.SOURCES.map { it.id }
+
     private suspend fun fetchLatest(source: String, page: Int): Result<List<Comic>> =
-        guarded { mapList(api.getLatest(source, page), source) }
+        if (source == ALL) fanOut(allSources) { fetchLatest(it, page) }
+        else guarded { mapList(api.getLatest(source, page), source) }
 
     private suspend fun fetchPopular(source: String): Result<List<Comic>> =
-        guarded { mapList(api.getPopular(source), source) }
+        if (source == ALL) fanOut(allSources) { fetchPopular(it) }
+        else guarded { mapList(api.getPopular(source), source) }
 
-    private suspend fun fetchBrowse(params: BrowseParams): Result<List<Comic>> = guarded {
-        mapList(
-            api.browse(params.source, params.page, params.type, params.status, params.sort, params.genres),
-            params.source
-        )
+    private suspend fun fetchBrowse(params: BrowseParams): Result<List<Comic>> {
+        if (params.source == ALL) {
+            // MANGA Plus hanya manga Jepang tanpa status/urutan: ikut hanya kalau filternya cocok.
+            val plus = (params.type == null || params.type == "manga") && params.status == null
+            val sources = allSources.filter { it != SourcePrefs.MANGAPLUS || plus }
+            return fanOut(sources) { fetchBrowse(params.copy(source = it)) }
+        }
+        return guarded {
+            mapList(
+                api.browse(params.source, params.page, params.type, params.status, params.sort, params.genres),
+                params.source
+            )
+        }
     }
 
     private suspend fun fetchSearch(params: SearchParams): Result<List<Comic>> =
-        guarded { mapList(api.search(params.source, params.query, params.page), params.source) }
+        if (params.source == ALL) fanOut(allSources) { fetchSearch(params.copy(source = it)) }
+        else guarded { mapList(api.search(params.source, params.query, params.page), params.source) }
 
-    private suspend fun fetchGenres(source: String): Result<List<String>> = guarded {
+    private suspend fun fetchGenres(requested: String): Result<List<String>> = guarded {
+        val source = if (requested == ALL) allSources.first() else requested // genre gabungan = genre sumber utama
         val response = api.getGenres(source)
         val data = response.data
         if (!response.ok || data == null) failure(response, "Failed to fetch genres") else Result.Success(data.items)
@@ -173,6 +213,7 @@ class ComicRepositoryImpl @Inject constructor(
     }
 
     private companion object {
+        const val ALL = SourcePrefs.ALL
         val TTL_LIST = TimeUnit.MINUTES.toMillis(2)
         val TTL_SEARCH = TimeUnit.MINUTES.toMillis(5)
         val TTL_DETAIL = TimeUnit.MINUTES.toMillis(10)
