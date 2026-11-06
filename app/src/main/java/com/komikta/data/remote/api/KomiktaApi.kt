@@ -43,6 +43,10 @@ class KomiktaApi @Inject constructor(
     private val base = ApiConfig.BASE_URL.toHttpUrl()
     private val userAgent = "Komikta-Android/${BuildConfig.VERSION_NAME}"
 
+    private companion object {
+        const val SEARCH_LIMIT = 30 // batas maksimum yang diterima server
+    }
+
     suspend fun getSources(): ApiResponse<SourcesResponse> =
         get(url("api", "sources"))
 
@@ -62,7 +66,7 @@ class KomiktaApi @Inject constructor(
     ): ApiResponse<ComicListResponse> = get(
         url("api", source, "browse") {
             addQueryParameter("page", page.toString())
-            if (source != SourcePrefs.MANGAPLUS) type?.let { addQueryParameter("type", it) }
+            type?.let { addQueryParameter("type", it) }
             lang(source)
             status?.let { addQueryParameter("status", it) }
             sort?.let { addQueryParameter("sort", it) }
@@ -75,6 +79,7 @@ class KomiktaApi @Inject constructor(
             url("api", source, "search") {
                 addQueryParameter("q", query)
                 addQueryParameter("page", page.toString())
+                addQueryParameter("limit", SEARCH_LIMIT.toString())
                 lang(source)
             }
         )

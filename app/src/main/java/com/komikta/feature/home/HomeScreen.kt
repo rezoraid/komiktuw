@@ -59,6 +59,7 @@ import com.komikta.ui.components.ComicCard
 import com.komikta.ui.components.CoverImage
 import com.komikta.ui.components.NewBadge
 import com.komikta.ui.components.PosterRowSkeleton
+import com.komikta.ui.components.SourceBar
 import com.komikta.ui.components.SourcePickerDialog
 import com.komikta.ui.components.SegmentedTabs
 import com.komikta.ui.components.TypeBadge
@@ -97,10 +98,15 @@ fun HomeScreen(
     when {
         uiState.isLoading && uiState.latestComics.isEmpty() -> Column(Modifier.fillMaxSize().background(Ui.Bg)) {
             HomeHeader(onSearchClick) { showPicker = true }
+            SourceBar(choice, viewModel::selectSource, Modifier.padding(horizontal = Pad).padding(bottom = 8.dp))
             PosterRowSkeleton(rows = 3)
         }
-        uiState.errorMessage != null && uiState.latestComics.isEmpty() -> Box(Modifier.fillMaxSize().background(Ui.Bg), contentAlignment = Alignment.Center) {
-            ErrorState(uiState.errorMessage ?: "Terjadi kesalahan", { viewModel.loadHome(refresh = true) })
+        uiState.errorMessage != null && uiState.latestComics.isEmpty() -> Column(Modifier.fillMaxSize().background(Ui.Bg)) {
+            HomeHeader(onSearchClick) { showPicker = true }
+            SourceBar(choice, viewModel::selectSource, Modifier.padding(horizontal = Pad).padding(bottom = 8.dp))
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                ErrorState(uiState.errorMessage ?: "Terjadi kesalahan", { viewModel.loadHome(refresh = true) })
+            }
         }
         else -> {
             val latest = uiState.latestComics
@@ -123,6 +129,7 @@ fun HomeScreen(
 
             LazyColumn(Modifier.fillMaxSize().background(Ui.Bg), contentPadding = PaddingValues(bottom = 24.dp)) {
                 item(key = "header") { HomeHeader(onSearchClick) { showPicker = true } }
+                item(key = "sources") { SourceBar(choice, viewModel::selectSource, Modifier.padding(horizontal = Pad).padding(bottom = 10.dp)) }
                 if (hero != null) item(key = "hero") { Hero(hero) { open(hero) } }
                 if (history.isNotEmpty()) {
                     item(key = "continue-title") { SectionHeader("Continue reading", null, "History", onContinueViewAll) }

@@ -38,6 +38,7 @@ class SourcePrefs @Inject constructor(@ApplicationContext context: Context) {
 
     companion object {
         const val MANGAPLUS = "mangaplus"
+        fun languageLabel(code: String): String = LANGUAGES.firstOrNull { it.code == code }?.label ?: code
         const val DEFAULT_LANG = "eng"
         val SOURCES = listOf(SourceOption("lumos", "Lumos"), SourceOption(MANGAPLUS, "MANGA Plus"))
         val LANGUAGES = listOf(

@@ -34,6 +34,7 @@ fun SourcePickerDialog(current: SourceChoice, onDismiss: () -> Unit, onSelect: (
         title = { ImmersiveDialogEffect(); Text("Sumber bacaan", style = MaterialTheme.typography.titleMedium) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Sumber", color = Mono.TextDim, fontSize = 13.sp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SourcePrefs.SOURCES.forEach { Chip(it.label, selected = source == it.id, onClick = { source = it.id }) }
                 }

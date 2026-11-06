@@ -65,6 +65,8 @@ import com.komikta.ui.components.Chip
 import com.komikta.ui.components.ComicCard
 import com.komikta.ui.components.PosterRowSkeleton
 import com.komikta.ui.components.SegmentedTabs
+import com.komikta.ui.components.SourceBar
+import com.komikta.data.local.SourcePrefs
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import com.komikta.ui.theme.Ui
@@ -72,7 +74,9 @@ import kotlinx.coroutines.delay
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 
-private val Types = listOf("All", "Manhwa", "Manhua", "Manga")
+// label to nilai type di server (null = bawaan server)
+private val LumosTypes = listOf("All" to null, "Manhwa" to "manhwa", "Manhua" to "manhua", "Manga" to "manga")
+private val PlusTypes = listOf("Berjalan" to null, "Tamat" to "completed", "One-shot" to "one-shot")
 private val SortOptions = listOf("Latest update" to "latest", "Popular" to "popular", "Top rated" to "rating", "A-Z" to "az")
 
 @Composable
@@ -83,6 +87,9 @@ fun ExploreScreen(
     viewModel: ExploreViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val choice by viewModel.sourceChoice.collectAsStateWithLifecycle()
+    val isPlus = choice.source == SourcePrefs.MANGAPLUS
+    val types = if (isPlus) PlusTypes else LumosTypes
     val searchFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(focusSearch) {
@@ -110,11 +117,18 @@ fun ExploreScreen(
     Column(Modifier.fillMaxSize().background(Ui.Bg)) {
         val activeCount = uiState.selectedGenres.size + listOf(uiState.sort, uiState.status).count { it != null }
         var sortMenu by remember { mutableStateOf(false) }
-        SearchField(value = uiState.query, onChange = viewModel::onQueryChange, focus = searchFocus)
+        SearchField(
+            value = uiState.query,
+            onChange = viewModel::onQueryChange,
+            focus = searchFocus,
+            hint = if (isPlus) "Cari di MANGA Plus (${SourcePrefs.languageLabel(choice.lang)})" else "Search manga, manhwa, manhua"
+        )
+        SourceBar(choice, viewModel::selectSource, Modifier.padding(horizontal = 14.dp))
+        Spacer(Modifier.height(10.dp))
         SegmentedTabs(
-            options = Types,
-            selected = Types.indexOfFirst { if (it == "All") uiState.type == null else it.lowercase() == uiState.type }.coerceAtLeast(0),
-            onSelect = { viewModel.setType(if (it == 0) null else Types[it].lowercase()) },
+            options = types.map { it.first },
+            selected = types.indexOfFirst { it.second == uiState.type }.coerceAtLeast(0),
+            onSelect = { viewModel.setType(types[it].second) },
             modifier = Modifier.padding(horizontal = 14.dp)
         )
         Spacer(Modifier.height(14.dp))
@@ -131,8 +145,11 @@ fun ExploreScreen(
             }
         }
         Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 8.dp, top = 14.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(uiState.type?.replaceFirstChar { it.uppercase() } ?: "All types", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White, modifier = Modifier.weight(1f))
-            Box {
+            Text(
+                if (uiState.type == null && !isPlus) "All types" else types.firstOrNull { it.second == uiState.type }?.first ?: "All types",
+                fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White, modifier = Modifier.weight(1f)
+            )
+            if (!isPlus) Box {
                 Row(Modifier.clip(CircleShape).clickable { sortMenu = true }.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(AppIcons.sort, null, tint = Ui.Accent, modifier = Modifier.size(18.dp))
                     Text(SortOptions.firstOrNull { it.second == uiState.sort }?.first ?: SortOptions.first().first, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Ui.Accent)
@@ -192,6 +209,7 @@ fun ExploreScreen(
             selected = uiState.selectedGenres,
             sort = uiState.sort,
             status = uiState.status,
+            showSortStatus = !isPlus,
             onApply = { genres, sort, status ->
                 viewModel.applyFilters(genres, sort, status)
                 showFilter = false
@@ -202,7 +220,7 @@ fun ExploreScreen(
 }
 
 @Composable
-private fun SearchField(value: String, onChange: (String) -> Unit, focus: FocusRequester) {
+private fun SearchField(value: String, onChange: (String) -> Unit, focus: FocusRequester, hint: String) {
     Row(
         Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 12.dp).height(49.dp).clip(CircleShape).background(Ui.Card).padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -210,7 +228,7 @@ private fun SearchField(value: String, onChange: (String) -> Unit, focus: FocusR
         Icon(AppIcons.search, null, tint = Ui.Text2, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-            if (value.isEmpty()) Text("Search manga, manhwa, manhua", color = Ui.Text2, fontSize = 15.sp, maxLines = 1)
+            if (value.isEmpty()) Text(hint, color = Ui.Text2, fontSize = 15.sp, maxLines = 1)
             BasicTextField(
                 value = value,
                 onValueChange = onChange,
@@ -247,6 +265,7 @@ private fun GenreFilterSheet(
     selected: Set<String>,
     sort: String?,
     status: String?,
+    showSortStatus: Boolean,
     onApply: (Set<String>, String?, String?) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -281,18 +300,20 @@ private fun GenreFilterSheet(
                     .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState())
             ) {
-                SheetLabel("Urutkan")
-                OptionRow(
-                    options = SortOptions,
-                    selected = draftSort,
-                    onSelect = { draftSort = if (draftSort == it) null else it }
-                )
-                SheetLabel("Status")
-                OptionRow(
-                    options = listOf("Ongoing" to "ongoing", "Completed" to "completed", "Hiatus" to "hiatus"),
-                    selected = draftStatus,
-                    onSelect = { draftStatus = if (draftStatus == it) null else it }
-                )
+                if (showSortStatus) {
+                    SheetLabel("Urutkan")
+                    OptionRow(
+                        options = SortOptions,
+                        selected = draftSort,
+                        onSelect = { draftSort = if (draftSort == it) null else it }
+                    )
+                    SheetLabel("Status")
+                    OptionRow(
+                        options = listOf("Ongoing" to "ongoing", "Completed" to "completed", "Hiatus" to "hiatus"),
+                        selected = draftStatus,
+                        onSelect = { draftStatus = if (draftStatus == it) null else it }
+                    )
+                }
                 SheetLabel("Genre (pilih satu atau lebih)")
                 if (genres.isEmpty()) {
                     Text("Memuat...", color = Ui.Text2, modifier = Modifier.padding(vertical = 12.dp))
