@@ -306,7 +306,10 @@ class CommentsViewModel @Inject constructor(
         _ui.update { addLocal(it, tmp) }
         viewModelScope.launch {
             val sentAt = System.currentTimeMillis()
-            var result: Result<CommentResultDto> = repo.post(src, sl, ch, target?.id, text)
+            // clientId sama dipakai untuk semua percobaan kiriman ini → server tidak pernah membuat komentar ganda
+            val clientId = java.util.UUID.randomUUID().toString()
+            var result: Result<CommentResultDto> = repo.post(src, sl, ch, target?.id, text, clientId)
+            if (ambiguous(result)) result = repo.post(src, sl, ch, target?.id, text, clientId)
             if (ambiguous(result)) {
                 val known = _ui.value.let { st -> st.items.mapTo(HashSet()) { it.id } + st.replies.values.flatMap { rs -> rs.items.map { it.id } } }
                 repo.findPosted(src, sl, ch, rootId, me.id, text, sentAt - 60_000, known)?.let { result = Result.Success(CommentResultDto(comment = it)) }
@@ -320,7 +323,10 @@ class CommentsViewModel @Inject constructor(
                         repo.pin(src, sl, ch, c)
                     }
                     persist()
-                    if (c.parentId != null && (_ui.value.replies[c.parentId]?.page ?: 0) == 0) loadReplies(c.parentId)
+                    if (c.parentId != null) {
+                        repo.invalidateReplies(c.parentId)
+                        if ((_ui.value.replies[c.parentId]?.page ?: 0) == 0) loadReplies(c.parentId)
+                    }
                 }
                 is Result.Error -> {
                     dropLocal(tmp.id, rootId)
@@ -419,6 +425,7 @@ class CommentsViewModel @Inject constructor(
                 is Result.Success -> {
                     pinned = pinned.filter { it.id != c.id }
                     repo.unpin(src, sl, ch, c.id)
+                    c.parentId?.let(repo::invalidateReplies)
                     persist()
                     notice("Komentar dihapus")
                     repo.refreshMe(force = true)

@@ -66,6 +66,8 @@ class DetailViewModel @Inject constructor(
     val likeMessage: StateFlow<String?> = _likeMessage.asStateFlow()
 
     private var detailJob: Job? = null
+    private var chapterCommentsJob: Job? = null
+    private var likeStateJob: Job? = null
     private var confirmed = LikeUi()
     private var wanted = false
     private var syncing = false
@@ -77,7 +79,8 @@ class DetailViewModel @Inject constructor(
 
     fun loadChapterComments() {
         if (slug.isBlank()) return
-        viewModelScope.launch {
+        chapterCommentsJob?.cancel()
+        chapterCommentsJob = viewModelScope.launch {
             community.observeChapterCounts(source, slug).collect { r ->
                 if (r is Result.Success) _chapterComments.value = r.data
             }
@@ -86,7 +89,8 @@ class DetailViewModel @Inject constructor(
 
     fun loadLike() {
         if (slug.isBlank()) return
-        viewModelScope.launch {
+        likeStateJob?.cancel()
+        likeStateJob = viewModelScope.launch {
             community.observeLikeState(source, slug, null).collect { r ->
                 if (r is Result.Success && !syncing) {
                     confirmed = LikeUi(r.data.liked, r.data.count)

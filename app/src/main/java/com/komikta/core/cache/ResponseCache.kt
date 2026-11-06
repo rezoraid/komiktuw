@@ -107,10 +107,22 @@ class ResponseCache @Inject constructor(
         fetch: suspend () -> Result<T>
     ): Result<T> {
         val hit = peek(key, serializer)
-        if (hit != null && System.currentTimeMillis() - hit.storedAt <= freshMs) return Result.Success(hit.value)
+        if (hit != null) {
+            // Data lama tetap ditampilkan segera. Jika sudah stale, refresh berjalan di background
+            // dan hasil baru menggantikan cache untuk pembukaan berikutnya.
+            if (System.currentTimeMillis() - hit.storedAt > freshMs) {
+                scope.launch {
+                    when (val refreshed = shared(key, fetch)) {
+                        is Result.Success -> put(key, serializer, refreshed.data)
+                        else -> Unit // cache lama dipertahankan ketika jaringan gagal
+                    }
+                }
+            }
+            return Result.Success(hit.value)
+        }
         return when (val r = shared(key, fetch)) {
             is Result.Success -> r.also { put(key, serializer, it.data) }
-            else -> if (hit != null) Result.Success(hit.value) else r
+            else -> r
         }
     }
 

@@ -175,7 +175,7 @@ class CommunityApi @Inject constructor(
     suspend fun replies(rootId: String, page: Int): ApiResponse<CommentPageDto> =
         call("GET", listOf("comments", rootId, "replies"), query = mapOf("page" to page.toString()))
 
-    suspend fun post(source: String, slug: String, chapter: String?, parentId: String?, text: String): ApiResponse<CommentResultDto> =
+    suspend fun post(source: String, slug: String, chapter: String?, parentId: String?, text: String, clientId: String? = null): ApiResponse<CommentResultDto> =
         call(
             "POST", listOf("comments"),
             body = buildJsonObject {
@@ -187,6 +187,8 @@ class CommunityApi @Inject constructor(
                     if (chapter != null) put("chapter", chapter)
                 }
                 put("body", text)
+                // id unik per kiriman: server mengembalikan komentar yang sama jika kiriman diulang (tanpa ganda)
+                if (clientId != null) put("clientId", clientId)
             }
         )
 

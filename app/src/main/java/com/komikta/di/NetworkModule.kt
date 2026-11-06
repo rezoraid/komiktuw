@@ -1,7 +1,6 @@
 package com.komikta.di
 
 import com.komikta.core.network.ApiConfig
-import com.komikta.core.network.RetryInterceptor
 import android.content.Context
 import dagger.Module
 import dagger.Provides
@@ -38,7 +37,6 @@ object NetworkModule {
             maxRequestsPerHost = 12
         })
         .retryOnConnectionFailure(true)
-        .addInterceptor(RetryInterceptor())
         .connectTimeout(ApiConfig.CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .readTimeout(ApiConfig.SOCKET_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .writeTimeout(ApiConfig.SOCKET_TIMEOUT_MS, TimeUnit.MILLISECONDS)

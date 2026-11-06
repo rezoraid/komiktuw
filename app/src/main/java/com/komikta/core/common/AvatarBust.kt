@@ -23,6 +23,9 @@ object AvatarBust {
     fun apply(url: String): String {
         val b = base ?: return url
         if (rev <= 0L || url.startsWith("data:") || url.startsWith("file:")) return url
+        // Server kini menandai foto dengan ?v=<waktu ganti>: URL itu sudah unik per foto, jadi dipakai apa adanya
+        // (cache gambar server/Coil tetap efektif dan foto baru otomatis punya alamat baru).
+        if ("?v=" in url || "&v=" in url) return url
         return if (url.substringBefore('?') == b && "rev=" !in url) "$b?rev=$rev" else url
     }
 }

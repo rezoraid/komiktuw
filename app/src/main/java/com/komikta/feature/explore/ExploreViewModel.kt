@@ -142,7 +142,9 @@ class ExploreViewModel @Inject constructor(
     private suspend fun runInitial(refresh: Boolean) {
         val snapshot = _uiState.value
         _uiState.update {
-            it.copy(isLoading = true, isLoadingMore = false, errorMessage = null, page = 1, canLoadMore = true, comics = emptyList())
+            // Pertahankan hasil sebelumnya sampai halaman baru tiba agar Explore tidak berkedip
+            // menjadi kosong setiap filter berubah atau pengguna kembali ke Explore.
+            it.copy(isLoading = it.comics.isEmpty(), isLoadingMore = false, errorMessage = null, page = 1, canLoadMore = true)
         }
         browseComics.observe(browseParams(snapshot, 1), refresh).collect { result -> applyFirstPage(result, true) }
     }

@@ -55,6 +55,7 @@ class ReaderViewModel @Inject constructor(
     private val comicSlug: String = savedStateHandle["comicSlug"] ?: ""
     private var chapterSlug: String = savedStateHandle["chapterSlug"] ?: ""
     private var prefetchJob: Job? = null
+    private var chapterLoadJob: Job? = null
     private var appending = false
     private var comicTitle: String? = null
     private var comicCover: String? = null
@@ -112,18 +113,21 @@ class ReaderViewModel @Inject constructor(
 
     fun loadChapter(newChapterSlug: String? = null) {
         if (newChapterSlug != null) chapterSlug = newChapterSlug
+        // Batalkan pemuatan chapter sebelumnya agar respons lambat tidak menimpa pilihan terbaru.
+        chapterLoadJob?.cancel()
         if (comicSlug.isBlank() || chapterSlug.isBlank()) {
             _uiState.update { it.copy(isLoading = false, errorMessage = "Invalid chapter") }
             return
         }
         val ready = _uiState.value.upcoming?.takeIf { it.chapterSlug == chapterSlug }
         if (ready != null) { open(ready); return }
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            when (val result = getChapterContent(source, comicSlug, chapterSlug)) {
-                is Result.Success -> open(result.data)
-                is Result.Error -> _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
-                else -> _uiState.update { it.copy(isLoading = false) }
+        val requestedChapter = chapterSlug
+        chapterLoadJob = viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = it.content == null, errorMessage = null) }
+            when (val result = getChapterContent(source, comicSlug, requestedChapter)) {
+                is Result.Success -> if (chapterSlug == requestedChapter) open(result.data)
+                is Result.Error -> if (chapterSlug == requestedChapter) _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
+                else -> if (chapterSlug == requestedChapter) _uiState.update { it.copy(isLoading = false) }
             }
         }
     }

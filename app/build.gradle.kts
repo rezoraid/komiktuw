@@ -46,6 +46,7 @@ android {
 
     buildTypes {
         release {
+            // A release build must never silently fall back to the public debug signing key.
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
@@ -129,4 +130,31 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.13")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+}
+
+
+// Fail explicitly if someone attempts to publish a release without a dedicated release keystore.
+// Debug builds remain available for CI and local development.
+tasks.register("verifyReleaseSigning") {
+    doLast {
+        val store = System.getenv("KOMIKTA_STORE_FILE") ?: (project.findProperty("KOMIKTA_STORE_FILE") as String?)
+        val storePassword = System.getenv("KOMIKTA_STORE_PASSWORD") ?: (project.findProperty("KOMIKTA_STORE_PASSWORD") as String?)
+        val alias = System.getenv("KOMIKTA_KEY_ALIAS") ?: (project.findProperty("KOMIKTA_KEY_ALIAS") as String?)
+        val keyPassword = System.getenv("KOMIKTA_KEY_PASSWORD") ?: (project.findProperty("KOMIKTA_KEY_PASSWORD") as String?)
+        val missing = listOf(
+            "KOMIKTA_STORE_FILE" to store,
+            "KOMIKTA_STORE_PASSWORD" to storePassword,
+            "KOMIKTA_KEY_ALIAS" to alias,
+            "KOMIKTA_KEY_PASSWORD" to keyPassword
+        ).filter { it.second.isNullOrBlank() }.map { it.first }
+        if (missing.isNotEmpty()) {
+            throw GradleException("Release signing belum dikonfigurasi. Secret yang wajib: ${missing.joinToString()}. APK release tidak boleh ditandatangani dengan debug keystore.")
+        }
+    }
+}
+
+tasks.configureEach {
+    if (name.startsWith("assembleRelease") || name.startsWith("bundleRelease") || name.startsWith("packageRelease") || name.startsWith("signRelease")) {
+        dependsOn("verifyReleaseSigning")
+    }
 }

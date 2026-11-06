@@ -339,10 +339,19 @@ class CommunityRepository @Inject constructor(
             call { api.counts(source, slug) }.map { it.counts }
         }
 
-    suspend fun replies(rootId: String, page: Int): Result<CommentPageDto> = call { api.replies(rootId, page) }
+    private fun repliesKey(rootId: String, page: Int) = "${scope()}replies|$rootId|$page"
 
-    suspend fun post(source: String, slug: String, chapter: String?, parentId: String?, text: String): Result<CommentResultDto> =
-        call { api.post(source, slug, chapter, parentId, text) }.map { r ->
+    suspend fun replies(rootId: String, page: Int): Result<CommentPageDto> =
+        cache.load(repliesKey(rootId, page), CommentPageDto.serializer(), TTL_COMMENTS) {
+            call { api.replies(rootId, page) }
+        }
+
+    fun invalidateReplies(rootId: String) {
+        cache.clearPrefix("${scope()}replies|$rootId|")
+    }
+
+    suspend fun post(source: String, slug: String, chapter: String?, parentId: String?, text: String, clientId: String? = null): Result<CommentResultDto> =
+        call { api.post(source, slug, chapter, parentId, text, clientId) }.map { r ->
             r.user?.let { u -> session.update(u.copy(commentCount = (session.user.value?.commentCount ?: 0).coerceAtLeast(0) + 1)) }
             r
         }
