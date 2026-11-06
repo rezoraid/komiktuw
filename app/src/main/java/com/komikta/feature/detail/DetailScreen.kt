@@ -61,6 +61,8 @@ import com.komikta.ui.components.CoverImage
 import com.komikta.ui.components.DetailSkeleton
 import com.komikta.ui.components.SkeletonBlock
 import com.komikta.ui.components.shimmerBrush
+import com.komikta.ui.components.statusLabel
+import com.komikta.ui.components.typeLabel
 import com.komikta.ui.theme.Ui
 import java.text.NumberFormat
 import java.util.Locale
@@ -390,8 +392,8 @@ private fun DetailHeader(detail: ComicDetail) {
                 Text(it, fontSize = 13.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             val line = listOfNotNull(
-                detail.status?.takeIf { it.isNotBlank() },
-                detail.type?.takeIf { it.isNotBlank() },
+                statusLabel(detail.status),
+                typeLabel(detail.type),
                 detail.year?.takeIf { it.isNotBlank() }
             ).joinToString(" · ")
             if (line.isNotEmpty()) Text(line, fontSize = 13.sp, color = Soft)

@@ -64,8 +64,8 @@ fun PosterCard(
 
 @Composable
 fun ComicCard(comic: Comic, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val badge = remember(comic) { comic.type?.trim()?.takeIf { it.isNotEmpty() }?.replaceFirstChar { it.uppercase() } }
+    val badge = remember(comic) { typeLabel(comic.type) }
     val first = remember(comic) { comic.chapters.firstOrNull() }
-    val meta = remember(comic) { first?.let { chapterShort(it) ?: it.title?.takeIf { t -> t.isNotBlank() } } ?: comic.status?.takeIf { it.isNotBlank() } }
+    val meta = remember(comic) { first?.let { chapterShort(it) ?: it.title?.takeIf { t -> t.isNotBlank() } } ?: statusLabel(comic.status) }
     PosterCard(comic.title, comic.coverUrl, onClick, modifier, badge, isFresh(first?.timeAgo), meta)
 }

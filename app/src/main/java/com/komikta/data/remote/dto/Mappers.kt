@@ -6,6 +6,9 @@ import com.komikta.domain.model.Comic
 import com.komikta.domain.model.ComicDetail
 import com.komikta.domain.model.LanguageVariant
 import com.komikta.domain.model.Source
+import com.komikta.domain.model.canonicalGenres
+import com.komikta.domain.model.canonicalStatus
+import com.komikta.domain.model.canonicalType
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.doubleOrNull
@@ -23,11 +26,11 @@ fun ComicListItemDto.toDomain(source: String): Comic = Comic(
     title = title,
     slug = slug,
     coverUrl = cover,
-    type = type,
-    status = status,
-    rating = rating,
+    type = canonicalType(type, genres),
+    status = canonicalStatus(status),
+    rating = rating?.takeIf { it > 0.0 },
     chapterCount = chapterCount,
-    genres = genres,
+    genres = canonicalGenres(genres),
     source = source,
     author = author?.trim()?.takeIf { it.isNotEmpty() },
     views = views.toViewCount(),
@@ -61,14 +64,14 @@ fun ComicDetailDto.toDomain(source: String): ComicDetail = ComicDetail(
     coverUrl = cover,
     alternativeTitles = alt,
     synopsis = synopsis,
-    status = status,
-    type = type,
+    status = canonicalStatus(status),
+    type = canonicalType(type, genres),
     author = author,
     artist = artist,
     year = year,
     views = views,
-    rating = rating,
-    genres = genres,
+    rating = rating?.takeIf { it > 0.0 },
+    genres = canonicalGenres(genres),
     totalChapters = totalChapters,
     chapters = chapters.map { it.toDomain() },
     source = source,

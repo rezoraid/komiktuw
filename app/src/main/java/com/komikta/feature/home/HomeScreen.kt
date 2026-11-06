@@ -67,6 +67,8 @@ import com.komikta.ui.components.fmtViews
 import com.komikta.ui.components.historyChapterLabel
 import com.komikta.ui.components.isFresh
 import com.komikta.ui.components.relativeTime
+import com.komikta.ui.components.statusLabel
+import com.komikta.ui.components.typeLabel
 import com.komikta.ui.theme.Ui
 
 private val Pad = 14.dp
@@ -217,11 +219,11 @@ private fun Hero(comic: Comic, onClick: () -> Unit) {
         Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Color(0xFA181C21), 0.6f to Color(0xE6181C21), 1f to Color(0x4D181C21))))
         Column(Modifier.align(Alignment.CenterStart).fillMaxWidth(0.68f).padding(start = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                comic.type?.takeIf { it.isNotBlank() }?.let { Text(it.uppercase(), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White) }
+                Text(typeLabel(comic.type).uppercase(), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White)
                 comic.rating?.takeIf { it > 0 }?.let { Rating(it, 13.sp) }
             }
             Text(comic.title, fontSize = 21.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            val desc = listOfNotNull(comic.genres.take(3).joinToString(", ").ifBlank { null }, comic.status?.takeIf { it.isNotBlank() }).joinToString(" · ")
+            val desc = listOfNotNull(comic.genres.take(3).joinToString(", ").ifBlank { null }, statusLabel(comic.status)).joinToString(" · ")
             if (desc.isNotEmpty()) Text(desc, fontSize = 13.sp, lineHeight = 18.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text("Read now", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ui.OnAccent, modifier = Modifier.padding(top = 4.dp).clip(CircleShape).background(Ui.Accent).padding(horizontal = 22.dp, vertical = 9.dp))
         }
@@ -260,12 +262,12 @@ private fun WideCard(c: Comic, width: Dp, onClick: () -> Unit) {
     Column(Modifier.width(width).clickable(onClick = onClick)) {
         Box(Modifier.fillMaxWidth().height(width * 0.56f).clip(RoundedCornerShape(20.dp)).background(Ui.Card)) {
             CoverImage(c.coverUrl, c.title, Modifier.fillMaxSize(), 640, 360, Alignment.TopCenter)
-            c.type?.takeIf { it.isNotBlank() }?.let { TypeBadge(it.replaceFirstChar { x -> x.uppercase() }, Modifier.align(Alignment.TopStart).padding(10.dp)) }
+            TypeBadge(typeLabel(c.type), Modifier.align(Alignment.TopStart).padding(10.dp))
         }
         Text(c.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
         Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             c.rating?.takeIf { it > 0 }?.let { Rating(it) }
-            c.status?.takeIf { it.isNotBlank() }?.let { Text(it, fontSize = 13.sp, color = Ui.Text2, maxLines = 1) }
+            statusLabel(c.status)?.let { Text(it, fontSize = 13.sp, color = Ui.Text2, maxLines = 1) }
         }
         if (c.genres.isNotEmpty()) Text(c.genres.take(4).joinToString(", "), fontSize = 13.sp, lineHeight = 18.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
     }
@@ -277,7 +279,7 @@ private fun UpdateRow(c: Comic, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = Pad, vertical = 7.dp)) {
         Box(Modifier.size(width = 60.dp, height = 90.dp).clip(RoundedCornerShape(10.dp)).background(Ui.Card)) {
             CoverImage(c.coverUrl, c.title, Modifier.fillMaxSize(), 174, 258)
-            c.type?.takeIf { it.isNotBlank() }?.let { TypeBadge(it.replaceFirstChar { x -> x.uppercase() }, Modifier.align(Alignment.TopStart).padding(3.dp), small = true) }
+            TypeBadge(typeLabel(c.type), Modifier.align(Alignment.TopStart).padding(3.dp), small = true)
         }
         Column(Modifier.weight(1f).height(90.dp).padding(start = 12.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Text(c.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -298,13 +300,18 @@ private fun UpdateRow(c: Comic, onClick: () -> Unit) {
 private fun RankRow(rank: Int, c: Comic, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick), verticalAlignment = Alignment.CenterVertically) {
         Text("$rank", fontSize = 31.sp, fontWeight = FontWeight.Bold, color = if (rank <= 3) Ui.Accent else Ui.Rank, textAlign = TextAlign.Center, modifier = Modifier.width(40.dp))
-        CoverImage(c.coverUrl, c.title, Modifier.size(width = 50.dp, height = 74.dp).clip(RoundedCornerShape(8.dp)).background(Ui.Card), 140, 210)
+        Box(Modifier.size(width = 50.dp, height = 74.dp).clip(RoundedCornerShape(8.dp)).background(Ui.Card)) {
+            CoverImage(c.coverUrl, c.title, Modifier.fillMaxSize(), 140, 210)
+            TypeBadge(typeLabel(c.type), Modifier.align(Alignment.TopStart).padding(2.dp), small = true)
+        }
         Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text(c.title, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 c.rating?.takeIf { it > 0 }?.let { Rating(it) }
                 c.views?.takeIf { it > 0 }?.let { Views(it) }
             }
+            val sub = listOfNotNull(statusLabel(c.status), c.genres.firstOrNull()).joinToString(" · ")
+            if (sub.isNotEmpty()) Text(sub, fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
