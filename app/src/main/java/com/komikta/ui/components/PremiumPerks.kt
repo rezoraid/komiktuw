@@ -62,7 +62,7 @@ private val Perks by lazy {
         ),
         Perk(
             AppIcons.diamond, "Tampilan eksklusif",
-            "Badge Premium, cincin avatar bercahaya, nama bergradien, dan cahaya biru di setiap komentarmu."
+            "Badge Premium, bingkai avatar berlian biru, lencana hanko, dan kilau berlian di profil dan komentarmu."
         ),
         Perk(AppIcons.edit, "Ganti username lebih leluasa", "Jeda ganti username lebih singkat dibanding Member.", soon = true),
         Perk(AppIcons.eye, "Chapter lebih awal", "Baca chapter terbaru sebelum dirilis untuk semua orang.", soon = true)
