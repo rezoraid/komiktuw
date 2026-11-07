@@ -8,6 +8,10 @@ import com.komikta.domain.model.ComicDetail
 import com.komikta.domain.model.SearchParams
 import com.komikta.domain.model.completedWith
 import com.komikta.domain.model.isIncomplete
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import com.komikta.domain.model.Source
 import com.komikta.domain.repository.ComicRepository
@@ -66,19 +70,19 @@ class EnrichComicsUseCase @Inject constructor(private val repository: ComicRepos
     suspend operator fun invoke(items: List<Comic>, limit: Int = 40, onEnriched: (Comic) -> Unit) {
         val todo = items.filter { it.isIncomplete }.take(limit)
         if (todo.isEmpty()) return
-        val gate = kotlinx.coroutines.sync.Semaphore(4)
-        kotlinx.coroutines.coroutineScope {
+        val gate = Semaphore(4)
+        coroutineScope {
             todo.map { c ->
-                kotlinx.coroutines.async {
+                async {
                     gate.withPermit {
-                        val detail = (repository.getComicDetail(c.source, c.slug) as? com.komikta.core.common.Result.Success)?.data
+                        val detail = (repository.getComicDetail(c.source, c.slug) as? Result.Success)?.data
                         if (detail != null) {
                             val merged = c.completedWith(detail)
                             if (merged != c) onEnriched(merged)
                         }
                     }
                 }
-            }.forEach { it.await() }
+            }.awaitAll()
         }
     }
 }
