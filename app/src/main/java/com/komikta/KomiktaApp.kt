@@ -4,6 +4,7 @@ import android.app.Application
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import com.komikta.core.notify.NotificationPrefs
+import com.komikta.core.notify.PushSync
 import com.komikta.core.notify.UpdateNotifier
 import com.komikta.core.notify.UpdateScheduler
 import com.komikta.data.local.SourcePrefs
@@ -14,6 +15,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -53,5 +56,6 @@ class KomiktaApp : Application(), ImageLoaderFactory {
         launch { repo.observeLatest(source).collect {} }
         launch { repo.observePopular(source).collect {} }
         if (session.user.value != null) launch { session.refreshMe() }
+        launch { session.user.map { it?.id }.distinctUntilChanged().collect { PushSync.schedule(this@KomiktaApp) } }
     }
 }

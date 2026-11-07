@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "422663898488",
+    "project_id": "komikta-id",
+    "storage_bucket": "komikta-id.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:422663898488:android:01ffd637d1583dd554f48d",
+        "android_client_info": {
+          "package_name": "com.komikta"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBl873ykUF5-fPKJWu86fnJKhYFuFTj_yI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:422663898488:android:abeab17736865d5054f48d",
+        "android_client_info": {
+          "package_name": "com.komikta.debug"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBl873ykUF5-fPKJWu86fnJKhYFuFTj_yI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

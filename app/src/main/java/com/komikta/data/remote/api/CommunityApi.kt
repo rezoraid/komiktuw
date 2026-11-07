@@ -81,6 +81,16 @@ class CommunityApi @Inject constructor(
     suspend fun broadcastFeed(after: String?): ApiResponse<BroadcastFeedDto> =
         call("GET", listOf("broadcasts"), query = if (after.isNullOrBlank()) emptyMap() else mapOf("after" to after))
 
+    suspend fun registerPushToken(token: String, previous: String?): ApiResponse<OkDto> =
+        call("PUT", listOf("push-token"), body = buildJsonObject {
+            put("token", token)
+            put("appVersion", BuildConfig.VERSION_NAME)
+            if (!previous.isNullOrBlank() && previous != token) put("previous", previous)
+        })
+
+    suspend fun unregisterPushToken(token: String): ApiResponse<OkDto> =
+        call("POST", listOf("push-token", "unregister"), body = buildJsonObject { put("token", token) })
+
     // ---- Panel OWNER ----
     suspend fun adminSendBroadcast(title: String, body: String): ApiResponse<BroadcastResponse> =
         call("POST", listOf("admin", "broadcasts"), body = buildJsonObject { put("title", title); put("body", body) })

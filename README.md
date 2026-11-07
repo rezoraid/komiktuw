@@ -41,3 +41,9 @@ Komentar ada di Detail (baris "Komentar") dan di akhir tiap chapter di Reader. T
 ## Panel Admin (OWNER)
 - Profil > ikon pengaturan > **Panel admin** (hanya muncul untuk OWNER). Empat tab: Ringkasan (statistik), Pengguna (cari, filter role/diblokir, kelola role/XP/foto/blokir), Komentar (cari, filter dilaporkan, hapus), Laporan.
 - Ringkasan, daftar pengguna, dan daftar komentar butuh endpoint baru di server, lihat `ADMIN_API.md`.
+
+## Notifikasi push (FCM)
+- Firebase project `komikta-id`; `app/google-services.json` memuat klien `com.komikta` dan `com.komikta.debug`. Plugin `com.google.gms.google-services` + `firebase-messaging` (BoM 33.7.0).
+- `KomiktaMessagingService` menerima pesan data-only dari server (juga saat aplikasi ditutup) dan memposting notifikasi lewat `UpdateNotifier.postBroadcast`. Ketukan notifikasi membuka komik tertaut seperti sebelumnya.
+- `PushSyncWorker` mendaftarkan token ke server (`PUT /push-token`) saat aplikasi dibuka, saat token berganti, saat login/logout (menautkan atau melepas akun), dan tiap 7 hari. Saat notifikasi dimatikan lewat tombol lonceng, token dicabut (`/push-token/unregister`) dan pesan FCM diabaikan.
+- Anti-ganda: polling lama (`UpdateCheckWorker`) tetap jalan sebagai cadangan, tetapi pengumuman dengan ID yang sama hanya tampil sekali (`NotificationPrefs.markShown`) dan memakai ID notifikasi yang sama.

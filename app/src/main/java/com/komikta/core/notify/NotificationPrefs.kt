@@ -26,16 +26,45 @@ class NotificationPrefs @Inject constructor(@ApplicationContext private val cont
         get() = sp.getString(KEY_CURSOR, null)
         set(v) = sp.edit().putString(KEY_CURSOR, v).apply()
 
+    private val shownLock = Any()
+
+    fun markShown(id: String): Boolean {
+        synchronized(shownLock) {
+            val ids = sp.getString(KEY_SHOWN, "").orEmpty().split(',').filter { it.isNotEmpty() }
+            if (id in ids) return false
+            sp.edit().putString(KEY_SHOWN, (ids + id).takeLast(MAX_SHOWN).joinToString(",")).commit()
+            return true
+        }
+    }
+
+    var pushKey: String?
+        get() = sp.getString(KEY_PUSH_KEY, null)
+        set(v) = sp.edit().putString(KEY_PUSH_KEY, v).apply()
+
+    var pushToken: String?
+        get() = sp.getString(KEY_PUSH_TOKEN, null)
+        set(v) = sp.edit().putString(KEY_PUSH_TOKEN, v).apply()
+
+    var pushSyncedAt: Long
+        get() = sp.getLong(KEY_PUSH_AT, 0L)
+        set(v) = sp.edit().putLong(KEY_PUSH_AT, v).apply()
+
     fun setEnabled(value: Boolean) {
         sp.edit().putBoolean(KEY_ENABLED, value).apply()
         _enabled.value = value
         UpdateScheduler.sync(context, value)
+        PushSync.schedule(context)
     }
 
     private companion object {
         const val KEY_ENABLED = "updates_enabled"
         const val KEY_ASKED = "permission_asked"
         const val KEY_CURSOR = "broadcast_cursor"
+        const val KEY_SHOWN = "broadcast_shown"
+        const val KEY_PUSH_KEY = "push_key"
+        const val KEY_PUSH_TOKEN = "push_token"
+        const val KEY_PUSH_AT = "push_at"
+        const val MAX_SHOWN = 50
     }
 }
 

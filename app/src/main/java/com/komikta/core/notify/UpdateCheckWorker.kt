@@ -77,7 +77,7 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
                 return
             }
             val now = System.currentTimeMillis()
-            data.items.filter { now - it.createdAt <= BROADCAST_MAX_AGE_MS }.takeLast(MAX_BROADCASTS).forEach {
+            data.items.filter { now - it.createdAt <= BROADCAST_MAX_AGE_MS }.takeLast(MAX_BROADCASTS).filter { prefs.markShown(it.id) }.forEach {
                 UpdateNotifier.postBroadcast(applicationContext, it)
             }
             data.items.lastOrNull()?.let { prefs.broadcastCursor = it.id }
