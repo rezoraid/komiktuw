@@ -24,7 +24,9 @@ data class Comic(
     val genres: List<String> = emptyList(),
     val source: String,
     val author: String? = null,
-    /** Views dari database Komikta (aktivitas pengguna), bukan statistik sumber. Null = belum ada, tidak ditampilkan. */
+    val artist: String? = null,
+    val year: String? = null,
+    /** Total views = views sumber + views di aplikasi Komikta (dihitung server). Null/0 tetap tampil sebagai "0". */
     val viewCount: Long? = null,
     val chapters: List<Chapter> = emptyList()
 )
@@ -92,11 +94,11 @@ private fun Comic.key() = "$source:$slug"
 val Comic.uid: String get() = key()
 
 /**
- * Data yang tampil di kartu belum lengkap (rating, genre, jenis, atau chapter terbaru).
- * Views tidak ikut dihitung: views berasal dari database Komikta, bukan dari detail sumber.
+ * Data penting di kartu belum ada (cover, jenis, status, genre, atau chapter terbaru), jadi detailnya diambil untuk
+ * melengkapi. Rating/author yang memang tidak dimiliki sumber tidak dihitung: mengambil detail tidak akan mengisinya.
  */
 val Comic.isIncomplete: Boolean
-    get() = rating == null || genres.isEmpty() || type == null || chapters.isEmpty()
+    get() = coverUrl == null || type == null || status == null || genres.isEmpty() || chapters.isEmpty()
 
 /**
  * Lengkapi field yang kosong dari detail komik. Data yang sudah ada dari daftar tidak ditimpa,
@@ -110,6 +112,8 @@ fun Comic.completedWith(d: ComicDetail): Comic = copy(
     viewCount = viewCount ?: d.viewCount?.takeIf { it > 0L },
     genres = genres.ifEmpty { canonicalGenres(d.genres) },
     author = author ?: d.author?.trim()?.takeIf { it.isNotEmpty() },
+    artist = artist ?: d.artist?.trim()?.takeIf { it.isNotEmpty() },
+    year = year ?: d.year?.trim()?.takeIf { it.isNotEmpty() },
     chapterCount = chapterCount ?: d.totalChapters,
     chapters = chapters.ifEmpty { d.chapters.take(3) }
 )
@@ -123,6 +127,8 @@ fun Comic.fillMissingFrom(other: Comic): Comic = copy(
     viewCount = viewCount ?: other.viewCount,
     genres = genres.ifEmpty { other.genres },
     author = author ?: other.author,
+    artist = artist ?: other.artist,
+    year = year ?: other.year,
     chapterCount = chapterCount ?: other.chapterCount,
     chapters = chapters.ifEmpty { other.chapters }
 )

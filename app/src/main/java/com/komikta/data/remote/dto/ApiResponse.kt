@@ -57,7 +57,9 @@ data class ComicListItemDto(
     val chapters: List<ChapterSummaryDto> = emptyList(),
     val genres: List<String> = emptyList(),
     val author: String? = null,
-    // Views dari database Komikta (aktivitas pengguna). Field `views` dari sumber scraper sengaja diabaikan.
+    val artist: String? = null,
+    val year: String? = null,
+    // Total views (sumber + Komikta) yang sudah dihitung server. Field `views` mentah dari scraper diabaikan.
     val viewCount: JsonElement? = null
 )
 
@@ -83,7 +85,7 @@ data class ComicDetailDto(
     val author: String? = null,
     val artist: String? = null,
     val year: String? = null,
-    val viewCount: JsonElement? = null, // database Komikta; `views` sumber scraper diabaikan
+    val viewCount: JsonElement? = null, // total views (sumber + Komikta) dari server; `views` mentah scraper diabaikan
     val rating: Double? = null,
     val ratingCount: Double? = null,
     val genres: List<String> = emptyList(),

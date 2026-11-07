@@ -59,8 +59,14 @@ import com.komikta.ui.components.CoverImage
 import com.komikta.ui.components.DetailSkeleton
 import com.komikta.ui.components.SkeletonBlock
 import com.komikta.ui.components.shimmerBrush
-import com.komikta.ui.components.statusLabel
-import com.komikta.ui.components.typeLabel
+import com.komikta.ui.components.ComicStatsRow
+import com.komikta.ui.components.detailInfoRows
+import com.komikta.ui.components.displayGenres
+import com.komikta.ui.components.displayStatus
+import com.komikta.ui.components.displayType
+import com.komikta.ui.components.displaySynopsis
+import com.komikta.ui.components.displayChapterCount
+import com.komikta.ui.components.sourceName
 import com.komikta.ui.theme.Ui
 import java.text.NumberFormat
 import java.util.Locale
@@ -194,19 +200,24 @@ fun DetailScreen(
                     }
 
                     item(key = "meta", contentType = "meta") {
+                        // Semua baris selalu ada, urutannya sama untuk setiap komik dan sumber.
+                        val rows = remember(detail) { detailInfoRows(detail) }
                         Column(
-                            Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Ui.Card)
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            detail.author?.takeIf { it.isNotBlank() }?.let { MetaLine("Author", it) }
-                            detail.artist?.takeIf { it.isNotBlank() }?.let { MetaLine("Artist", it) }
-                            detail.viewCount?.takeIf { it > 0L }?.let { MetaLine("Views", NumberFormat.getIntegerInstance(IdLocale).format(it)) }
-                            (detail.totalChapters ?: detail.chapters.size).takeIf { it > 0 }?.let { MetaLine("Chapter", "$it") }
+                            rows.forEach { (label, value) -> MetaLine(label, value) }
                         }
                     }
 
-                    if (!detail.synopsis.isNullOrBlank()) {
+                    run {
                         item(key = "synopsis", contentType = "synopsis") {
+                            val synopsis = remember(detail) { displaySynopsis(detail) }
                             Column(
                                 Modifier
                                     .fillMaxWidth()
@@ -214,7 +225,7 @@ fun DetailScreen(
                                     .padding(horizontal = 14.dp, vertical = 8.dp)
                             ) {
                                 Text(
-                                    text = detail.synopsis.orEmpty(),
+                                    text = synopsis,
                                     fontSize = 15.sp,
                                     lineHeight = 23.sp,
                                     color = Soft,
@@ -232,14 +243,15 @@ fun DetailScreen(
                         }
                     }
 
-                    if (detail.genres.isNotEmpty()) {
+                    run {
                         item(key = "genres", contentType = "genres") {
+                            val genreList = remember(detail) { displayGenres(detail.genres, detail.type, detail.source) }
                             FlowRow(
                                 Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                detail.genres.forEach { genre ->
+                                genreList.forEach { genre ->
                                     Text(
                                         text = genre,
                                         fontSize = 13.sp,
@@ -352,18 +364,18 @@ private fun DetailHeader(detail: ComicDetail) {
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis
             )
-            detail.alternativeTitles.firstOrNull()?.takeIf { it.isNotBlank() }?.let {
-                Text(it, fontSize = 13.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-            val line = listOfNotNull(
-                statusLabel(detail.status),
-                typeLabel(detail.type),
+            // Judul lain; kalau tidak ada, nama sumber supaya baris ini tidak kosong.
+            Text(
+                detail.alternativeTitles.firstOrNull { it.isNotBlank() } ?: "Sumber: ${sourceName(detail.source)}",
+                fontSize = 13.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis
+            )
+            val line = listOf(
+                displayStatus(detail.status, detail.chapters),
+                displayType(detail.type, detail.source),
                 detail.year?.takeIf { it.isNotBlank() }
-            ).joinToString(" · ")
-            if (line.isNotEmpty()) Text(line, fontSize = 13.sp, color = Soft)
-            detail.rating?.takeIf { it > 0.0 }?.let {
-                Text("★ ${fmtRating(it)}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ui.Star)
-            }
+            ).filterNotNull().joinToString(" · ")
+            Text(line, fontSize = 13.sp, color = Soft)
+            ComicStatsRow(detail.rating, detail.viewCount, displayChapterCount(detail))
         }
     }
 }
@@ -379,7 +391,7 @@ private fun ChapterSkeletonRows() {
 @Composable
 private fun MetaLine(label: String, value: String) {
     Row {
-        Text(label, fontSize = 14.sp, color = Ui.Text3, modifier = Modifier.width(64.dp))
+        Text(label, fontSize = 14.sp, color = Ui.Text3, modifier = Modifier.width(72.dp))
         Text(value, fontSize = 14.sp, color = Soft, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }

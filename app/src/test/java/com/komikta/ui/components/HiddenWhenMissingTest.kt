@@ -6,9 +6,9 @@ import com.komikta.data.remote.dto.absoluteUrl
 import com.komikta.data.remote.dto.toDomain
 import com.komikta.domain.model.Chapter
 import com.komikta.domain.model.Comic
+import com.komikta.domain.model.ComicDetail
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -16,25 +16,39 @@ import org.junit.Test
 class HiddenWhenMissingTest {
     private val bare = Comic(title = "A", slug = "a", source = "manta")
 
-    @Test fun missingDataProducesNullNotDash() {
-        assertNull(genreText(bare))
-        assertNull(latestChapterText(bare))
-        assertNull(latestAgoText(bare))
-        assertNull(latestLine(bare))
-        assertFalse(hasStats(bare))
+    @Test fun missingDataIsAlwaysFilled() {
+        assertEquals("Manhwa", genreText(bare.copy(source = "lumos")))
+        assertEquals("Webtoon", genreText(bare))
+        assertEquals("Chapter tersedia", latestChapterText(bare))
+        assertEquals("Manta", latestAgoText(bare))
+        assertEquals("Chapter tersedia · Manta", latestLine(bare))
+        assertTrue(hasStats(bare))
+        assertEquals("Baru", displayRating(null))
+        assertEquals("Baru", displayRating(0.0))
+        assertEquals("Tidak dicantumkan", displayPerson(null))
+        assertEquals("Budi", displayPerson(" ", "Budi"))
+        assertEquals("Ongoing", displayStatus(null, emptyList()))
     }
 
-    @Test fun onlyAvailablePartsAreJoined() {
+    @Test fun noDashOrBlankInDetailRows() {
+        val rows = detailInfoRows(ComicDetail(title = "A", slug = "a", source = "shinigami"))
+        assertEquals(8, rows.size)
+        rows.forEach { (label, value) ->
+            assertTrue(label, value.isNotBlank() && value != "-")
+        }
+        assertTrue(displaySynopsis(ComicDetail(title = "A", slug = "a")).isNotBlank())
+    }
+
+    @Test fun originAndCoverFallback() {
+        assertEquals("manhwa", com.komikta.domain.model.originOf("webtoon"))
+        assertEquals(fallbackHue("Solo"), fallbackHue("Solo"), 0f)
+    }
+
+    @Test fun partsAreJoined() {
         val c = bare.copy(chapters = listOf(Chapter("c1", "12")))
-        assertEquals("Ch. 12", latestLine(c))
+        assertTrue(latestLine(c).startsWith("Ch. 12"))
         val d = bare.copy(chapters = listOf(Chapter("c1", "12", null, "3 hours ago")))
         assertEquals("Ch. 12 · 3 jam lalu", latestLine(d))
-    }
-
-    @Test fun statsNeedRealValues() {
-        assertFalse(hasStats(bare.copy(rating = 0.0, viewCount = 0L)))
-        assertTrue(hasStats(bare.copy(viewCount = 5L)))
-        assertTrue(hasStats(bare.copy(rating = 8.2)))
     }
 
     @Test fun scraperViewsAreIgnoredAndKomiktaViewCountIsUsed() {

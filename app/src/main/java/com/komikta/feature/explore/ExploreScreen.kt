@@ -73,7 +73,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 
 /** Explore hanya punya tiga kategori. */
-private val Types = listOf("Manhwa", "Manhua", "Manga")
+private val Types = listOf("All", "Manhwa", "Manhua", "Manga")
 private val SortOptions = listOf("Latest update" to "latest", "Popular" to "popular", "Top rated" to "rating", "A-Z" to "az")
 
 @Composable

@@ -58,14 +58,17 @@ class ModerationViewModel @Inject constructor(private val repo: CommunityReposit
     }
 
     fun resolve(report: ReportDto, action: String) {
+        val before = _ui.value.items
+        val cid = report.comment?.id
+        // Langsung hilang dari layar; dikembalikan hanya kalau server menolak.
+        _ui.update { st ->
+            st.copy(items = st.items.filter { it.id != report.id && (cid == null || it.comment?.id != cid) }, notice = if (action == "delete") "Komentar dihapus" else "Laporan diabaikan")
+        }
         viewModelScope.launch {
             when (val r = repo.resolveReport(report.id, action)) {
-                is Result.Success -> _ui.update { st ->
-                    val cid = report.comment?.id
-                    st.copy(items = st.items.filter { it.id != report.id && (cid == null || it.comment?.id != cid) }, notice = if (action == "delete") "Komentar dihapus" else "Laporan diabaikan")
-                }
-                is Result.Error -> _ui.update { it.copy(notice = r.message) }
-                else -> Unit
+                is Result.Success -> Unit
+                is Result.Error -> _ui.update { it.copy(items = before, notice = r.message) }
+                else -> _ui.update { it.copy(items = before) }
             }
         }
     }

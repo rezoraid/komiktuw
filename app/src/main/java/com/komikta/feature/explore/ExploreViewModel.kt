@@ -9,6 +9,7 @@ import com.komikta.domain.model.BrowseParams
 import com.komikta.domain.model.Comic
 import com.komikta.domain.model.fillMissingFrom
 import com.komikta.domain.model.isIncomplete
+import com.komikta.domain.model.originOf
 import com.komikta.domain.model.replacing
 import com.komikta.domain.model.uid
 import com.komikta.domain.usecase.EnrichComicsUseCase
@@ -30,7 +31,13 @@ internal const val NO_COMICS_MESSAGE = "Tidak ada komik untuk filter ini"
 
 /** Explore hanya Manhwa, Manhua, Manga; Manhwa tampil lebih dulu. */
 internal const val DEFAULT_TYPE = "manhwa"
-internal val EXPLORE_TYPES = setOf("manhwa", "manhua", "manga")
+internal const val ALL_TYPES = "all"
+internal val EXPLORE_TYPES = setOf(ALL_TYPES, "manhwa", "manhua", "manga")
+private val REAL_TYPES = EXPLORE_TYPES - ALL_TYPES
+
+/** Tab "All" menampilkan Manhwa, Manhua, dan Manga sekaligus; tab lain hanya jenisnya. */
+internal fun matchesType(type: String?, tab: String): Boolean =
+    if (tab == ALL_TYPES) type == null || originOf(type) in REAL_TYPES else type == null || originOf(type) == tab
 
 data class ExploreUiState(
     val query: String = "",
@@ -135,7 +142,7 @@ class ExploreViewModel @Inject constructor(
     private fun browseParams(state: ExploreUiState, page: Int) = BrowseParams(
         source = sourcePrefs.source,
         page = page,
-        type = state.type,
+        type = state.type.takeIf { it != ALL_TYPES },
         status = state.status,
         sort = state.sort,
         genres = state.selectedGenres.takeIf { it.isNotEmpty() }?.joinToString(",") { it.lowercase() }
@@ -145,9 +152,17 @@ class ExploreViewModel @Inject constructor(
         old.selectedGenres != new.selectedGenres || old.type != new.type ||
             old.sort != new.sort || old.status != new.status
 
+    /** Saring daftar yang sedang tampil secara lokal supaya perubahan filter terlihat seketika, sebelum server menjawab. */
+    private fun prefilter(list: List<Comic>, st: ExploreUiState): List<Comic> = list.filter { c ->
+        matchesType(c.type, st.type) &&
+            (st.selectedGenres.isEmpty() || st.selectedGenres.all { g -> c.genres.any { it.equals(g, true) } }) &&
+            (st.status == null || c.status == null || c.status.equals(st.status, true))
+    }
+
     fun applyFilters(genres: Set<String>, sort: String?, status: String?) {
         val old = _uiState.value
-        val new = old.copy(selectedGenres = genres, sort = sort, status = status, query = "")
+        var new = old.copy(selectedGenres = genres, sort = sort, status = status, query = "")
+        if (filtersChanged(old, new)) new = new.copy(comics = prefilter(old.comics, new))
         _uiState.value = new
         if (filtersChanged(old, new) || old.query.isNotBlank()) loadInitial()
     }
@@ -156,7 +171,8 @@ class ExploreViewModel @Inject constructor(
         if (type !in EXPLORE_TYPES) return
         val old = _uiState.value
         if (old.type == type) return
-        _uiState.value = old.copy(type = type, query = "")
+        val next = old.copy(type = type, query = "")
+        _uiState.value = next.copy(comics = prefilter(old.comics, next))
         loadInitial()
     }
 
@@ -201,7 +217,7 @@ class ExploreViewModel @Inject constructor(
             when (result) {
                 is Result.Success -> st.copy(
                     isLoading = false,
-                    comics = data.orEmpty().distinctBy { "${it.source}:${it.slug}" },
+                    comics = data.orEmpty().filter { matchesType(it.type, st.type) }.distinctBy { "${it.source}:${it.slug}" },
                     page = 1,
                     canLoadMore = pageable && data.orEmpty().isNotEmpty(),
                     errorMessage = null
@@ -220,7 +236,7 @@ class ExploreViewModel @Inject constructor(
         moreJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             val result = browseComics(browseParams(state, next))
-            val batch = (result as? Result.Success)?.data?.let(::withExtras).orEmpty()
+            val batch = (result as? Result.Success)?.data?.let(::withExtras).orEmpty().filter { matchesType(it.type, state.type) }
             enrich(batch)
             _uiState.update {
                 if (filtersChanged(state, it) || it.query.isNotBlank() || result is Result.Error) it.copy(isLoadingMore = false) else {

@@ -1,7 +1,5 @@
 package com.komikta.ui.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,8 +26,9 @@ import com.komikta.ui.theme.Ui
 
 @Composable
 fun Chip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val bg by animateColorAsState(if (selected) Ui.Pill else Color.Transparent, tween(140), label = "chipBg")
-    val line by animateColorAsState(if (selected) Ui.Pill else Ui.Outline, tween(140), label = "chipLine")
+    // Tanpa animasi warna: pill berubah pada frame yang sama dengan sentuhan.
+    val bg = if (selected) Ui.Pill else Color.Transparent
+    val line = if (selected) Ui.Pill else Ui.Outline
     Row(
         modifier.height(37.dp).clip(CircleShape).background(bg).border(1.dp, line, CircleShape).clickable(onClick = onClick).padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -45,7 +44,7 @@ fun SegmentedTabs(options: List<String>, selected: Int, onSelect: (Int) -> Unit,
     Row(modifier.clip(CircleShape).background(Ui.Card).padding(3.dp)) {
         options.forEachIndexed { i, label ->
             val on = i == selected
-            val bg by animateColorAsState(if (on) Ui.Bg else Color.Transparent, tween(140), label = "segBg")
+            val bg = if (on) Ui.Bg else Color.Transparent
             Box(
                 (if (fill) Modifier.weight(1f) else Modifier).height(37.dp).clip(CircleShape).background(bg).clickable { onSelect(i) }.padding(horizontal = if (fill) 0.dp else 20.dp),
                 contentAlignment = Alignment.Center

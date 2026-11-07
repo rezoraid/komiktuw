@@ -22,6 +22,28 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
+import coil.compose.AsyncImage
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.AlertDialog
@@ -285,6 +307,9 @@ fun PagesEditorScreen(onBack: () -> Unit, vm: PagesEditorViewModel = hiltViewMod
     var askReset by remember { mutableStateOf(false) }
     var deleteAt by remember { mutableIntStateOf(-1) }
     var replaceAt by remember { mutableIntStateOf(-1) }
+    var previewAt by remember { mutableIntStateOf(-1) }
+    val listState = rememberLazyListState()
+    val drag = remember(listState) { DragReorder(listState) { from, to -> vm.move(from, to - from) } }
     val replacePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null && replaceAt >= 0) vm.replace(replaceAt, uri)
         replaceAt = -1
@@ -308,11 +333,15 @@ fun PagesEditorScreen(onBack: () -> Unit, vm: PagesEditorViewModel = hiltViewMod
             }
             else -> {
                 Text("${ui.items.size} gambar", fontSize = 12.sp, color = Ui.Text3, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 8.dp)) {
+                Text("Tahan ≡ lalu geser untuk mengatur urutan. Ketuk gambar untuk melihatnya.", fontSize = 12.sp, color = Ui.Text3, modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp))
+                LazyColumn(Modifier.weight(1f), state = listState, contentPadding = PaddingValues(bottom = 8.dp)) {
                     itemsIndexed(ui.items, key = { _, page -> page.id }, contentType = { _, _ -> "page" }) { index, item ->
+                        val dragging = drag.draggingId == item.id
                         PageRow(
-                            index = index, item = item, last = index == ui.items.lastIndex,
-                            onUp = { vm.move(index, -1) }, onDown = { vm.move(index, +1) },
+                            index = index, item = item, dragging = dragging, dragOffset = if (dragging) drag.delta else 0f,
+                            modifier = if (dragging) Modifier.zIndex(1f) else Modifier.animateItem(),
+                            drag = drag,
+                            onPreview = { if (item.url.isNotBlank()) previewAt = index },
                             onReplace = { replaceAt = index; replacePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                             onDelete = { deleteAt = index }
                         )
@@ -333,35 +362,135 @@ fun PagesEditorScreen(onBack: () -> Unit, vm: PagesEditorViewModel = hiltViewMod
             }
         )
     }
-    if (deleteAt >= 0) ConfirmDialog("Hapus gambar ${deleteAt + 1}?", "Gambar dihapus dari chapter ini setelah kamu menekan Simpan.", "Hapus", onConfirm = { vm.delete(deleteAt) }, onDismiss = { deleteAt = -1 })
+    if (deleteAt >= 0) {
+        // ConfirmDialog memanggil onDismiss (deleteAt = -1) sebelum onConfirm, jadi indeks harus diambil dulu.
+        val target = deleteAt
+        ConfirmDialog("Hapus gambar ${target + 1}?", "Gambar langsung hilang dari daftar. Tekan Simpan supaya reader memakai perubahan ini.", "Hapus", onConfirm = { vm.delete(target) }, onDismiss = { deleteAt = -1 })
+    }
+    if (previewAt in ui.items.indices) PagePreview(ui.items, previewAt) { previewAt = -1 }
     if (askLeave) ConfirmDialog("Buang perubahan?", "Perubahan yang belum disimpan akan hilang.", "Buang", onConfirm = onBack, onDismiss = { askLeave = false })
     if (askReset) ConfirmDialog("Kembalikan ke gambar asli?", "Urutan dan gambar chapter kembali seperti dari sumber.", "Kembalikan", onConfirm = vm::resetToSource, onDismiss = { askReset = false })
 }
 
+/** Drag-and-drop urutan gambar: geser pegangan, item bertukar tempat saat melewati tetangganya, daftar menggulir sendiri di tepi. */
+@Stable
+private class DragReorder(private val state: LazyListState, private val onMove: (from: Int, to: Int) -> Unit) {
+    var draggingId by mutableStateOf<Long?>(null)
+        private set
+    var delta by mutableFloatStateOf(0f)
+        private set
+    private var expectIndex = -1
+
+    fun start(id: Long) { draggingId = id; delta = 0f; expectIndex = -1 }
+    fun end() { draggingId = null; delta = 0f; expectIndex = -1 }
+    fun drag(dy: Float) { delta += dy; check() }
+
+    fun check() {
+        val id = draggingId ?: return
+        val infos = state.layoutInfo.visibleItemsInfo
+        val cur = infos.firstOrNull { it.key == id } ?: return
+        if (expectIndex >= 0) { if (cur.index != expectIndex) return else expectIndex = -1 } // tunggu layout menyusul pertukaran sebelumnya
+        val center = cur.offset + delta + cur.size / 2f
+        val target = infos.firstOrNull { it.key != id && center >= it.offset && center <= it.offset + it.size } ?: return
+        onMove(cur.index, target.index)
+        expectIndex = target.index
+        delta += (cur.offset - target.offset)
+    }
+
+    /** Kecepatan gulir (px/frame) ketika item yang diseret mendekati tepi atas/bawah; 0 kalau di tengah. */
+    fun edgeSpeed(): Float {
+        val id = draggingId ?: return 0f
+        val info = state.layoutInfo
+        val cur = info.visibleItemsInfo.firstOrNull { it.key == id } ?: return 0f
+        val top = cur.offset + delta
+        val bottom = top + cur.size
+        val zone = cur.size * 0.9f
+        return when {
+            top < info.viewportStartOffset + zone -> -(((info.viewportStartOffset + zone - top) / zone).coerceIn(0f, 1f) * 28f)
+            bottom > info.viewportEndOffset - zone -> ((bottom - (info.viewportEndOffset - zone)) / zone).coerceIn(0f, 1f) * 28f
+            else -> 0f
+        }
+    }
+
+    suspend fun autoScroll() {
+        while (draggingId != null) {
+            val v = edgeSpeed()
+            if (v != 0f) {
+                val used = state.scrollBy(v)
+                delta += used
+                check()
+            }
+            androidx.compose.runtime.withFrameNanos { }
+        }
+    }
+}
+
 @Composable
-private fun PageRow(index: Int, item: PageItem, last: Boolean, onUp: () -> Unit, onDown: () -> Unit, onReplace: () -> Unit, onDelete: () -> Unit) {
-    Column {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("${index + 1}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ui.Text2, modifier = Modifier.width(30.dp))
-            Box(Modifier.size(width = 64.dp, height = 96.dp).clip(RoundedCornerShape(6.dp)).background(Ui.Card), contentAlignment = Alignment.Center) {
-                if (item.url.isNotBlank()) CoverImage(absoluteUrl(item.url), null, Modifier.fillMaxSize(), 192, 288, Alignment.TopCenter)
+private fun PageRow(
+    index: Int, item: PageItem, dragging: Boolean, dragOffset: Float, modifier: Modifier, drag: DragReorder,
+    onPreview: () -> Unit, onReplace: () -> Unit, onDelete: () -> Unit
+) {
+    LaunchedEffect(dragging) { if (dragging) drag.autoScroll() }
+    Column(modifier.graphicsLayer { translationY = dragOffset }.background(if (dragging) Ui.Bar else Ui.Bg)) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            // Pegangan seret: tinggi penuh baris supaya mudah dikenai jempol.
+            Box(
+                Modifier.width(52.dp).height(132.dp).pointerInput(item.id) {
+                    detectDragGestures(
+                        onDragStart = { drag.start(item.id) },
+                        onDragEnd = { drag.end() },
+                        onDragCancel = { drag.end() },
+                        onDrag = { change, amount -> change.consume(); drag.drag(amount.y) }
+                    )
+                },
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("≡", fontSize = 26.sp, color = if (dragging) Color.White else Ui.Text2)
+                    Text("${index + 1}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ui.Text2)
+                }
+            }
+            Box(
+                Modifier.size(width = 88.dp, height = 124.dp).clip(RoundedCornerShape(6.dp)).background(Ui.Card).clickable(enabled = item.url.isNotBlank(), onClick = onPreview),
+                contentAlignment = Alignment.Center
+            ) {
+                if (item.url.isNotBlank()) CoverImage(absoluteUrl(item.url), null, Modifier.fillMaxSize(), 264, 372, Alignment.TopCenter)
                 if (item.busy) CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
             }
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onUp, enabled = index > 0 && !item.busy, modifier = Modifier.size(42.dp)) {
-                    Icon(AppIcons.chevronDown, "Naik", tint = if (index > 0) Color.White else Ui.Text3, modifier = Modifier.size(22.dp).rotate(180f))
-                }
-                IconButton(onClick = onDown, enabled = !last && !item.busy, modifier = Modifier.size(42.dp)) {
-                    Icon(AppIcons.chevronDown, "Turun", tint = if (!last) Color.White else Ui.Text3, modifier = Modifier.size(22.dp))
-                }
-                IconButton(onClick = onReplace, enabled = !item.busy, modifier = Modifier.size(42.dp)) {
+                IconButton(onClick = onReplace, enabled = !item.busy, modifier = Modifier.size(44.dp)) {
                     Icon(AppIcons.edit, "Ganti gambar", tint = Color.White, modifier = Modifier.size(20.dp))
                 }
-                IconButton(onClick = onDelete, enabled = !item.busy, modifier = Modifier.size(42.dp)) {
+                IconButton(onClick = onDelete, enabled = !item.busy, modifier = Modifier.size(44.dp)) {
                     Icon(AppIcons.trash, "Hapus gambar", tint = Warn, modifier = Modifier.size(20.dp))
                 }
+                Box(Modifier.width(6.dp))
             }
         }
-        Box(Modifier.padding(start = 44.dp).fillMaxWidth().height(1.dp).background(Ui.Line))
+        Box(Modifier.padding(start = 52.dp).fillMaxWidth().height(1.dp).background(Ui.Line))
+    }
+}
+
+/** Lihat gambar chapter satu halaman penuh; geser kiri/kanan untuk pindah, gulir ke bawah untuk gambar yang panjang. */
+@Composable
+private fun PagePreview(items: List<PageItem>, start: Int, onClose: () -> Unit) {
+    val shown = remember(items) { items.filter { it.url.isNotBlank() } }
+    val startIdx = shown.indexOfFirst { it.id == items[start].id }.coerceAtLeast(0)
+    val pager = rememberPagerState(initialPage = startIdx) { shown.size }
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize().background(Color.Black)) {
+            HorizontalPager(pager, Modifier.fillMaxSize()) { p ->
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    AsyncImage(
+                        model = absoluteUrl(shown[p].url), contentDescription = "Gambar ${p + 1}",
+                        contentScale = ContentScale.FillWidth, modifier = Modifier.fillMaxWidth().wrapContentHeight()
+                    )
+                }
+            }
+            Row(Modifier.fillMaxWidth().background(Color(0x99000000)).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("${pager.currentPage + 1} / ${shown.size}", color = Color.White, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                Text("Tutup", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onClose).padding(horizontal = 10.dp, vertical = 6.dp))
+            }
+        }
     }
 }

@@ -167,10 +167,7 @@ class ComicRepositoryImpl @Inject constructor(
             when {
                 s in SourcePrefs.FULL_FILTER_SOURCES -> true
                 fullFilter -> false
-                params.type == null -> true
-                // Manta hanya punya "manga"; manhwa/manhua tidak bisa disaring di sana, jadi dilewati.
-                s in SourcePrefs.SERVER_TYPES -> params.type in SourcePrefs.SERVER_TYPES.getValue(s)
-                else -> true // Shinigami: disaring di app (lihat browseOne)
+                else -> true // Manta & Shinigami: jenis disaring di app (lihat browseOne)
             }
         }
         return fanOut(sources) { browseOne(params.copy(source = it)) }
@@ -181,14 +178,15 @@ class ComicRepositoryImpl @Inject constructor(
         val s = params.source
         val serverTypes = SourcePrefs.SERVER_TYPES[s]
         val type = params.type
-        if (type != null && serverTypes != null && type !in serverTypes) return Result.Success(emptyList())
+        // Jenis hanya dikirim ke server kalau sumber itu memahaminya; selebihnya disaring di app memakai jenis yang sudah diseragamkan.
+        val serverType = type?.takeIf { serverTypes != null && it in serverTypes }
         val full = s in SourcePrefs.FULL_FILTER_SOURCES
         val result = guarded {
             mapList(
                 api.browse(
                     source = s,
                     page = params.page,
-                    type = type?.takeIf { serverTypes != null },
+                    type = serverType,
                     status = params.status.takeIf { full },
                     sort = params.sort.takeIf { full },
                     genres = params.genres.takeIf { full }
@@ -196,9 +194,9 @@ class ComicRepositoryImpl @Inject constructor(
                 s
             )
         }
-        // Sumber tanpa filter jenis di server (Shinigami): saring berdasarkan jenis yang sudah diseragamkan.
-        return if (type != null && serverTypes == null && result is Result.Success) {
-            Result.Success(result.data.filter { it.type == type })
+        // Manta: komik vertikalnya berjenis "webtoon" dan dihitung sebagai manhwa (originOf), jadi ikut tab Manhwa.
+        return if (type != null && serverType == null && result is Result.Success) {
+            Result.Success(result.data.filter { originOf(it.type) == type })
         } else result
     }
 

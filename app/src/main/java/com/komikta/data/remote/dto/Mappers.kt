@@ -33,6 +33,8 @@ fun ComicListItemDto.toDomain(source: String): Comic = Comic(
     genres = canonicalGenres(genres),
     source = source,
     author = author?.trim()?.takeIf { it.isNotEmpty() },
+    artist = artist?.trim()?.takeIf { it.isNotEmpty() },
+    year = year?.trim()?.takeIf { it.isNotEmpty() },
     viewCount = viewCount.toCount(),
     chapters = chapters.map { it.toDomain() }
 )

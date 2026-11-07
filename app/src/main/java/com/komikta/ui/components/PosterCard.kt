@@ -43,27 +43,26 @@ fun NewBadge(modifier: Modifier = Modifier, small: Boolean = false) {
 
 /**
  * Kartu komik baku (grid Home, Explore, Library) untuk semua sumber: cover + badge jenis + NEW,
- * judul, rating, views (database Komikta), genre, dan chapter terbaru beserta waktunya.
- * Info yang tidak tersedia disembunyikan.
+ * judul, rating, views, genre, dan chapter terbaru beserta waktunya. Semua selalu terisi.
  */
 @Composable
 fun ComicCard(comic: Comic, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val badge = remember(comic.type) { typeLabel(comic.type) }
-    val genre = remember(comic.genres) { genreText(comic) }
-    val chapter = remember(comic.chapters) { latestChapterText(comic) }
-    val ago = remember(comic.chapters) { latestAgoText(comic) }
+    val badge = remember(comic.type, comic.source) { displayType(comic) }
+    val genre = remember(comic.genres, comic.type, comic.source) { genreText(comic) }
+    val chapter = remember(comic.chapters, comic.chapterCount) { latestChapterText(comic) }
+    val ago = remember(comic.chapters, comic.source) { latestAgoText(comic) }
     val fresh = remember(comic.chapters) { isFresh(comic.chapters.firstOrNull()?.timeAgo) }
     Column(modifier.clickable(onClick = onClick)) {
         Box(Modifier.fillMaxWidth().aspectRatio(0.667f).clip(CoverShape).background(Ui.Card)) {
             CoverImage(url = comic.coverUrl, contentDescription = comic.title, modifier = Modifier.fillMaxSize())
-            if (badge != null) TypeBadge(badge, Modifier.align(Alignment.TopStart).padding(5.dp), small = true)
+            TypeBadge(badge, Modifier.align(Alignment.TopStart).padding(5.dp), small = true)
             if (fresh) NewBadge(Modifier.align(Alignment.TopEnd).padding(5.dp), small = true)
         }
         Text(comic.title, fontSize = 13.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium, color = Color.White, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
-        // Baris yang datanya tidak ada dilewati sepenuhnya (tanpa "-" dan tanpa ruang kosong).
+        // Semua baris selalu terisi (lihat ComicMeta.kt), jadi tinggi kartu sama untuk setiap komik dan sumber.
         ComicStats(comic, Modifier.padding(top = 3.dp), compact = true)
-        if (genre != null) Text(genre, fontSize = 11.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
-        if (chapter != null) Text(chapter, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
-        if (ago != null) Text(ago, fontSize = 11.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(genre, fontSize = 11.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+        Text(chapter, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
+        Text(ago, fontSize = 11.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

@@ -12,7 +12,9 @@ private val IC = RegexOption.IGNORE_CASE
 private val TypeRules = listOf(
     "manhwa" to Regex("manhwa", IC), "manhua" to Regex("manhua", IC), "webtoon" to Regex("webtoon", IC),
     "manga" to Regex("manga", IC), "novel" to Regex("novel", IC),
-    "manhwa" to Regex("korea", IC), "manhua" to Regex("china|chinese", IC), "manga" to Regex("japan", IC)
+    "manhwa" to Regex("korea", IC), "manhua" to Regex("china|chinese", IC), "manga" to Regex("japan", IC),
+    // Manta menamai komik vertikalnya "comic" = format webtoon (take(5) di bawah sengaja tidak mencakup ini)
+    "webtoon" to Regex("^comics?$", IC)
 )
 
 private val StatusRules = listOf(
@@ -28,6 +30,12 @@ fun canonicalType(raw: String?, genres: List<String> = emptyList()): String? {
     for (g in genres) TypeRules.take(5).firstOrNull { it.second.containsMatchIn(g) }?.let { return it.first }
     return null
 }
+
+/**
+ * Asal komik untuk tab Manhwa / Manhua / Manga. "webtoon" (format vertikal, mis. Manta) dikelompokkan sebagai manhwa
+ * supaya komik Manta ikut tampil di tab Manhwa.
+ */
+fun originOf(type: String?): String? = canonicalType(type)?.let { if (it == "webtoon") "manhwa" else it }
 
 fun canonicalStatus(raw: String?): String? {
     val s = raw?.trim().orEmpty()

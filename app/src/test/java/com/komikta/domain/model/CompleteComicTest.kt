@@ -8,7 +8,7 @@ import org.junit.Test
 class CompleteComicTest {
     private val sparse = Comic(title = "A", slug = "a", source = "manta", rating = 8.0)
     private val detail = ComicDetail(
-        title = "A", slug = "a", source = "manta", rating = 5.0, viewCount = 1200L, type = "Manhwa",
+        title = "A", slug = "a", source = "manta", rating = 5.0, viewCount = 1200L, type = "Manhwa", status = "ongoing", coverUrl = "https://x.test/c.jpg",
         genres = listOf("action", "FANTASY"), chapters = listOf(Chapter("c2", "2", null, "2 jam lalu"), Chapter("c1", "1"))
     )
 
@@ -25,7 +25,7 @@ class CompleteComicTest {
     @Test fun sparseIsIncomplete() = assertTrue(sparse.isIncomplete)
 
     @Test fun viewsAloneDoNotMakeACardIncomplete() {
-        val c = sparse.copy(viewCount = null, genres = listOf("Action"), type = "manhwa", chapters = listOf(Chapter("c1", "1")))
+        val c = sparse.copy(viewCount = null, coverUrl = "https://x.test/c.jpg", status = "ongoing", genres = listOf("Action"), type = "manhwa", chapters = listOf(Chapter("c1", "1")))
         assertFalse(c.isIncomplete)
     }
 

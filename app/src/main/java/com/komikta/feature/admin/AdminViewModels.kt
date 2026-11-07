@@ -149,11 +149,15 @@ class AdminCommentsViewModel @Inject constructor(private val repo: CommunityRepo
         }
     }
 
-    fun remove(c: AdminCommentDto) = viewModelScope.launch {
-        when (val r = repo.delete(c.id)) {
-            is Result.Success -> _ui.update { st -> st.copy(items = st.items.filter { it.id != c.id }, total = (st.total - 1).coerceAtLeast(0), notice = "Komentar dihapus") }
-            is Result.Error -> _ui.update { it.copy(notice = r.message) }
-            else -> Unit
+    fun remove(c: AdminCommentDto) {
+        val before = _ui.value
+        _ui.update { st -> st.copy(items = st.items.filter { it.id != c.id }, total = (st.total - 1).coerceAtLeast(0), notice = "Komentar dihapus") }
+        viewModelScope.launch {
+            when (val r = repo.delete(c.id)) {
+                is Result.Success -> Unit
+                is Result.Error -> _ui.update { it.copy(items = before.items, total = before.total, notice = r.message) }
+                else -> _ui.update { it.copy(items = before.items, total = before.total) }
+            }
         }
     }
 }
