@@ -13,6 +13,7 @@ import com.komikta.data.remote.dto.toDomain
 import com.komikta.domain.model.BrowseParams
 import com.komikta.domain.model.ChapterContent
 import com.komikta.domain.model.Comic
+import com.komikta.domain.model.originOf
 import com.komikta.domain.model.ComicDetail
 import com.komikta.domain.model.SearchParams
 import com.komikta.domain.model.Source
