@@ -118,6 +118,15 @@ class CommunityApi @Inject constructor(
 
     suspend fun adminStats(): ApiResponse<AdminStatsDto> = call("GET", listOf("admin", "stats"))
 
+    suspend fun adminCatalogStatus(): ApiResponse<com.komikta.data.remote.dto.CatalogStatusDto> = call("GET", listOf("admin", "catalog", "status"))
+
+    suspend fun adminCatalogSync(source: String, slug: String, pages: Int): ApiResponse<com.komikta.data.remote.dto.CatalogSyncDto> =
+        call("POST", listOf("admin", "catalog", "sync"), body = buildJsonObject {
+            if (source.isNotEmpty()) put("source", source)
+            if (slug.isNotEmpty()) put("slug", slug)
+            if (slug.isEmpty() && pages > 0) put("pages", pages)
+        })
+
     suspend fun adminUsers(q: String, role: String, banned: Boolean, page: Int): ApiResponse<AdminUserPageDto> =
         call("GET", listOf("admin", "users"), query = buildMap {
             put("page", page.toString())

@@ -261,3 +261,28 @@ data class AdminPagesDto(val pages: List<String> = emptyList(), val edited: Bool
 
 @Serializable
 data class MediaUploadDto(val url: String = "")
+
+/** Status katalog internal Komikta (GET admin/catalog/status). Field yang tidak dikenal diabaikan. */
+@Serializable
+data class CatalogSourceDto(val records: Int = 0, val complete: Int = 0, val missing: Map<String, Int> = emptyMap())
+
+@Serializable
+data class CatalogCrawlDto(val enabled: Boolean = false, val running: Boolean = false)
+
+@Serializable
+data class CatalogExternalDto(val enabled: Boolean = false)
+
+@Serializable
+data class CatalogStatusDto(
+    val records: Int = 0,
+    val queued: Int = 0,
+    val syncing: Int = 0,
+    val failedRecently: Int = 0,
+    val bySource: Map<String, CatalogSourceDto> = emptyMap(),
+    val crawl: CatalogCrawlDto = CatalogCrawlDto(),
+    val external: CatalogExternalDto = CatalogExternalDto()
+)
+
+/** Jawaban POST admin/catalog/sync: [started] untuk sinkron massal di latar belakang, [synced] untuk satu komik. */
+@Serializable
+data class CatalogSyncDto(val started: Boolean = false, val source: String? = null, val synced: kotlinx.serialization.json.JsonElement? = null)

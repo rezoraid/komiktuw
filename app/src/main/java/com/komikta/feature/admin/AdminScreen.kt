@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -72,11 +74,12 @@ import java.util.Locale
 
 private val Danger = Color(0xFFE08F8F)
 private val Soft = Color(0xFFC3CBCE)
-private val Tabs: List<Pair<String, ImageVector>> by lazy { listOf("Ringkasan" to AppIcons.dashboard, "Pengguna" to AppIcons.users, "Komentar" to AppIcons.comment, "Laporan" to AppIcons.flag, "Notifikasi" to AppIcons.bell(false), "Komik" to AppIcons.edit) }
+private val Tabs: List<Pair<String, ImageVector>> by lazy { listOf("Ringkasan" to AppIcons.dashboard, "Pengguna" to AppIcons.users, "Komentar" to AppIcons.comment, "Laporan" to AppIcons.flag, "Notifikasi" to AppIcons.bell(false), "Komik" to AppIcons.edit, "Katalog" to AppIcons.tune) }
+private val TabHints = listOf("Statistik dan menu cepat", "Role, blokir, XP", "Cari dan hapus komentar", "Tinjau laporan", "Kirim pengumuman", "Edit info, chapter, gambar", "Kelengkapan dan sinkron data")
 private val RoleFilters = listOf("OWNER" to "Owner", "MODERATOR" to "Moderator", "PREMIUM" to "Premium", "USER" to "Member")
 
 private fun num(n: Number) = "%,d".format(Locale.US, n.toLong()).replace(',', '.')
-private fun adminError(m: String?) = if (m?.contains("404") == true) "Fitur admin belum tersedia di server. Perbarui server terlebih dahulu." else m ?: "Terjadi kesalahan"
+internal fun adminError(m: String?) = if (m?.contains("404") == true) "Fitur admin belum tersedia di server. Perbarui server terlebih dahulu." else m ?: "Terjadi kesalahan"
 
 @Composable
 fun AdminScreen(onBack: () -> Unit, onOpenProfile: (String) -> Unit, onOpenComic: (String, String) -> Unit, stats: AdminStatsViewModel = hiltViewModel()) {
@@ -97,7 +100,8 @@ fun AdminScreen(onBack: () -> Unit, onOpenProfile: (String) -> Unit, onOpenComic
                 2 -> CommentsPane(Modifier.weight(1f))
                 3 -> ReportsPane(hiltViewModel<ModerationViewModel>(), Modifier.weight(1f))
                 4 -> BroadcastPane(Modifier.weight(1f))
-                else -> ComicsPane(onOpenComic, Modifier.weight(1f))
+                5 -> ComicsPane(onOpenComic, Modifier.weight(1f))
+                else -> CatalogPane(Modifier.weight(1f))
             }
         }
     }
@@ -105,14 +109,18 @@ fun AdminScreen(onBack: () -> Unit, onOpenProfile: (String) -> Unit, onOpenComic
 
 @Composable
 private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
+    val state = rememberLazyListState()
+    LaunchedEffect(selected) { state.animateScrollToItem((selected - 1).coerceAtLeast(0)) }
     Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth()) {
-            Tabs.forEachIndexed { i, (label, icon) ->
+        LazyRow(state = state, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            itemsIndexed(Tabs) { i, (label, icon) ->
                 val on = i == selected
-                Column(Modifier.weight(1f).clickable { onSelect(i) }.padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(icon, null, tint = if (on) Color.White else Ui.Text3, modifier = Modifier.size(21.dp))
-                    Text(label, fontSize = 11.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, color = if (on) Color.White else Ui.Text3, maxLines = 1, modifier = Modifier.padding(top = 3.dp, bottom = 8.dp))
-                    Box(Modifier.fillMaxWidth(0.6f).height(2.dp).background(if (on) Ui.Accent else Color.Transparent))
+                Row(
+                    Modifier.clip(RoundedCornerShape(50)).background(if (on) Ui.Pill else Ui.Card).clickable { onSelect(i) }.padding(horizontal = 14.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Icon(icon, null, tint = if (on) Ui.OnAccent else Ui.Text2, modifier = Modifier.size(18.dp))
+                    Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (on) Ui.OnAccent else Color.White, maxLines = 1)
                 }
             }
         }
@@ -143,6 +151,37 @@ private fun Tiles(vararg items: Stat) {
     }
 }
 
+/** Pintasan ke semua bagian panel, dengan keterangan singkat supaya mudah dicari. */
+@Composable
+private fun QuickMenu(onGo: (Int) -> Unit, openReports: Int) {
+    (1 until Tabs.size).toList().chunked(2).forEach { row ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            row.forEach { i ->
+                val (label, icon) = Tabs[i]
+                Row(
+                    Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Ui.Card).clickable { onGo(i) }.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(Ui.AccentSoft), contentAlignment = Alignment.Center) {
+                        Icon(icon, null, tint = Color.White, modifier = Modifier.size(19.dp))
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                            if (i == 3 && openReports > 0) Text(
+                                num(openReports), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ui.OnAccent,
+                                modifier = Modifier.clip(RoundedCornerShape(50)).background(Ui.Pill).padding(horizontal = 7.dp, vertical = 1.dp)
+                            )
+                        }
+                        Text(TabHints[i], fontSize = 11.sp, color = Ui.Text3, maxLines = 2, lineHeight = 14.sp)
+                    }
+                }
+            }
+            if (row.size == 1) Box(Modifier.weight(1f))
+        }
+    }
+}
+
 @Composable
 private fun DashboardPane(vm: AdminStatsViewModel, onGo: (Int) -> Unit, modifier: Modifier) {
     val ui by vm.ui.collectAsStateWithLifecycle()
@@ -163,6 +202,8 @@ private fun DashboardPane(vm: AdminStatsViewModel, onGo: (Int) -> Unit, modifier
                     }
                     Icon(AppIcons.chevronRight, null, tint = Ui.Text2, modifier = Modifier.size(18.dp))
                 }
+                Label("Menu cepat")
+                QuickMenu(onGo, s.openReports)
                 Label("Pengguna")
                 Tiles(Stat("Total", num(s.users)) { onGo(1) }, Stat("Baru 7 hari", num(s.newUsers7d)), Stat("Aktif 24 jam", num(s.active24h)), Stat("Diblokir", num(s.banned)) { onGo(1) })
                 Label("Role")

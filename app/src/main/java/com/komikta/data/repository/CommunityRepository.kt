@@ -250,6 +250,10 @@ class CommunityRepository @Inject constructor(
     // ---- Panel OWNER ----
     suspend fun adminStats(): Result<AdminStatsDto> = call { api.adminStats() }
 
+    suspend fun adminCatalogStatus() = call { api.adminCatalogStatus() }
+
+    suspend fun adminCatalogSync(source: String, slug: String, pages: Int) = call { api.adminCatalogSync(source, slug, pages) }
+
     suspend fun adminUsers(q: String, role: String, banned: Boolean, page: Int): Result<AdminUserPageDto> = call { api.adminUsers(q, role, banned, page) }
 
     suspend fun adminComments(q: String, reported: Boolean, page: Int): Result<AdminCommentPageDto> = call { api.adminComments(q, reported, page) }
