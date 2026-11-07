@@ -17,6 +17,12 @@ class SessionStore @Inject constructor(
     private val json: Json
 ) {
     private val sp = context.getSharedPreferences("komikta_session", Context.MODE_PRIVATE)
+    private val devicePrefs = context.getSharedPreferences("komikta_device", Context.MODE_PRIVATE)
+
+    /** ID acak per instalasi (bukan data pribadi); dipakai server agar satu perangkat tidak menambah views berulang. Tidak ikut terhapus saat logout. */
+    val deviceId: String by lazy {
+        devicePrefs.getString("id", null) ?: java.util.UUID.randomUUID().toString().also { devicePrefs.edit().putString("id", it).apply() }
+    }
     @Volatile
     private var avatarRev = sp.getLong("avatarRev", 0L)
     private val _user = MutableStateFlow(readUser())

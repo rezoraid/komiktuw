@@ -72,14 +72,14 @@ import java.util.Locale
 
 private val Danger = Color(0xFFE08F8F)
 private val Soft = Color(0xFFC3CBCE)
-private val Tabs: List<Pair<String, ImageVector>> by lazy { listOf("Ringkasan" to AppIcons.dashboard, "Pengguna" to AppIcons.users, "Komentar" to AppIcons.comment, "Laporan" to AppIcons.flag, "Notifikasi" to AppIcons.bell(false)) }
+private val Tabs: List<Pair<String, ImageVector>> by lazy { listOf("Ringkasan" to AppIcons.dashboard, "Pengguna" to AppIcons.users, "Komentar" to AppIcons.comment, "Laporan" to AppIcons.flag, "Notifikasi" to AppIcons.bell(false), "Komik" to AppIcons.edit) }
 private val RoleFilters = listOf("OWNER" to "Owner", "MODERATOR" to "Moderator", "PREMIUM" to "Premium", "USER" to "Member")
 
 private fun num(n: Number) = "%,d".format(Locale.US, n.toLong()).replace(',', '.')
 private fun adminError(m: String?) = if (m?.contains("404") == true) "Fitur admin belum tersedia di server. Perbarui server terlebih dahulu." else m ?: "Terjadi kesalahan"
 
 @Composable
-fun AdminScreen(onBack: () -> Unit, onOpenProfile: (String) -> Unit, stats: AdminStatsViewModel = hiltViewModel()) {
+fun AdminScreen(onBack: () -> Unit, onOpenProfile: (String) -> Unit, onOpenComic: (String, String) -> Unit, stats: AdminStatsViewModel = hiltViewModel()) {
     val viewer by stats.viewer.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableIntStateOf(0) }
     Column(Modifier.fillMaxSize().background(Ui.Bg).stableStatusBarsPadding().stableNavigationBarsPadding()) {
@@ -96,7 +96,8 @@ fun AdminScreen(onBack: () -> Unit, onOpenProfile: (String) -> Unit, stats: Admi
                 1 -> UsersPane(onOpenProfile, Modifier.weight(1f))
                 2 -> CommentsPane(Modifier.weight(1f))
                 3 -> ReportsPane(hiltViewModel<ModerationViewModel>(), Modifier.weight(1f))
-                else -> BroadcastPane(Modifier.weight(1f))
+                4 -> BroadcastPane(Modifier.weight(1f))
+                else -> ComicsPane(onOpenComic, Modifier.weight(1f))
             }
         }
     }
@@ -110,7 +111,7 @@ private fun TabBar(selected: Int, onSelect: (Int) -> Unit) {
                 val on = i == selected
                 Column(Modifier.weight(1f).clickable { onSelect(i) }.padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(icon, null, tint = if (on) Color.White else Ui.Text3, modifier = Modifier.size(21.dp))
-                    Text(label, fontSize = 12.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, color = if (on) Color.White else Ui.Text3, maxLines = 1, modifier = Modifier.padding(top = 3.dp, bottom = 8.dp))
+                    Text(label, fontSize = 11.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, color = if (on) Color.White else Ui.Text3, maxLines = 1, modifier = Modifier.padding(top = 3.dp, bottom = 8.dp))
                     Box(Modifier.fillMaxWidth(0.6f).height(2.dp).background(if (on) Ui.Accent else Color.Transparent))
                 }
             }
@@ -178,7 +179,7 @@ private fun DashboardPane(vm: AdminStatsViewModel, onGo: (Int) -> Unit, modifier
 }
 
 @Composable
-private fun SearchField(value: String, hint: String, onChange: (String) -> Unit) {
+internal fun SearchField(value: String, hint: String, onChange: (String) -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp).height(44.dp).clip(RoundedCornerShape(12.dp)).background(Ui.Card).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)

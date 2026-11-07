@@ -27,6 +27,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.komikta.feature.admin.AdminScreen
+import com.komikta.feature.admin.ComicEditorScreen
+import com.komikta.feature.admin.PagesEditorScreen
 import com.komikta.feature.community.CommentsScreen
 import com.komikta.feature.community.ModerationScreen
 import com.komikta.feature.detail.DetailScreen
@@ -68,7 +70,7 @@ fun MainNavGraph(
     val showBottomBar = route in tabRoutes
     val immersive = isImmersiveRoute(route)
     ImmersiveEffect(immersive)
-    val isDetail = route?.startsWith("detail") == true || route?.startsWith("comments") == true || route == "moderation" || route == "admin" || route?.startsWith("public-profile") == true
+    val isDetail = route?.startsWith("detail") == true || route?.startsWith("comments") == true || route == "moderation" || route?.startsWith("admin") == true || route?.startsWith("public-profile") == true
     var focusSearch by remember { mutableStateOf(false) }
     // Ketukan notifikasi update: langsung buka halaman detail komiknya.
     LaunchedEffect(openComic) {
@@ -150,7 +152,35 @@ fun MainNavGraph(
 
             composable("moderation") { ModerationScreen(onBack = { navController.popBackStack() }) }
 
-            composable("admin") { AdminScreen(onBack = { navController.popBackStack() }, onOpenProfile = { id -> navController.navigate("public-profile/$id") }) }
+            composable("admin") {
+                AdminScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenProfile = { id -> navController.navigate("public-profile/$id") },
+                    onOpenComic = { source, slug -> navController.navigate("admin/comic/$source/$slug") }
+                )
+            }
+
+            composable(
+                route = "admin/comic/{source}/{slug}",
+                arguments = listOf(
+                    navArgument("source") { type = NavType.StringType },
+                    navArgument("slug") { type = NavType.StringType }
+                )
+            ) {
+                ComicEditorScreen(
+                    onBack = { navController.popBackStack() },
+                    onEditPages = { source, slug, chapter -> navController.navigate("admin/pages/$source/$slug/$chapter") }
+                )
+            }
+
+            composable(
+                route = "admin/pages/{source}/{slug}/{chapter}",
+                arguments = listOf(
+                    navArgument("source") { type = NavType.StringType },
+                    navArgument("slug") { type = NavType.StringType },
+                    navArgument("chapter") { type = NavType.StringType }
+                )
+            ) { PagesEditorScreen(onBack = { navController.popBackStack() }) }
 
             composable(
                 route = "public-profile/{userId}",
@@ -178,7 +208,8 @@ fun MainNavGraph(
                     onChapterClick = { source, comicSlug, chapterSlug ->
                         navController.navigate("reader/$source/$comicSlug/$chapterSlug")
                     },
-                    onCommentsClick = { source, slug -> navController.navigate("comments/$source/$slug") }
+                    onCommentsClick = { source, slug -> navController.navigate("comments/$source/$slug") },
+                    onAdminEdit = { source, slug -> navController.navigate("admin/comic/$source/$slug") }
                 )
             }
 

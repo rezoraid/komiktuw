@@ -47,3 +47,12 @@ Komentar ada di Detail (baris "Komentar") dan di akhir tiap chapter di Reader. T
 - `KomiktaMessagingService` menerima pesan data-only dari server (juga saat aplikasi ditutup) dan memposting notifikasi lewat `UpdateNotifier.postBroadcast`. Ketukan notifikasi membuka komik tertaut seperti sebelumnya.
 - `PushSyncWorker` mendaftarkan token ke server (`PUT /push-token`) saat aplikasi dibuka, saat token berganti, saat login/logout (menautkan atau melepas akun), dan tiap 7 hari. Saat notifikasi dimatikan lewat tombol lonceng, token dicabut (`/push-token/unregister`) dan pesan FCM diabaikan.
 - Anti-ganda: polling lama (`UpdateCheckWorker`) tetap jalan sebagai cadangan, tetapi pengumuman dengan ID yang sama hanya tampil sekali (`NotificationPrefs.markShown`) dan memakai ID notifikasi yang sama.
+
+## Katalog mandiri (Manta, Shinigami, Lumos)
+- Hanya tiga sumber; nama sumber tidak lagi ditampilkan di Profil.
+- Home dan Explore memakai satu kartu/format (`ui/components/ComicMeta.kt`, `PosterCard.kt`). **Data yang tidak ada disembunyikan** (tanpa "-", tanpa data karangan).
+- Views komik dan chapter berasal dari database Komikta (`viewCount`), bukan dari scraper. APK mengirim aktivitas lewat `core/stats/ViewTracker`.
+- Explore hanya punya kategori Manhwa, Manhua, Manga (default Manhwa).
+- Panel Admin > tab **Komik** (OWNER): cari komik, edit judul, cover (galeri atau URL), deskripsi, genre, tipe, status, penulis/artis; per chapter: ganti, hapus, tambah, dan atur urutan gambar. Tombol edit juga ada di Detail untuk OWNER.
+- Perubahan disimpan lewat server lalu cache APK dibuang dan layar yang terbuka dimuat ulang.
+- Kontrak server yang dibutuhkan: lihat `BACKEND_KATALOG.md`.

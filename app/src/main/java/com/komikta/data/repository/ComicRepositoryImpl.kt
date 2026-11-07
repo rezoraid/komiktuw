@@ -1,5 +1,6 @@
 package com.komikta.data.repository
 
+import com.komikta.core.cache.CatalogBus
 import com.komikta.core.cache.ComicPreviewCache
 import com.komikta.core.cache.ResponseCache
 import com.komikta.core.common.Result
@@ -98,6 +99,19 @@ class ComicRepositoryImpl @Inject constructor(
 
     override fun observeDetail(source: String, slug: String, refresh: Boolean): Flow<Result<ComicDetail>> =
         cache.stream(detailKey(source, slug), ComicDetail.serializer(), TTL_DETAIL, refresh) { fetchDetail(source, slug) }
+
+    override fun invalidate(source: String, slug: String, chapter: String?) {
+        if (chapter != null) {
+            cache.clearPrefix(chapterKey(source, slug, chapter))
+        } else {
+            cache.clearPrefix(detailKey(source, slug))
+            cache.clearPrefix(chapterKey(source, slug, ""))
+            ComicPreviewCache.forget(source, slug)
+            // judul/sampul/jenis/genre tampil di semua daftar
+            listOf("latest2|", "popular2|", "browse2|", "search2|").forEach(cache::clearPrefix)
+        }
+        CatalogBus.changed()
+    }
 
     private fun <T> emptyAware(result: Result<List<T>>): Result<List<T>> {
         if (result is Result.Success) note(result.data)

@@ -24,7 +24,8 @@ data class Comic(
     val genres: List<String> = emptyList(),
     val source: String,
     val author: String? = null,
-    val views: Double? = null,
+    /** Views dari database Komikta (aktivitas pengguna), bukan statistik sumber. Null = belum ada, tidak ditampilkan. */
+    val viewCount: Long? = null,
     val chapters: List<Chapter> = emptyList()
 )
 
@@ -40,7 +41,7 @@ data class ComicDetail(
     val author: String? = null,
     val artist: String? = null,
     val year: String? = null,
-    val views: Double? = null,
+    val viewCount: Long? = null,
     val rating: Double? = null,
     val genres: List<String> = emptyList(),
     val totalChapters: Int? = null,
@@ -53,7 +54,9 @@ data class Chapter(
     val slug: String,
     val number: String? = null,
     val title: String? = null,
-    val timeAgo: String? = null
+    val timeAgo: String? = null,
+    /** Views chapter dari database Komikta; null/0 = tidak ditampilkan. */
+    val viewCount: Long? = null
 )
 
 @Serializable
@@ -88,9 +91,12 @@ private fun Comic.key() = "$source:$slug"
 /** Kunci unik komik lintas sumber. */
 val Comic.uid: String get() = key()
 
-/** Data yang tampil di kartu belum lengkap (rating, views, genre, jenis, atau chapter terbaru). */
+/**
+ * Data yang tampil di kartu belum lengkap (rating, genre, jenis, atau chapter terbaru).
+ * Views tidak ikut dihitung: views berasal dari database Komikta, bukan dari detail sumber.
+ */
 val Comic.isIncomplete: Boolean
-    get() = rating == null || views == null || genres.isEmpty() || type == null || chapters.isEmpty()
+    get() = rating == null || genres.isEmpty() || type == null || chapters.isEmpty()
 
 /**
  * Lengkapi field yang kosong dari detail komik. Data yang sudah ada dari daftar tidak ditimpa,
@@ -101,7 +107,7 @@ fun Comic.completedWith(d: ComicDetail): Comic = copy(
     type = type ?: canonicalType(d.type, d.genres),
     status = status ?: canonicalStatus(d.status),
     rating = rating ?: d.rating?.takeIf { it > 0.0 },
-    views = views ?: d.views?.takeIf { it > 0.0 },
+    viewCount = viewCount ?: d.viewCount?.takeIf { it > 0L },
     genres = genres.ifEmpty { canonicalGenres(d.genres) },
     author = author ?: d.author?.trim()?.takeIf { it.isNotEmpty() },
     chapterCount = chapterCount ?: d.totalChapters,
@@ -114,7 +120,7 @@ fun Comic.fillMissingFrom(other: Comic): Comic = copy(
     type = type ?: other.type,
     status = status ?: other.status,
     rating = rating ?: other.rating,
-    views = views ?: other.views,
+    viewCount = viewCount ?: other.viewCount,
     genres = genres.ifEmpty { other.genres },
     author = author ?: other.author,
     chapterCount = chapterCount ?: other.chapterCount,

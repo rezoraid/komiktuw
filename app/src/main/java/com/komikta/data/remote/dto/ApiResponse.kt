@@ -56,9 +56,9 @@ data class ComicListItemDto(
     val chapterCount: Int? = null,
     val chapters: List<ChapterSummaryDto> = emptyList(),
     val genres: List<String> = emptyList(),
-    // Opsional: dipakai kalau API mengirimnya di list. JsonElement supaya angka/teks sama-sama aman.
     val author: String? = null,
-    val views: JsonElement? = null
+    // Views dari database Komikta (aktivitas pengguna). Field `views` dari sumber scraper sengaja diabaikan.
+    val viewCount: JsonElement? = null
 )
 
 @Serializable
@@ -66,7 +66,8 @@ data class ChapterSummaryDto(
     val slug: String = "",
     val number: String? = null,
     val title: String? = null,
-    val timeAgo: String? = null
+    val timeAgo: String? = null,
+    val viewCount: JsonElement? = null
 )
 
 @Serializable
@@ -82,7 +83,7 @@ data class ComicDetailDto(
     val author: String? = null,
     val artist: String? = null,
     val year: String? = null,
-    val views: Double? = null,          // API kadang kirim 13.3
+    val viewCount: JsonElement? = null, // database Komikta; `views` sumber scraper diabaikan
     val rating: Double? = null,
     val ratingCount: Double? = null,
     val genres: List<String> = emptyList(),

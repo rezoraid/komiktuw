@@ -6,6 +6,10 @@ import com.komikta.core.network.HttpException
 import com.komikta.data.local.SessionStore
 import com.komikta.data.remote.dto.ActivityPageDto
 import com.komikta.data.remote.dto.AdminCommentPageDto
+import com.komikta.data.remote.dto.AdminComicDto
+import com.komikta.data.remote.dto.AdminPagesDto
+import com.komikta.data.remote.dto.MediaUploadDto
+import com.komikta.data.remote.dto.ViewResultDto
 import com.komikta.data.remote.dto.AdminStatsDto
 import com.komikta.data.remote.dto.AdminUserPageDto
 import com.komikta.data.remote.dto.ApiResponse
@@ -32,6 +36,8 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.serializer
 import okhttp3.Call
@@ -39,6 +45,8 @@ import okhttp3.Callback
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -57,6 +65,7 @@ class CommunityApi @Inject constructor(
     private val session: SessionStore
 ) {
     private val http = client.newBuilder().callTimeout(ApiConfig.REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS).build()
+    private val uploadHttp = client.newBuilder().callTimeout(UPLOAD_TIMEOUT_MS, TimeUnit.MILLISECONDS).build()
     private val base = ApiConfig.BASE_URL.toHttpUrl()
     private val userAgent = "Komikta-Android/${BuildConfig.VERSION_NAME}"
     private val jsonType = "application/json; charset=utf-8".toMediaType()
@@ -65,6 +74,13 @@ class CommunityApi @Inject constructor(
         call("POST", listOf("auth", "google"), body = buildJsonObject { put("idToken", idToken) })
 
     suspend fun me(): ApiResponse<MeResponse> = call("GET", listOf("me"))
+
+    // ---- Views (database Komikta) ----
+    suspend fun trackComicView(source: String, slug: String): ApiResponse<ViewResultDto> =
+        call("POST", listOf("views", "comic"), body = buildJsonObject { put("source", source); put("slug", slug) })
+
+    suspend fun trackChapterView(source: String, comic: String, chapter: String): ApiResponse<ViewResultDto> =
+        call("POST", listOf("views", "chapter"), body = buildJsonObject { put("source", source); put("comic", comic); put("chapter", chapter) })
 
     suspend fun updateUsername(username: String): ApiResponse<MeResponse> =
         call("PATCH", listOf("me"), body = buildJsonObject { put("username", username) })
@@ -118,6 +134,52 @@ class CommunityApi @Inject constructor(
         })
 
     suspend fun adminUser(id: String): ApiResponse<MeResponse> = call("GET", listOf("admin", "users", id))
+
+    // ---- Panel OWNER: komik & gambar chapter ----
+    suspend fun adminComic(source: String, slug: String): ApiResponse<AdminComicDto> =
+        call("GET", listOf("admin", "comics", source, slug))
+
+    suspend fun adminSaveComic(
+        source: String, slug: String, title: String, cover: String, synopsis: String,
+        genres: List<String>, type: String, status: String, author: String, artist: String
+    ): ApiResponse<AdminComicDto> = call(
+        "PUT", listOf("admin", "comics", source, slug),
+        body = buildJsonObject {
+            put("title", title); put("cover", cover); put("synopsis", synopsis)
+            put("genres", JsonArray(genres.map { JsonPrimitive(it) }))
+            put("type", type); put("status", status); put("author", author); put("artist", artist)
+        }
+    )
+
+    suspend fun adminResetComic(source: String, slug: String): ApiResponse<AdminComicDto> =
+        call("DELETE", listOf("admin", "comics", source, slug, "override"))
+
+    suspend fun adminPages(source: String, slug: String, chapter: String): ApiResponse<AdminPagesDto> =
+        call("GET", listOf("admin", "comics", source, slug, "chapters", chapter, "pages"))
+
+    suspend fun adminSavePages(source: String, slug: String, chapter: String, pages: List<String>): ApiResponse<AdminPagesDto> =
+        call(
+            "PUT", listOf("admin", "comics", source, slug, "chapters", chapter, "pages"),
+            body = buildJsonObject { put("pages", JsonArray(pages.map { JsonPrimitive(it) })) }
+        )
+
+    suspend fun adminResetPages(source: String, slug: String, chapter: String): ApiResponse<AdminPagesDto> =
+        call("DELETE", listOf("admin", "comics", source, slug, "chapters", chapter, "pages"))
+
+    /** Unggah satu gambar (sampul atau panel). Server membalas URL/path gambar yang tersimpan. */
+    suspend fun adminUpload(bytes: ByteArray, mime: String, fileName: String): ApiResponse<MediaUploadDto> {
+        val form = MultipartBody.Builder().setType(MultipartBody.FORM)
+            .addFormDataPart("file", fileName, bytes.toRequestBody(mime.toMediaType()))
+            .build()
+        val (code, text) = executeBody("POST", url(listOf("admin", "media"), emptyMap()), form, uploadHttp)
+        return withContext(Dispatchers.Default) {
+            try {
+                json.decodeFromString(ApiResponse.serializer(MediaUploadDto.serializer()), text)
+            } catch (e: SerializationException) {
+                if (code in 200..299) throw e else throw HttpException(code)
+            }
+        }
+    }
 
     suspend fun adminGrantXp(id: String, amount: Int): ApiResponse<MeResponse> =
         call("POST", listOf("admin", "users", id, "xp"), body = buildJsonObject { put("amount", amount) })
@@ -252,15 +314,20 @@ class CommunityApi @Inject constructor(
         }
     }
 
-    private suspend fun execute(method: String, url: HttpUrl, body: JsonObject?): Pair<Int, String> = suspendCancellableCoroutine { cont ->
+    private suspend fun execute(method: String, url: HttpUrl, body: JsonObject?): Pair<Int, String> {
         val payload = when {
             body != null -> body.toString().toRequestBody(jsonType)
             method == "POST" || method == "PUT" || method == "PATCH" -> "{}".toRequestBody(jsonType)
             else -> null
         }
+        return executeBody(method, url, payload, http)
+    }
+
+    private suspend fun executeBody(method: String, url: HttpUrl, payload: RequestBody?, client: OkHttpClient): Pair<Int, String> = suspendCancellableCoroutine { cont ->
         val builder = Request.Builder().url(url).header("Accept", "application/json").header("User-Agent", userAgent)
+            .header("X-Device-Id", session.deviceId)
         session.token?.let { builder.header("Authorization", "Bearer $it") }
-        val call = http.newCall(builder.method(method, payload).build())
+        val call = client.newCall(builder.method(method, payload).build())
         cont.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -276,5 +343,9 @@ class CommunityApi @Inject constructor(
                 }
             }
         })
+    }
+
+    private companion object {
+        const val UPLOAD_TIMEOUT_MS = 90_000L
     }
 }

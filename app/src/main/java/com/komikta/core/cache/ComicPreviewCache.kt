@@ -19,6 +19,11 @@ object ComicPreviewCache {
         synchronized(map) { items.forEach { map["${it.source}|${it.slug}"] = it } }
     }
 
+    /** Ganti sampul/judul/info komik yang sudah diingat (dipakai setelah OWNER menyimpan perubahan). */
+    fun forget(source: String, slug: String) {
+        synchronized(map) { map.remove("$source|$slug") }
+    }
+
     fun detailPreview(source: String, slug: String): ComicDetail? {
         val c = synchronized(map) { map["$source|$slug"] } ?: return null
         return ComicDetail(
@@ -28,7 +33,7 @@ object ComicPreviewCache {
             status = c.status,
             type = c.type,
             author = c.author,
-            views = c.views,
+            viewCount = c.viewCount,
             rating = c.rating,
             genres = c.genres,
             totalChapters = c.chapterCount,

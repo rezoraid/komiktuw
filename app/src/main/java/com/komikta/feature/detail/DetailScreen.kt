@@ -77,6 +77,7 @@ fun DetailScreen(
     onBack: () -> Unit,
     onChapterClick: (source: String, comicSlug: String, chapterSlug: String) -> Unit,
     onCommentsClick: (source: String, slug: String) -> Unit,
+    onAdminEdit: (source: String, slug: String) -> Unit = { _, _ -> },
     viewModel: DetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -85,6 +86,7 @@ fun DetailScreen(
     val chapterComments by viewModel.chapterComments.collectAsStateWithLifecycle()
     val like by viewModel.like.collectAsStateWithLifecycle()
     val likeMessage by viewModel.likeMessage.collectAsStateWithLifecycle()
+    val isOwner by viewModel.isOwner.collectAsStateWithLifecycle()
     LaunchedEffect(likeMessage) {
         if (likeMessage != null) {
             delay(2500)
@@ -112,6 +114,9 @@ fun DetailScreen(
             }
             if (detail != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isOwner) IconButton(onClick = { onAdminEdit(detail.source, detail.slug) }) {
+                        Icon(AppIcons.edit, "Edit komik", tint = Color.White, modifier = Modifier.size(22.dp))
+                    }
                     IconButton(onClick = viewModel::toggleLike) {
                         Icon(AppIcons.heart(like.liked), "Suka", tint = if (like.liked) Color(0xFFE5484D) else Color.White, modifier = Modifier.size(24.dp))
                     }
@@ -195,8 +200,8 @@ fun DetailScreen(
                         ) {
                             detail.author?.takeIf { it.isNotBlank() }?.let { MetaLine("Author", it) }
                             detail.artist?.takeIf { it.isNotBlank() }?.let { MetaLine("Artist", it) }
-                            detail.views?.let { MetaLine("Views", NumberFormat.getIntegerInstance(IdLocale).format(it.toLong())) }
-                            MetaLine("Chapter", "${detail.totalChapters ?: detail.chapters.size}")
+                            detail.viewCount?.takeIf { it > 0L }?.let { MetaLine("Views", NumberFormat.getIntegerInstance(IdLocale).format(it)) }
+                            (detail.totalChapters ?: detail.chapters.size).takeIf { it > 0 }?.let { MetaLine("Chapter", "$it") }
                         }
                     }
 
@@ -401,6 +406,10 @@ private fun ChapterRow(chapter: Chapter, isRead: Boolean, comments: Int, onClick
             if (ago != null) {
                 Text(ago, fontSize = 13.sp, color = Ui.Text3, modifier = Modifier.padding(top = 2.dp))
             }
+        }
+        chapter.viewCount?.takeIf { it > 0L }?.let { v ->
+            Icon(AppIcons.eye, null, tint = Ui.Text3, modifier = Modifier.padding(start = 10.dp).size(14.dp))
+            Text(com.komikta.ui.components.fmtViews(v.toDouble()), fontSize = 13.sp, color = Ui.Text2, modifier = Modifier.padding(start = 4.dp))
         }
         if (comments > 0) {
             Icon(AppIcons.comment, null, tint = Ui.Text3, modifier = Modifier.padding(start = 10.dp).size(14.dp))

@@ -2,6 +2,7 @@ package com.komikta.feature.explore
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.komikta.core.cache.CatalogBus
 import com.komikta.core.common.Result
 import com.komikta.data.local.SourcePrefs
 import com.komikta.domain.model.BrowseParams
@@ -27,6 +28,10 @@ import javax.inject.Inject
 
 internal const val NO_COMICS_MESSAGE = "Tidak ada komik untuk filter ini"
 
+/** Explore hanya Manhwa, Manhua, Manga; Manhwa tampil lebih dulu. */
+internal const val DEFAULT_TYPE = "manhwa"
+internal val EXPLORE_TYPES = setOf("manhwa", "manhua", "manga")
+
 data class ExploreUiState(
     val query: String = "",
     val isLoading: Boolean = false,
@@ -37,7 +42,7 @@ data class ExploreUiState(
     val errorMessage: String? = null,
     val genres: List<String> = emptyList(),
     val selectedGenres: Set<String> = emptySet(),
-    val type: String? = null,
+    val type: String = DEFAULT_TYPE,
     val sort: String? = null,
     val status: String? = null
 )
@@ -72,7 +77,7 @@ class ExploreViewModel @Inject constructor(
 
     private fun withExtras(items: List<Comic>) = items.map { c -> extras[c.uid]?.let { c.fillMissingFrom(it) } ?: c }
 
-    /** Komik yang rating/views/genre/chapternya kosong dilengkapi dari detail, lalu kartunya diperbarui. */
+    /** Komik yang rating/genre/jenis/chapternya kosong dilengkapi dari detail, lalu kartunya diperbarui. */
     private fun enrich(items: List<Comic>) {
         val todo = items.filter { it.isIncomplete && enrichTried.add(it.uid) }.take(ENRICH_LIMIT)
         if (todo.isEmpty()) return
@@ -87,6 +92,13 @@ class ExploreViewModel @Inject constructor(
     init {
         loadGenres()
         loadInitial()
+        viewModelScope.launch {
+            CatalogBus.events.collect {
+                extras.clear()
+                val q = _uiState.value.query
+                if (q.isBlank()) loadInitial(refresh = true) else retry()
+            }
+        }
     }
 
     private fun loadGenres() {
@@ -140,7 +152,8 @@ class ExploreViewModel @Inject constructor(
         if (filtersChanged(old, new) || old.query.isNotBlank()) loadInitial()
     }
 
-    fun setType(type: String?) {
+    fun setType(type: String) {
+        if (type !in EXPLORE_TYPES) return
         val old = _uiState.value
         if (old.type == type) return
         _uiState.value = old.copy(type = type, query = "")

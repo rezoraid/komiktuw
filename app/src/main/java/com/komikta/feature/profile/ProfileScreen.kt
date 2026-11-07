@@ -347,8 +347,6 @@ private fun GuestContent(busy: Boolean, message: String?, onSignIn: () -> Unit, 
         InfoLine("Kebijakan Privasi", null, onPrivacy)
         Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
         InfoLine("Versi", BuildConfig.VERSION_NAME, null)
-        Box(Modifier.fillMaxWidth().height(1.dp).background(Mono.Line))
-        InfoLine("Sumber", "Lumos · Manta · Shinigami", null)
     }
 }
 

@@ -43,7 +43,8 @@ fun NewBadge(modifier: Modifier = Modifier, small: Boolean = false) {
 
 /**
  * Kartu komik baku (grid Home, Explore, Library) untuk semua sumber: cover + badge jenis + NEW,
- * judul, rating, views, genre, dan chapter terbaru beserta waktunya. Tinggi tiap kartu sama.
+ * judul, rating, views (database Komikta), genre, dan chapter terbaru beserta waktunya.
+ * Info yang tidak tersedia disembunyikan.
  */
 @Composable
 fun ComicCard(comic: Comic, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -59,9 +60,10 @@ fun ComicCard(comic: Comic, onClick: () -> Unit, modifier: Modifier = Modifier) 
             if (fresh) NewBadge(Modifier.align(Alignment.TopEnd).padding(5.dp), small = true)
         }
         Text(comic.title, fontSize = 13.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium, color = Color.White, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+        // Baris yang datanya tidak ada dilewati sepenuhnya (tanpa "-" dan tanpa ruang kosong).
         ComicStats(comic, Modifier.padding(top = 3.dp), compact = true)
-        Text(genre, fontSize = 11.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
-        Text(chapter, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
-        Text(ago, fontSize = 11.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (genre != null) Text(genre, fontSize = 11.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+        if (chapter != null) Text(chapter, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
+        if (ago != null) Text(ago, fontSize = 11.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

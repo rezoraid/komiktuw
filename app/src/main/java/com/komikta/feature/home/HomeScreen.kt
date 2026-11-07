@@ -65,6 +65,7 @@ import com.komikta.ui.components.ComicStats
 import com.komikta.ui.components.genreText
 import com.komikta.ui.components.latestAgoText
 import com.komikta.ui.components.latestChapterText
+import com.komikta.ui.components.latestLine
 import com.komikta.ui.components.historyChapterLabel
 import com.komikta.ui.components.isFresh
 import com.komikta.ui.components.relativeTime
@@ -108,7 +109,8 @@ fun HomeScreen(
             val hero = popular.firstOrNull() ?: latest.firstOrNull()
             val recommended = remember(all) { all.filter { (it.rating ?: 0.0) > 0.0 }.sortedByDescending { it.rating }.take(8) }
             val updates = remember(latest) { latest.take(10) }
-            val ranked = remember(popular, latest) { popular.ifEmpty { latest }.sortedByDescending { it.views ?: 0.0 }.take(9).chunked(3) }
+            // "Paling banyak dibaca" hanya dari views database Komikta (aktivitas pengguna), lintas ketiga sumber.
+            val ranked = remember(all) { all.filter { (it.viewCount ?: 0L) > 0L }.sortedByDescending { it.viewCount }.take(9).chunked(3) }
             val genres = remember(all) { all.flatMap { it.genres }.groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.take(12).map { it.key }.sorted() }
             var genre by rememberSaveable { mutableStateOf<String?>(null) }
             var origin by rememberSaveable { mutableIntStateOf(0) }
@@ -224,7 +226,7 @@ private fun Hero(comic: Comic, onClick: () -> Unit) {
                 ComicStats(comic)
             }
             Text(comic.title, fontSize = 21.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            val desc = listOfNotNull(comic.genres.take(3).joinToString(", ").ifBlank { null }, statusLabel(comic.status), latestChapterText(comic).takeIf { it != com.komikta.ui.components.NoData }).joinToString(" · ")
+            val desc = listOfNotNull(genreText(comic, 3), statusLabel(comic.status), latestChapterText(comic)).joinToString(" · ")
             if (desc.isNotEmpty()) Text(desc, fontSize = 13.sp, lineHeight = 18.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text("Read now", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ui.OnAccent, modifier = Modifier.padding(top = 4.dp).clip(CircleShape).background(Ui.Accent).padding(horizontal = 22.dp, vertical = 9.dp))
         }
@@ -252,8 +254,8 @@ private fun WideCard(c: Comic, width: Dp, onClick: () -> Unit) {
         }
         Text(c.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
         ComicStats(c, Modifier.padding(top = 3.dp))
-        Text(genreText(c, 3), fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
-        Text("${latestChapterText(c)} · ${latestAgoText(c)}", fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+        genreText(c, 3)?.let { Text(it, fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp)) }
+        latestLine(c)?.let { Text(it, fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp)) }
     }
 }
 
@@ -271,10 +273,14 @@ private fun UpdateRow(c: Comic, onClick: () -> Unit) {
                 ComicStats(c)
                 if (isFresh(ch?.timeAgo)) NewBadge(small = true)
             }
-            Text(genreText(c, 3), fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ui.Card).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(latestChapterText(c), fontSize = 14.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                Text(latestAgoText(c), fontSize = 13.sp, color = Ui.Text2, maxLines = 1)
+            genreText(c, 3)?.let { Text(it, fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            val chapterText = latestChapterText(c)
+            val agoText = latestAgoText(c)
+            if (chapterText != null || agoText != null) {
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ui.Card).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(chapterText.orEmpty(), fontSize = 14.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    if (agoText != null) Text(agoText, fontSize = 13.sp, color = Ui.Text2, maxLines = 1)
+                }
             }
         }
     }
@@ -291,8 +297,8 @@ private fun RankRow(rank: Int, c: Comic, onClick: () -> Unit) {
         Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text(c.title, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
             ComicStats(c)
-            Text(genreText(c, 3), fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${latestChapterText(c)} · ${latestAgoText(c)}", fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            genreText(c, 3)?.let { Text(it, fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            latestLine(c)?.let { Text(it, fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
     }
 }

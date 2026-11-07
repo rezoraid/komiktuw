@@ -222,3 +222,42 @@ data class BroadcastPageDto(val items: List<BroadcastDto> = emptyList(), val has
 
 @Serializable
 data class BroadcastResponse(val broadcast: BroadcastDto)
+
+// ---- Views (database Komikta) ----
+@Serializable
+data class ViewResultDto(val viewCount: Long? = null)
+
+// ---- Panel OWNER: data komik & gambar chapter ----
+@Serializable
+data class AdminChapterDto(
+    val slug: String = "",
+    val number: String? = null,
+    val title: String? = null,
+    val viewCount: Long? = null,
+    /** True kalau gambar chapter ini pernah diedit OWNER. */
+    val edited: Boolean = false
+)
+
+@Serializable
+data class AdminComicDto(
+    val source: String = "",
+    val slug: String = "",
+    val title: String = "",
+    val cover: String? = null,
+    val synopsis: String? = null,
+    val genres: List<String> = emptyList(),
+    val type: String? = null,
+    val status: String? = null,
+    val author: String? = null,
+    val artist: String? = null,
+    val viewCount: Long? = null,
+    /** True kalau data komik ini pernah diedit OWNER (bisa dikembalikan ke data asli). */
+    val edited: Boolean = false,
+    val chapters: List<AdminChapterDto> = emptyList()
+)
+
+@Serializable
+data class AdminPagesDto(val pages: List<String> = emptyList(), val edited: Boolean = false)
+
+@Serializable
+data class MediaUploadDto(val url: String = "")

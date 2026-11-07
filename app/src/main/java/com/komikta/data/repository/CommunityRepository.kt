@@ -8,6 +8,8 @@ import com.komikta.data.local.SessionStore
 import com.komikta.data.remote.api.CommunityApi
 import com.komikta.data.remote.dto.ActivityPageDto
 import com.komikta.data.remote.dto.AdminCommentPageDto
+import com.komikta.data.remote.dto.AdminComicDto
+import com.komikta.data.remote.dto.AdminPagesDto
 import com.komikta.data.remote.dto.BroadcastDto
 import com.komikta.data.remote.dto.BroadcastPageDto
 import com.komikta.data.remote.dto.AdminStatsDto
@@ -264,6 +266,27 @@ class CommunityRepository @Inject constructor(
     suspend fun adminSetVerified(id: String, verified: Boolean): Result<CommunityUserDto> = call { api.adminSetVerified(id, verified) }.map { it.user }
 
     suspend fun adminSetBan(id: String, banned: Boolean): Result<Unit> = call { api.adminSetBan(id, banned) }.map { }
+
+    // ---- Panel OWNER: komik & gambar chapter ----
+    suspend fun adminComic(source: String, slug: String): Result<AdminComicDto> = call { api.adminComic(source, slug) }
+
+    suspend fun adminSaveComic(
+        source: String, slug: String, title: String, cover: String, synopsis: String,
+        genres: List<String>, type: String, status: String, author: String, artist: String
+    ): Result<AdminComicDto> = call { api.adminSaveComic(source, slug, title, cover, synopsis, genres, type, status, author, artist) }
+
+    suspend fun adminResetComic(source: String, slug: String): Result<AdminComicDto> = call { api.adminResetComic(source, slug) }
+
+    suspend fun adminPages(source: String, slug: String, chapter: String): Result<AdminPagesDto> = call { api.adminPages(source, slug, chapter) }
+
+    suspend fun adminSavePages(source: String, slug: String, chapter: String, pages: List<String>): Result<AdminPagesDto> =
+        call { api.adminSavePages(source, slug, chapter, pages) }
+
+    suspend fun adminResetPages(source: String, slug: String, chapter: String): Result<AdminPagesDto> =
+        call { api.adminResetPages(source, slug, chapter) }
+
+    suspend fun adminUpload(bytes: ByteArray, mime: String, fileName: String): Result<String> =
+        call { api.adminUpload(bytes, mime, fileName) }.map { it.url }
 
     fun queueReadingProgress(source: String, slug: String, chapter: String, comicTitle: String, chapterTitle: String, coverUrl: String) {
         if (session.token == null) return

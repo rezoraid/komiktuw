@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.komikta.core.cache.CatalogBus
 import com.komikta.core.cache.ComicPreviewCache
+import com.komikta.core.stats.ViewTracker
 import com.komikta.core.common.Result
 import com.komikta.data.local.ReaderPrefs
 import com.komikta.data.local.dao.BookmarkDao
@@ -52,6 +54,7 @@ class DetailViewModel @Inject constructor(
     readChapterDao: ReadChapterDao,
     private val prefs: ReaderPrefs,
     private val community: CommunityRepository,
+    private val viewTracker: ViewTracker,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -63,6 +66,10 @@ class DetailViewModel @Inject constructor(
         DetailUiState(chaptersNewestFirst = prefs.chaptersNewestFirst.value, preview = ComicPreviewCache.detailPreview(source, slug))
     )
     val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
+
+    /** Tombol edit komik di Detail hanya untuk OWNER. */
+    val isOwner: StateFlow<Boolean> = community.user.map { it?.role == "OWNER" }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), community.user.value?.role == "OWNER")
 
     private val _chapterComments = MutableStateFlow<Map<String, Int>>(emptyMap())
     val chapterComments: StateFlow<Map<String, Int>> = _chapterComments.asStateFlow()
@@ -91,6 +98,11 @@ class DetailViewModel @Inject constructor(
     init {
         loadDetail()
         loadLike()
+        // Catat satu view komik dari aktivitas pengguna; total terbaru dari server langsung dipakai.
+        viewTracker.comic(source, slug) { count ->
+            _uiState.update { st -> st.copy(detail = st.detail?.copy(viewCount = count)) }
+        }
+        viewModelScope.launch { CatalogBus.events.collect { loadDetail(refresh = true) } }
     }
 
     fun loadChapterComments() {

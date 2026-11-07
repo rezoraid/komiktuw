@@ -11,6 +11,7 @@ import com.komikta.domain.model.canonicalType
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.doubleOrNull
+import com.komikta.core.network.ApiConfig
 
 fun SourceDto.toDomain(): Source = Source(
     id = id,
@@ -24,7 +25,7 @@ fun SourceDto.toDomain(): Source = Source(
 fun ComicListItemDto.toDomain(source: String): Comic = Comic(
     title = title,
     slug = slug,
-    coverUrl = cover,
+    coverUrl = absoluteUrl(cover),
     type = canonicalType(type, genres),
     status = canonicalStatus(status),
     rating = rating?.takeIf { it > 0.0 },
@@ -32,35 +33,36 @@ fun ComicListItemDto.toDomain(source: String): Comic = Comic(
     genres = canonicalGenres(genres),
     source = source,
     author = author?.trim()?.takeIf { it.isNotEmpty() },
-    views = views.toViewCount(),
+    viewCount = viewCount.toCount(),
     chapters = chapters.map { it.toDomain() }
 )
 
-private val GroupedNumber = Regex("""^\d{1,3}([.,]\d{3})+$""")
+/** Uploaded cover/gambar dari server dikirim sebagai path ("/media/..."): jadikan URL penuh. */
+fun absoluteUrl(url: String?): String? {
+    val u = url?.trim().orEmpty()
+    if (u.isEmpty()) return null
+    return if (u.startsWith("/")) ApiConfig.BASE_URL.trimEnd('/') + u else u
+}
 
-/** Terima angka (18664676 / 13.3) atau teks ("18.664.676"); selain itu dianggap tidak ada. */
-private fun JsonElement?.toViewCount(): Double? {
+/** Jumlah views/dilihat dari server Komikta: angka bulat positif, selain itu dianggap tidak ada. */
+internal fun JsonElement?.toCount(): Long? {
     val p = this as? JsonPrimitive ?: return null
-    p.doubleOrNull?.let { return it.takeIf { v -> v > 0 } }
-    val t = p.content.trim()
-    val v = when {
-        GroupedNumber.matches(t) -> t.replace(".", "").replace(",", "").toDoubleOrNull()
-        else -> t.replace(',', '.').toDoubleOrNull()
-    }
-    return v?.takeIf { it > 0 }
+    val n = p.doubleOrNull ?: p.content.trim().toDoubleOrNull() ?: return null
+    return n.toLong().takeIf { it > 0L }
 }
 
 fun ChapterSummaryDto.toDomain(): Chapter = Chapter(
     slug = slug,
     number = number,
     title = title,
-    timeAgo = timeAgo
+    timeAgo = timeAgo,
+    viewCount = viewCount.toCount()
 )
 
 fun ComicDetailDto.toDomain(source: String): ComicDetail = ComicDetail(
     title = title,
     slug = slug,
-    coverUrl = cover,
+    coverUrl = absoluteUrl(cover),
     alternativeTitles = alt,
     synopsis = synopsis,
     status = canonicalStatus(status),
@@ -68,7 +70,7 @@ fun ComicDetailDto.toDomain(source: String): ComicDetail = ComicDetail(
     author = author,
     artist = artist,
     year = year,
-    views = views,
+    viewCount = viewCount.toCount(),
     rating = rating?.takeIf { it > 0.0 },
     genres = canonicalGenres(genres),
     totalChapters = totalChapters,
@@ -81,9 +83,9 @@ fun ChapterContentDto.toDomain(source: String, comicSlug: String, chapterSlug: S
     val urls = when {
         proxy.isNotEmpty() -> proxy.map { path ->
             if (path.startsWith("http")) path
-            else com.komikta.core.network.ApiConfig.BASE_URL.trimEnd('/') + "/" + path.trimStart('/')
+            else ApiConfig.BASE_URL.trimEnd('/') + "/" + path.trimStart('/')
         }
-        else -> images
+        else -> images.map { absoluteUrl(it) ?: it }
     }
     return ChapterContent(
         title = title,

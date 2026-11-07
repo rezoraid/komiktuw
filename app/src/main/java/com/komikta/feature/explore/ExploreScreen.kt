@@ -72,7 +72,8 @@ import kotlinx.coroutines.delay
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 
-private val Types = listOf("All", "Manhwa", "Manhua", "Manga")
+/** Explore hanya punya tiga kategori. */
+private val Types = listOf("Manhwa", "Manhua", "Manga")
 private val SortOptions = listOf("Latest update" to "latest", "Popular" to "popular", "Top rated" to "rating", "A-Z" to "az")
 
 @Composable
@@ -113,8 +114,8 @@ fun ExploreScreen(
         SearchField(value = uiState.query, onChange = viewModel::onQueryChange, focus = searchFocus)
         SegmentedTabs(
             options = Types,
-            selected = Types.indexOfFirst { if (it == "All") uiState.type == null else it.lowercase() == uiState.type }.coerceAtLeast(0),
-            onSelect = { viewModel.setType(if (it == 0) null else Types[it].lowercase()) },
+            selected = Types.indexOfFirst { it.lowercase() == uiState.type }.coerceAtLeast(0),
+            onSelect = { viewModel.setType(Types[it].lowercase()) },
             modifier = Modifier.padding(horizontal = 14.dp)
         )
         Spacer(Modifier.height(14.dp))
@@ -131,7 +132,7 @@ fun ExploreScreen(
             }
         }
         Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 8.dp, top = 14.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(uiState.type?.replaceFirstChar { it.uppercase() } ?: "All types", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White, modifier = Modifier.weight(1f))
+            Text(uiState.type.replaceFirstChar { it.uppercase() }, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White, modifier = Modifier.weight(1f))
             Box {
                 Row(Modifier.clip(CircleShape).clickable { sortMenu = true }.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(AppIcons.sort, null, tint = Ui.Accent, modifier = Modifier.size(18.dp))

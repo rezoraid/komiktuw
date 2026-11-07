@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.komikta.core.common.Result
+import com.komikta.core.stats.ViewTracker
 import com.komikta.data.local.ReaderPrefs
 import com.komikta.data.local.dao.ReadChapterDao
 import com.komikta.data.local.dao.ReadingHistoryDao
@@ -50,6 +51,7 @@ class ReaderViewModel @Inject constructor(
     private val historyDao: ReadingHistoryDao,
     private val readChapterDao: ReadChapterDao,
     private val community: CommunityRepository,
+    private val viewTracker: ViewTracker,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -144,6 +146,7 @@ class ReaderViewModel @Inject constructor(
             it.copy(isLoading = false, errorMessage = null, content = content, chapterSlug = content.chapterSlug, loaded = listOf(content), upcoming = null)
         }
         viewModelScope.launch { saveHistory(content) }
+        viewTracker.chapter(source, comicSlug, content.chapterSlug)
         prefetchNext(content)
         prefetchPrev(content)
         viewModelScope.launch { commentPreview(content.chapterSlug) }
@@ -188,6 +191,7 @@ class ReaderViewModel @Inject constructor(
         chapterSlug = slug
         _uiState.update { it.copy(content = target, chapterSlug = slug) }
         viewModelScope.launch { saveHistory(target) }
+        viewTracker.chapter(source, comicSlug, slug)
     }
 
     private fun loadChapterInfo() {

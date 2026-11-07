@@ -2,6 +2,7 @@ package com.komikta.feature.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.komikta.core.cache.CatalogBus
 import com.komikta.core.common.Result
 import com.komikta.data.local.SourcePrefs
 import com.komikta.data.local.dao.ReadingHistoryDao
@@ -59,7 +60,7 @@ class HomeViewModel @Inject constructor(
 
     private fun withExtras(items: List<Comic>) = items.map { c -> extras[c.uid]?.let { c.fillMissingFrom(it) } ?: c }
 
-    /** Komik yang rating/views/genre/chapternya kosong dilengkapi dari detail, lalu kartunya diperbarui. */
+    /** Komik yang rating/genre/jenis/chapternya kosong dilengkapi dari detail, lalu kartunya diperbarui. */
     private fun enrich(items: List<Comic>) {
         val todo = items.filter { it.isIncomplete && enrichTried.add(it.uid) }.take(ENRICH_LIMIT)
         if (todo.isEmpty()) return
@@ -73,6 +74,8 @@ class HomeViewModel @Inject constructor(
 
     init {
         loadHome()
+        // OWNER mengubah data komik: muat ulang Home dari server (cache sudah dibuang).
+        viewModelScope.launch { CatalogBus.events.collect { extras.clear(); loadHome(refresh = true) } }
     }
 
     /**
