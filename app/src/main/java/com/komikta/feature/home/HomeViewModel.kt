@@ -7,6 +7,11 @@ import com.komikta.data.local.SourcePrefs
 import com.komikta.data.local.dao.ReadingHistoryDao
 import com.komikta.data.local.entity.ReadingHistoryEntity
 import com.komikta.domain.model.Comic
+import com.komikta.domain.model.fillMissingFrom
+import com.komikta.domain.model.isIncomplete
+import com.komikta.domain.model.replacing
+import com.komikta.domain.model.uid
+import com.komikta.domain.usecase.EnrichComicsUseCase
 import com.komikta.domain.usecase.GetComicDetailUseCase
 import com.komikta.domain.usecase.GetLatestComicsUseCase
 import com.komikta.domain.usecase.GetPopularComicsUseCase
@@ -33,6 +38,7 @@ class HomeViewModel @Inject constructor(
     private val getLatestComics: GetLatestComicsUseCase,
     private val getPopularComics: GetPopularComicsUseCase,
     private val getComicDetail: GetComicDetailUseCase,
+    private val enrichComics: EnrichComicsUseCase,
     historyDao: ReadingHistoryDao,
     private val sourcePrefs: SourcePrefs
 ) : ViewModel() {
@@ -48,6 +54,22 @@ class HomeViewModel @Inject constructor(
     private var latestDone = false
     private var popularDone = false
     private val prefetched = HashSet<String>() // "source:slug"
+    private val enrichTried = HashSet<String>()
+    private val extras = HashMap<String, Comic>() // hasil pelengkapan data, dipakai ulang saat daftar dimuat ulang
+
+    private fun withExtras(items: List<Comic>) = items.map { c -> extras[c.uid]?.let { c.fillMissingFrom(it) } ?: c }
+
+    /** Komik yang rating/views/genre/chapternya kosong dilengkapi dari detail, lalu kartunya diperbarui. */
+    private fun enrich(items: List<Comic>) {
+        val todo = items.filter { it.isIncomplete && enrichTried.add(it.uid) }.take(ENRICH_LIMIT)
+        if (todo.isEmpty()) return
+        viewModelScope.launch {
+            enrichComics(todo, ENRICH_LIMIT) { c ->
+                extras[c.uid] = c
+                _uiState.update { st -> st.copy(latestComics = st.latestComics.replacing(c), popularComics = st.popularComics.replacing(c)) }
+            }
+        }
+    }
 
     init {
         loadHome()
@@ -90,12 +112,14 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun applyResult(result: Result<List<Comic>>, merge: (HomeUiState, List<Comic>) -> HomeUiState) {
+        val items = (result as? Result.Success)?.data?.let(::withExtras)
+        if (items != null) {
+            prefetchDetails(items)
+            enrich(items)
+        }
         _uiState.update { st ->
             val merged = when (result) {
-                is Result.Success -> {
-                    prefetchDetails(result.data)
-                    merge(st, result.data)
-                }
+                is Result.Success -> merge(st, items.orEmpty())
                 is Result.Empty -> merge(st, emptyList())
                 else -> st
             }
@@ -110,5 +134,6 @@ class HomeViewModel @Inject constructor(
 
     private companion object {
         const val PREFETCH_DETAILS = 8
+        const val ENRICH_LIMIT = 40
     }
 }

@@ -6,6 +6,11 @@ import com.komikta.core.common.Result
 import com.komikta.data.local.SourcePrefs
 import com.komikta.domain.model.BrowseParams
 import com.komikta.domain.model.Comic
+import com.komikta.domain.model.fillMissingFrom
+import com.komikta.domain.model.isIncomplete
+import com.komikta.domain.model.replacing
+import com.komikta.domain.model.uid
+import com.komikta.domain.usecase.EnrichComicsUseCase
 import com.komikta.domain.model.SearchParams
 import com.komikta.domain.usecase.BrowseComicsUseCase
 import com.komikta.domain.usecase.GetGenresUseCase
@@ -52,6 +57,7 @@ class ExploreViewModel @Inject constructor(
     private val searchComics: SearchComicsUseCase,
     private val browseComics: BrowseComicsUseCase,
     private val getGenres: GetGenresUseCase,
+    private val enrichComics: EnrichComicsUseCase,
     private val sourcePrefs: SourcePrefs
 ) : ViewModel() {
 
@@ -61,6 +67,22 @@ class ExploreViewModel @Inject constructor(
     private var listJob: Job? = null
     private var moreJob: Job? = null
     private var genresJob: Job? = null
+    private val enrichTried = HashSet<String>()
+    private val extras = HashMap<String, Comic>() // hasil pelengkapan data, dipakai ulang saat daftar dimuat ulang
+
+    private fun withExtras(items: List<Comic>) = items.map { c -> extras[c.uid]?.let { c.fillMissingFrom(it) } ?: c }
+
+    /** Komik yang rating/views/genre/chapternya kosong dilengkapi dari detail, lalu kartunya diperbarui. */
+    private fun enrich(items: List<Comic>) {
+        val todo = items.filter { it.isIncomplete && enrichTried.add(it.uid) }.take(ENRICH_LIMIT)
+        if (todo.isEmpty()) return
+        viewModelScope.launch {
+            enrichComics(todo, ENRICH_LIMIT) { c ->
+                extras[c.uid] = c
+                _uiState.update { st -> st.copy(comics = st.comics.replacing(c)) }
+            }
+        }
+    }
 
     init {
         loadGenres()
@@ -160,13 +182,15 @@ class ExploreViewModel @Inject constructor(
     }
 
     private fun applyFirstPage(result: Result<List<Comic>>, pageable: Boolean) {
+        val data = (result as? Result.Success)?.data?.let(::withExtras)
+        if (data != null) enrich(data)
         _uiState.update { st ->
             when (result) {
                 is Result.Success -> st.copy(
                     isLoading = false,
-                    comics = result.data.distinctBy { "${it.source}:${it.slug}" },
+                    comics = data.orEmpty().distinctBy { "${it.source}:${it.slug}" },
                     page = 1,
-                    canLoadMore = pageable && result.data.isNotEmpty(),
+                    canLoadMore = pageable && data.orEmpty().isNotEmpty(),
                     errorMessage = null
                 )
                 is Result.Empty -> st.copy(isLoading = false, comics = emptyList(), canLoadMore = false, errorMessage = NO_COMICS_MESSAGE)
@@ -183,7 +207,8 @@ class ExploreViewModel @Inject constructor(
         moreJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             val result = browseComics(browseParams(state, next))
-            val batch = (result as? Result.Success)?.data.orEmpty()
+            val batch = (result as? Result.Success)?.data?.let(::withExtras).orEmpty()
+            enrich(batch)
             _uiState.update {
                 if (filtersChanged(state, it) || it.query.isNotBlank() || result is Result.Error) it.copy(isLoadingMore = false) else {
                     val merged = (it.comics + batch).distinctBy { c -> "${c.source}:${c.slug}" }
@@ -201,5 +226,6 @@ class ExploreViewModel @Inject constructor(
 
     private companion object {
         const val SEARCH_DEBOUNCE_MS = 280L
+        const val ENRICH_LIMIT = 40
     }
 }

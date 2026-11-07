@@ -6,6 +6,9 @@ import com.komikta.domain.model.ChapterContent
 import com.komikta.domain.model.Comic
 import com.komikta.domain.model.ComicDetail
 import com.komikta.domain.model.SearchParams
+import com.komikta.domain.model.completedWith
+import com.komikta.domain.model.isIncomplete
+import kotlinx.coroutines.sync.withPermit
 import com.komikta.domain.model.Source
 import com.komikta.domain.repository.ComicRepository
 import kotlinx.coroutines.flow.Flow
@@ -52,4 +55,30 @@ class GetComicDetailUseCase @Inject constructor(private val repository: ComicRep
 class GetChapterContentUseCase @Inject constructor(private val repository: ComicRepository) {
     suspend operator fun invoke(source: String, comicSlug: String, chapterSlug: String): Result<ChapterContent> =
         repository.getChapterContent(source, comicSlug, chapterSlug)
+}
+
+/**
+ * Lumos, Manta, dan Shinigami tidak mengirim kelengkapan yang sama di daftar (ada yang tanpa rating,
+ * views, genre, atau chapter terbaru). Untuk komik yang datanya bolong, ambil detailnya (sudah di-cache
+ * dan hangat di server) lalu lengkapi, supaya semua kartu menampilkan informasi yang sama.
+ */
+class EnrichComicsUseCase @Inject constructor(private val repository: ComicRepository) {
+    suspend operator fun invoke(items: List<Comic>, limit: Int = 40, onEnriched: (Comic) -> Unit) {
+        val todo = items.filter { it.isIncomplete }.take(limit)
+        if (todo.isEmpty()) return
+        val gate = kotlinx.coroutines.sync.Semaphore(4)
+        kotlinx.coroutines.coroutineScope {
+            todo.map { c ->
+                kotlinx.coroutines.async {
+                    gate.withPermit {
+                        val detail = (repository.getComicDetail(c.source, c.slug) as? com.komikta.core.common.Result.Success)?.data
+                        if (detail != null) {
+                            val merged = c.completedWith(detail)
+                            if (merged != c) onEnriched(merged)
+                        }
+                    }
+                }
+            }.forEach { it.await() }
+        }
+    }
 }

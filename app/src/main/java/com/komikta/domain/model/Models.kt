@@ -82,3 +82,44 @@ data class SearchParams(
     val query: String,
     val page: Int = 1
 )
+
+private fun Comic.key() = "$source:$slug"
+
+/** Kunci unik komik lintas sumber. */
+val Comic.uid: String get() = key()
+
+/** Data yang tampil di kartu belum lengkap (rating, views, genre, jenis, atau chapter terbaru). */
+val Comic.isIncomplete: Boolean
+    get() = rating == null || views == null || genres.isEmpty() || type == null || chapters.isEmpty()
+
+/**
+ * Lengkapi field yang kosong dari detail komik. Data yang sudah ada dari daftar tidak ditimpa,
+ * jadi hasilnya hanya menambah kelengkapan, tidak mengubah apa yang sudah benar.
+ */
+fun Comic.completedWith(d: ComicDetail): Comic = copy(
+    coverUrl = coverUrl ?: d.coverUrl,
+    type = type ?: canonicalType(d.type, d.genres),
+    status = status ?: canonicalStatus(d.status),
+    rating = rating ?: d.rating?.takeIf { it > 0.0 },
+    views = views ?: d.views?.takeIf { it > 0.0 },
+    genres = genres.ifEmpty { canonicalGenres(d.genres) },
+    author = author ?: d.author?.trim()?.takeIf { it.isNotEmpty() },
+    chapterCount = chapterCount ?: d.totalChapters,
+    chapters = chapters.ifEmpty { d.chapters.take(3) }
+)
+
+/** Pakai ulang hasil pengayaan lama pada daftar yang baru dimuat ulang dari server/cache. */
+fun Comic.fillMissingFrom(other: Comic): Comic = copy(
+    coverUrl = coverUrl ?: other.coverUrl,
+    type = type ?: other.type,
+    status = status ?: other.status,
+    rating = rating ?: other.rating,
+    views = views ?: other.views,
+    genres = genres.ifEmpty { other.genres },
+    author = author ?: other.author,
+    chapterCount = chapterCount ?: other.chapterCount,
+    chapters = chapters.ifEmpty { other.chapters }
+)
+
+/** Ganti komik yang uid-nya sama dengan [c] (dipakai saat data komik dilengkapi menyusul). */
+fun List<Comic>.replacing(c: Comic): List<Comic> = map { if (it.uid == c.uid) c else it }

@@ -61,9 +61,10 @@ import com.komikta.ui.components.NewBadge
 import com.komikta.ui.components.PosterRowSkeleton
 import com.komikta.ui.components.SegmentedTabs
 import com.komikta.ui.components.TypeBadge
-import com.komikta.ui.components.chapterShort
-import com.komikta.ui.components.fmtRating
-import com.komikta.ui.components.fmtViews
+import com.komikta.ui.components.ComicStats
+import com.komikta.ui.components.genreText
+import com.komikta.ui.components.latestAgoText
+import com.komikta.ui.components.latestChapterText
 import com.komikta.ui.components.historyChapterLabel
 import com.komikta.ui.components.isFresh
 import com.komikta.ui.components.relativeTime
@@ -220,29 +221,13 @@ private fun Hero(comic: Comic, onClick: () -> Unit) {
         Column(Modifier.align(Alignment.CenterStart).fillMaxWidth(0.68f).padding(start = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 typeLabel(comic.type)?.let { Text(it.uppercase(), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White) }
-                comic.rating?.takeIf { it > 0 }?.let { Rating(it, 13.sp) }
+                ComicStats(comic)
             }
             Text(comic.title, fontSize = 21.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            val desc = listOfNotNull(comic.genres.take(3).joinToString(", ").ifBlank { null }, statusLabel(comic.status)).joinToString(" · ")
+            val desc = listOfNotNull(comic.genres.take(3).joinToString(", ").ifBlank { null }, statusLabel(comic.status), latestChapterText(comic).takeIf { it != com.komikta.ui.components.NoData }).joinToString(" · ")
             if (desc.isNotEmpty()) Text(desc, fontSize = 13.sp, lineHeight = 18.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text("Read now", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ui.OnAccent, modifier = Modifier.padding(top = 4.dp).clip(CircleShape).background(Ui.Accent).padding(horizontal = 22.dp, vertical = 9.dp))
         }
-    }
-}
-
-@Composable
-private fun Rating(value: Double, size: androidx.compose.ui.unit.TextUnit = 13.sp) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(AppIcons.star, null, tint = Ui.Star, modifier = Modifier.size(14.dp))
-        Text(fmtRating(value), fontSize = size, fontWeight = FontWeight.Medium, color = Color.White, modifier = Modifier.padding(start = 4.dp))
-    }
-}
-
-@Composable
-private fun Views(value: Double) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(AppIcons.eye, null, tint = Ui.Text2, modifier = Modifier.size(16.dp))
-        Text(fmtViews(value), fontSize = 13.sp, color = Ui.Text2, modifier = Modifier.padding(start = 4.dp))
     }
 }
 
@@ -263,13 +248,12 @@ private fun WideCard(c: Comic, width: Dp, onClick: () -> Unit) {
         Box(Modifier.fillMaxWidth().height(width * 0.56f).clip(RoundedCornerShape(20.dp)).background(Ui.Card)) {
             CoverImage(c.coverUrl, c.title, Modifier.fillMaxSize(), 640, 360, Alignment.TopCenter)
             typeLabel(c.type)?.let { TypeBadge(it, Modifier.align(Alignment.TopStart).padding(10.dp)) }
+            if (isFresh(c.chapters.firstOrNull()?.timeAgo)) NewBadge(Modifier.align(Alignment.TopEnd).padding(10.dp))
         }
         Text(c.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
-        Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            c.rating?.takeIf { it > 0 }?.let { Rating(it) }
-            statusLabel(c.status)?.let { Text(it, fontSize = 13.sp, color = Ui.Text2, maxLines = 1) }
-        }
-        if (c.genres.isNotEmpty()) Text(c.genres.take(4).joinToString(", "), fontSize = 13.sp, lineHeight = 18.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+        ComicStats(c, Modifier.padding(top = 3.dp))
+        Text(genreText(c, 3), fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+        Text("${latestChapterText(c)} · ${latestAgoText(c)}", fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
     }
 }
 
@@ -277,20 +261,20 @@ private fun WideCard(c: Comic, width: Dp, onClick: () -> Unit) {
 private fun UpdateRow(c: Comic, onClick: () -> Unit) {
     val ch = c.chapters.firstOrNull()
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = Pad, vertical = 7.dp)) {
-        Box(Modifier.size(width = 60.dp, height = 90.dp).clip(RoundedCornerShape(10.dp)).background(Ui.Card)) {
-            CoverImage(c.coverUrl, c.title, Modifier.fillMaxSize(), 174, 258)
+        Box(Modifier.size(width = 70.dp, height = 105.dp).clip(RoundedCornerShape(10.dp)).background(Ui.Card)) {
+            CoverImage(c.coverUrl, c.title, Modifier.fillMaxSize(), 210, 315)
             typeLabel(c.type)?.let { TypeBadge(it, Modifier.align(Alignment.TopStart).padding(3.dp), small = true) }
         }
-        Column(Modifier.weight(1f).height(90.dp).padding(start = 12.dp), verticalArrangement = Arrangement.SpaceBetween) {
+        Column(Modifier.weight(1f).height(105.dp).padding(start = 12.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Text(c.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                c.rating?.takeIf { it > 0 }?.let { Rating(it) }
-                c.views?.takeIf { it > 0 }?.let { Views(it) }
+                ComicStats(c)
                 if (isFresh(ch?.timeAgo)) NewBadge(small = true)
             }
-            if (ch != null) Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ui.Card).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(chapterShort(ch) ?: ch.title.orEmpty(), fontSize = 14.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                Text(ch.timeAgo.orEmpty(), fontSize = 13.sp, color = Ui.Text2, maxLines = 1)
+            Text(genreText(c, 3), fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ui.Card).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(latestChapterText(c), fontSize = 14.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(latestAgoText(c), fontSize = 13.sp, color = Ui.Text2, maxLines = 1)
             }
         }
     }
@@ -306,12 +290,9 @@ private fun RankRow(rank: Int, c: Comic, onClick: () -> Unit) {
         }
         Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text(c.title, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                c.rating?.takeIf { it > 0 }?.let { Rating(it) }
-                c.views?.takeIf { it > 0 }?.let { Views(it) }
-            }
-            val sub = listOfNotNull(statusLabel(c.status), c.genres.firstOrNull()).joinToString(" · ")
-            if (sub.isNotEmpty()) Text(sub, fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            ComicStats(c)
+            Text(genreText(c, 3), fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("${latestChapterText(c)} · ${latestAgoText(c)}", fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

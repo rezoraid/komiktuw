@@ -397,8 +397,8 @@ private fun ChapterRow(chapter: Chapter, isRead: Boolean, comments: Int, onClick
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            val ago = chapter.timeAgo
-            if (!ago.isNullOrBlank()) {
+            val ago = com.komikta.ui.components.chapterAgo(chapter.timeAgo)
+            if (ago != null) {
                 Text(ago, fontSize = 13.sp, color = Ui.Text3, modifier = Modifier.padding(top = 2.dp))
             }
         }

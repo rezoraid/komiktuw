@@ -41,31 +41,27 @@ fun NewBadge(modifier: Modifier = Modifier, small: Boolean = false) {
     )
 }
 
-@Composable
-fun PosterCard(
-    title: String,
-    coverUrl: String?,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    badge: String? = null,
-    isNew: Boolean = false,
-    meta: String? = null
-) {
-    Column(modifier.clickable(onClick = onClick)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(0.667f).clip(CoverShape).background(Ui.Card)) {
-            CoverImage(url = coverUrl, contentDescription = title, modifier = Modifier.fillMaxSize())
-            if (badge != null) TypeBadge(badge, Modifier.align(Alignment.TopStart).padding(5.dp), small = true)
-            if (isNew) NewBadge(Modifier.align(Alignment.TopEnd).padding(5.dp), small = true)
-        }
-        Text(title, fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
-        if (!meta.isNullOrBlank()) Text(meta, fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 1.dp))
-    }
-}
-
+/**
+ * Kartu komik baku (grid Home, Explore, Library) untuk semua sumber: cover + badge jenis + NEW,
+ * judul, rating, views, genre, dan chapter terbaru beserta waktunya. Tinggi tiap kartu sama.
+ */
 @Composable
 fun ComicCard(comic: Comic, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val badge = remember(comic) { typeLabel(comic.type) }
-    val first = remember(comic) { comic.chapters.firstOrNull() }
-    val meta = remember(comic) { first?.let { chapterShort(it) ?: it.title?.takeIf { t -> t.isNotBlank() } } ?: statusLabel(comic.status) }
-    PosterCard(comic.title, comic.coverUrl, onClick, modifier, badge, isFresh(first?.timeAgo), meta)
+    val badge = remember(comic.type) { typeLabel(comic.type) }
+    val genre = remember(comic.genres) { genreText(comic) }
+    val chapter = remember(comic.chapters) { latestChapterText(comic) }
+    val ago = remember(comic.chapters) { latestAgoText(comic) }
+    val fresh = remember(comic.chapters) { isFresh(comic.chapters.firstOrNull()?.timeAgo) }
+    Column(modifier.clickable(onClick = onClick)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(0.667f).clip(CoverShape).background(Ui.Card)) {
+            CoverImage(url = comic.coverUrl, contentDescription = comic.title, modifier = Modifier.fillMaxSize())
+            if (badge != null) TypeBadge(badge, Modifier.align(Alignment.TopStart).padding(5.dp), small = true)
+            if (fresh) NewBadge(Modifier.align(Alignment.TopEnd).padding(5.dp), small = true)
+        }
+        Text(comic.title, fontSize = 13.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium, color = Color.White, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+        ComicStats(comic, Modifier.padding(top = 3.dp), compact = true)
+        Text(genre, fontSize = 11.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+        Text(chapter, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
+        Text(ago, fontSize = 11.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
 }
