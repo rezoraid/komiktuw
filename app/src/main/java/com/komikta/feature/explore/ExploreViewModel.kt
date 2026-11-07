@@ -16,7 +16,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -66,17 +65,6 @@ class ExploreViewModel @Inject constructor(
     init {
         loadGenres()
         loadInitial()
-        viewModelScope.launch {
-            sourcePrefs.choice.drop(1).collect {
-                // Bahasa MANGA Plus berubah: filter direset, kata kunci dipertahankan dan pencarian diulang.
-                val q = _uiState.value.query
-                moreJob?.cancel()
-                listJob?.cancel()
-                _uiState.value = ExploreUiState(query = q)
-                loadGenres()
-                if (q.isBlank()) loadInitial(refresh = true) else listJob = launch { runSearch(q.trim()) }
-            }
-        }
     }
 
     private fun loadGenres() {
@@ -86,9 +74,7 @@ class ExploreViewModel @Inject constructor(
             getGenres.observe(source).collect { result ->
                 val remote = (result as? Result.Success)?.data.orEmpty()
                 val keys = remote.map { it.trim().lowercase() }.toSet()
-                val curated = if (source == SourcePrefs.MANGAPLUS && remote.isNotEmpty()) {
-                    remote.map { it.titleCase() }
-                } else if (remote.isEmpty() || CURATED_GENRES.any { it.lowercase() in keys }) {
+                val curated = if (remote.isEmpty() || CURATED_GENRES.any { it.lowercase() in keys }) {
                     CURATED_GENRES
                 } else {
                     remote.take(30).map { it.titleCase() }
@@ -178,7 +164,7 @@ class ExploreViewModel @Inject constructor(
             when (result) {
                 is Result.Success -> st.copy(
                     isLoading = false,
-                    comics = result.data.distinctBy { it.slug },
+                    comics = result.data.distinctBy { "${it.source}:${it.slug}" },
                     page = 1,
                     canLoadMore = pageable && result.data.isNotEmpty(),
                     errorMessage = null
@@ -200,7 +186,7 @@ class ExploreViewModel @Inject constructor(
             val batch = (result as? Result.Success)?.data.orEmpty()
             _uiState.update {
                 if (filtersChanged(state, it) || it.query.isNotBlank() || result is Result.Error) it.copy(isLoadingMore = false) else {
-                    val merged = (it.comics + batch).distinctBy { c -> c.slug }
+                    val merged = (it.comics + batch).distinctBy { c -> "${c.source}:${c.slug}" }
                     it.copy(
                         isLoadingMore = false,
                         comics = merged,

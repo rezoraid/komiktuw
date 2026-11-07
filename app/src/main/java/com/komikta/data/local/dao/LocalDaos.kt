@@ -36,6 +36,9 @@ interface BookmarkDao {
     @Query("SELECT * FROM bookmarks WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): BookmarkEntity?
 
+    @Query("SELECT * FROM bookmarks ORDER BY bookmarkedAt DESC LIMIT :limit")
+    suspend fun getRecent(limit: Int): List<BookmarkEntity>
+
     @Query("SELECT EXISTS(SELECT 1 FROM bookmarks WHERE id = :id)")
     fun isBookmarked(id: String): Flow<Boolean>
 

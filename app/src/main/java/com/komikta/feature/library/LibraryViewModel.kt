@@ -2,6 +2,7 @@ package com.komikta.feature.library
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.komikta.core.notify.NotificationPrefs
 import com.komikta.data.local.dao.BookmarkDao
 import com.komikta.data.local.dao.ReadingHistoryDao
 import com.komikta.data.local.entity.BookmarkEntity
@@ -15,8 +16,13 @@ import javax.inject.Inject
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     bookmarkDao: BookmarkDao,
-    historyDao: ReadingHistoryDao
+    historyDao: ReadingHistoryDao,
+    private val notifications: NotificationPrefs
 ) : ViewModel() {
+
+    val notificationsEnabled: StateFlow<Boolean> = notifications.enabledFlow
+
+    fun setNotifications(enabled: Boolean) = notifications.setEnabled(enabled)
 
     val bookmarks: StateFlow<List<BookmarkEntity>> = bookmarkDao.getAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

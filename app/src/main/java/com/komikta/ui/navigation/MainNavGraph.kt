@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import com.komikta.ui.system.ImmersiveEffect
 import com.komikta.ui.system.LocalImmersive
 import androidx.compose.material3.Scaffold
@@ -58,7 +59,10 @@ private fun NavHostController.goToTab(route: String) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MainNavGraph() {
+fun MainNavGraph(
+    openComic: Pair<String, String>? = null,
+    onOpenHandled: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val route = navController.currentBackStackEntryAsState().value?.destination?.route
     val showBottomBar = route in tabRoutes
@@ -66,6 +70,13 @@ fun MainNavGraph() {
     ImmersiveEffect(immersive)
     val isDetail = route?.startsWith("detail") == true || route?.startsWith("comments") == true || route == "moderation" || route == "admin" || route?.startsWith("public-profile") == true
     var focusSearch by remember { mutableStateOf(false) }
+    // Ketukan notifikasi update: langsung buka halaman detail komiknya.
+    LaunchedEffect(openComic) {
+        openComic?.let { (source, slug) ->
+            navController.navigate("detail/$source/$slug")
+            onOpenHandled()
+        }
+    }
 
     CompositionLocalProvider(LocalImmersive provides immersive) {
     Scaffold(
@@ -167,11 +178,7 @@ fun MainNavGraph() {
                     onChapterClick = { source, comicSlug, chapterSlug ->
                         navController.navigate("reader/$source/$comicSlug/$chapterSlug")
                     },
-                    onCommentsClick = { source, slug -> navController.navigate("comments/$source/$slug") },
-                    // Ganti bahasa = buka versi bahasa itu menggantikan halaman ini (back tetap kembali ke daftar).
-                    onLanguageChange = { source, slug ->
-                        navController.navigate("detail/$source/$slug") { popUpTo("detail/{source}/{slug}") { inclusive = true } }
-                    }
+                    onCommentsClick = { source, slug -> navController.navigate("comments/$source/$slug") }
                 )
             }
 

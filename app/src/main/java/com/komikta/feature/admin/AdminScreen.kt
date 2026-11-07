@@ -3,6 +3,9 @@ package com.komikta.feature.admin
 import com.komikta.ui.system.stableStatusBarsPadding
 import com.komikta.ui.system.stableNavigationBarsPadding
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.text.style.TextAlign
+import com.komikta.data.remote.dto.BroadcastDto
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,7 +72,7 @@ import java.util.Locale
 
 private val Danger = Color(0xFFE08F8F)
 private val Soft = Color(0xFFC3CBCE)
-private val Tabs: List<Pair<String, ImageVector>> by lazy { listOf("Ringkasan" to AppIcons.dashboard, "Pengguna" to AppIcons.users, "Komentar" to AppIcons.comment, "Laporan" to AppIcons.flag) }
+private val Tabs: List<Pair<String, ImageVector>> by lazy { listOf("Ringkasan" to AppIcons.dashboard, "Pengguna" to AppIcons.users, "Komentar" to AppIcons.comment, "Laporan" to AppIcons.flag, "Notifikasi" to AppIcons.bell(false)) }
 private val RoleFilters = listOf("OWNER" to "Owner", "MODERATOR" to "Moderator", "PREMIUM" to "Premium", "USER" to "Member")
 
 private fun num(n: Number) = "%,d".format(Locale.US, n.toLong()).replace(',', '.')
@@ -92,7 +95,8 @@ fun AdminScreen(onBack: () -> Unit, onOpenProfile: (String) -> Unit, stats: Admi
                 0 -> DashboardPane(stats, { tab = it }, Modifier.weight(1f))
                 1 -> UsersPane(onOpenProfile, Modifier.weight(1f))
                 2 -> CommentsPane(Modifier.weight(1f))
-                else -> ReportsPane(hiltViewModel<ModerationViewModel>(), Modifier.weight(1f))
+                3 -> ReportsPane(hiltViewModel<ModerationViewModel>(), Modifier.weight(1f))
+                else -> BroadcastPane(Modifier.weight(1f))
             }
         }
     }
@@ -303,5 +307,92 @@ private fun CommentCard(c: AdminCommentDto, onDelete: () -> Unit) {
                 Text("Hapus", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Danger)
             }
         }
+    }
+}
+
+
+@Composable
+private fun FormField(label: String, value: String, max: Int, onChange: (String) -> Unit, hint: String, minHeight: Int = 44) {
+    Column(Modifier.fillMaxWidth().padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 2.dp)) {
+            Text(label.uppercase(), fontSize = 11.sp, letterSpacing = 1.sp, color = Ui.Text3, modifier = Modifier.weight(1f))
+            Text("${value.length}/$max", fontSize = 11.sp, color = Ui.Text3)
+        }
+        Box(Modifier.fillMaxWidth().heightIn(min = minHeight.dp).clip(RoundedCornerShape(12.dp)).background(Ui.Card).padding(horizontal = 12.dp, vertical = 12.dp)) {
+            if (value.isEmpty()) Text(hint, fontSize = 14.sp, color = Ui.Text3)
+            BasicTextField(value, onChange, textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White), cursorBrush = SolidColor(Color.White), modifier = Modifier.fillMaxWidth())
+        }
+    }
+}
+
+/** Kirim pengumuman ke semua HP. HP mengambilnya berkala (±30 menit) lalu menampilkan notifikasi. */
+@Composable
+private fun BroadcastPane(modifier: Modifier, vm: AdminBroadcastViewModel = hiltViewModel()) {
+    val ui by vm.ui.collectAsStateWithLifecycle()
+    var confirm by remember { mutableStateOf(false) }
+    var pending by remember { mutableStateOf<BroadcastDto?>(null) }
+    LaunchedEffect(ui.notice) { if (ui.notice != null) { delay(3500); vm.clearNotice() } }
+    val ready = ui.title.isNotBlank() && ui.body.isNotBlank() && !ui.sending
+    LazyColumn(modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item(key = "form") {
+            Column(Modifier.fillMaxWidth()) {
+                Text("Kirim notifikasi ke semua pengguna", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text("Muncul di HP semua pengguna yang notifikasinya aktif, paling lambat ±30 menit setelah dikirim.", fontSize = 13.sp, color = Ui.Text2, modifier = Modifier.padding(top = 4.dp))
+                FormField("Judul", ui.title, BROADCAST_TITLE_MAX, vm::setTitle, "Contoh: Update besar Komikta")
+                FormField("Isi pesan", ui.body, BROADCAST_BODY_MAX, vm::setBody, "Tulis pesan yang ingin dibaca semua pengguna", minHeight = 96)
+                ui.notice?.let { Text(it, fontSize = 13.sp, color = Soft, modifier = Modifier.padding(top = 8.dp)) }
+                Text(
+                    if (ui.sending) "Mengirim…" else "Kirim ke semua",
+                    fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (ready) Ui.OnAccent else Ui.Text3, textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(10.dp))
+                        .background(if (ready) Ui.Accent else Ui.Card).then(if (ready) Modifier.clickable { confirm = true } else Modifier).padding(vertical = 13.dp)
+                )
+                Label("Riwayat pengumuman")
+            }
+        }
+        when {
+            ui.loading && ui.items.isEmpty() -> item(key = "loading") { Text("Memuat…", color = Ui.Text2, modifier = Modifier.padding(8.dp)) }
+            ui.error != null && ui.items.isEmpty() -> item(key = "error") { ErrorState(adminError(ui.error), { vm.load() }) }
+            ui.items.isEmpty() -> item(key = "empty") { Text("Belum ada pengumuman.", fontSize = 14.sp, color = Ui.Text3, modifier = Modifier.padding(8.dp)) }
+            else -> items(ui.items, key = { it.id }, contentType = { "broadcast" }) { b ->
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Ui.Card).padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(b.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        Text(relativeTime(b.createdAt, System.currentTimeMillis()), fontSize = 12.sp, color = Ui.Text3, maxLines = 1)
+                    }
+                    Text(b.body, fontSize = 14.sp, lineHeight = 20.sp, color = Soft, maxLines = 4, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        "Tarik pengumuman", fontSize = 13.sp, color = Danger,
+                        modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(8.dp)).clickable { pending = b }.padding(vertical = 4.dp)
+                    )
+                }
+            }
+        }
+    }
+    if (confirm) {
+        AlertDialog(
+            onDismissRequest = { confirm = false },
+            containerColor = Ui.Card,
+            title = { Text("Kirim ke semua pengguna?", fontSize = 17.sp, fontWeight = FontWeight.SemiBold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(ui.title.trim(), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text(ui.body.trim(), fontSize = 14.sp, color = Ui.Text2)
+                    Text("Setelah terkirim, pesan tidak bisa dihapus dari HP yang sudah menerimanya.", fontSize = 12.sp, color = Ui.Text3, modifier = Modifier.padding(top = 6.dp))
+                }
+            },
+            confirmButton = { TextButton(onClick = { confirm = false; vm.send() }) { Text("Kirim", color = Ui.Accent) } },
+            dismissButton = { TextButton(onClick = { confirm = false }) { Text("Batal", color = Ui.Text2) } }
+        )
+    }
+    pending?.let { b ->
+        AlertDialog(
+            onDismissRequest = { pending = null },
+            containerColor = Ui.Card,
+            title = { Text("Tarik pengumuman?", fontSize = 17.sp, fontWeight = FontWeight.SemiBold) },
+            text = { Text("HP yang belum mengambilnya tidak akan menerimanya. Yang sudah menerima tetap punya notifikasinya.", fontSize = 14.sp, color = Ui.Text2) },
+            confirmButton = { TextButton(onClick = { pending = null; vm.remove(b) }) { Text("Tarik", color = Danger) } },
+            dismissButton = { TextButton(onClick = { pending = null }) { Text("Batal", color = Ui.Text2) } }
+        )
     }
 }

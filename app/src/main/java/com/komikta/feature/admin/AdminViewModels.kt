@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.komikta.core.common.Result
 import com.komikta.data.remote.dto.AdminCommentDto
 import com.komikta.data.remote.dto.AdminStatsDto
+import com.komikta.data.remote.dto.BroadcastDto
 import com.komikta.data.remote.dto.CommunityUserDto
 import com.komikta.data.repository.CommunityRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -153,6 +154,65 @@ class AdminCommentsViewModel @Inject constructor(private val repo: CommunityRepo
             is Result.Success -> _ui.update { st -> st.copy(items = st.items.filter { it.id != c.id }, total = (st.total - 1).coerceAtLeast(0), notice = "Komentar dihapus") }
             is Result.Error -> _ui.update { it.copy(notice = r.message) }
             else -> Unit
+        }
+    }
+}
+
+data class AdminBroadcastState(
+    val title: String = "",
+    val body: String = "",
+    val sending: Boolean = false,
+    val items: List<BroadcastDto> = emptyList(),
+    val loading: Boolean = true,
+    val error: String? = null,
+    val notice: String? = null
+)
+
+const val BROADCAST_TITLE_MAX = 60
+const val BROADCAST_BODY_MAX = 200
+
+@HiltViewModel
+class AdminBroadcastViewModel @Inject constructor(private val repo: CommunityRepository) : ViewModel() {
+    private val _ui = MutableStateFlow(AdminBroadcastState())
+    val ui: StateFlow<AdminBroadcastState> = _ui.asStateFlow()
+
+    init { load() }
+
+    fun setTitle(v: String) = _ui.update { it.copy(title = v.take(BROADCAST_TITLE_MAX).replace("\n", " ")) }
+    fun setBody(v: String) = _ui.update { it.copy(body = v.take(BROADCAST_BODY_MAX)) }
+    fun clearNotice() = _ui.update { it.copy(notice = null) }
+
+    fun load() = viewModelScope.launch {
+        _ui.update { it.copy(loading = true, error = null) }
+        when (val r = repo.adminBroadcasts(1)) {
+            is Result.Success -> _ui.update { it.copy(loading = false, items = r.data.items) }
+            is Result.Error -> _ui.update { it.copy(loading = false, error = r.message) }
+            else -> _ui.update { it.copy(loading = false) }
+        }
+    }
+
+    fun send() {
+        val s = _ui.value
+        if (s.sending || s.title.isBlank() || s.body.isBlank()) return
+        viewModelScope.launch {
+            _ui.update { it.copy(sending = true, notice = null) }
+            when (val r = repo.adminSendBroadcast(s.title.trim(), s.body.trim())) {
+                is Result.Success -> _ui.update {
+                    it.copy(sending = false, title = "", body = "", items = listOf(r.data) + it.items, notice = "Terkirim. HP akan menerimanya dalam ±30 menit.")
+                }
+                is Result.Error -> _ui.update { it.copy(sending = false, notice = r.message) }
+                else -> _ui.update { it.copy(sending = false) }
+            }
+        }
+    }
+
+    fun remove(item: BroadcastDto) {
+        viewModelScope.launch {
+            when (val r = repo.adminDeleteBroadcast(item.id)) {
+                is Result.Success -> _ui.update { it.copy(items = it.items.filter { b -> b.id != item.id }, notice = "Pengumuman ditarik") }
+                is Result.Error -> _ui.update { it.copy(notice = r.message) }
+                else -> Unit
+            }
         }
     }
 }

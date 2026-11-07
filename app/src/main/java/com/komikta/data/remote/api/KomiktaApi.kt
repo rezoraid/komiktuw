@@ -3,7 +3,6 @@ package com.komikta.data.remote.api
 import com.komikta.BuildConfig
 import com.komikta.core.network.ApiConfig
 import com.komikta.core.network.HttpException
-import com.komikta.data.local.SourcePrefs
 import com.komikta.data.remote.dto.ApiResponse
 import com.komikta.data.remote.dto.ChapterContentDto
 import com.komikta.data.remote.dto.ComicDetailDto
@@ -34,8 +33,7 @@ import kotlin.coroutines.resumeWithException
 @Singleton
 class KomiktaApi @Inject constructor(
     client: OkHttpClient,
-    private val json: Json,
-    private val prefs: SourcePrefs
+    private val json: Json
 ) {
     private val http = client.newBuilder()
         .callTimeout(ApiConfig.REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS)
@@ -51,10 +49,10 @@ class KomiktaApi @Inject constructor(
         get(url("api", "sources"))
 
     suspend fun getLatest(source: String, page: Int = 1): ApiResponse<ComicListResponse> =
-        get(url("api", source, "latest") { addQueryParameter("page", page.toString()); lang(source) })
+        get(url("api", source, "latest") { addQueryParameter("page", page.toString()) })
 
     suspend fun getPopular(source: String): ApiResponse<ComicListResponse> =
-        get(url("api", source, "popular") { lang(source) })
+        get(url("api", source, "popular"))
 
     suspend fun browse(
         source: String,
@@ -66,8 +64,7 @@ class KomiktaApi @Inject constructor(
     ): ApiResponse<ComicListResponse> = get(
         url("api", source, "browse") {
             addQueryParameter("page", page.toString())
-            if (source != SourcePrefs.MANGAPLUS) type?.let { addQueryParameter("type", it) }
-            lang(source)
+            type?.let { addQueryParameter("type", it) }
             status?.let { addQueryParameter("status", it) }
             sort?.let { addQueryParameter("sort", it) }
             genres?.let { addQueryParameter("genre", it) }
@@ -80,24 +77,21 @@ class KomiktaApi @Inject constructor(
                 addQueryParameter("q", query)
                 addQueryParameter("page", page.toString())
                 addQueryParameter("limit", SEARCH_LIMIT.toString())
-                lang(source)
             }
         )
 
     suspend fun getGenres(source: String): ApiResponse<GenresResponse> =
-        get(url("api", source, "genres") { lang(source) })
+        get(url("api", source, "genres"))
 
     suspend fun getComicDetail(source: String, slug: String): ApiResponse<ComicDetailDto> =
-        get(url("api", source, "comic", slug) { lang(source) })
+        get(url("api", source, "comic", slug))
 
     suspend fun getChapterContent(
         source: String,
         comicSlug: String,
         chapterSlug: String
     ): ApiResponse<ChapterContentDto> =
-        get(url("api", source, "chapter", comicSlug, chapterSlug) { lang(source) })
-
-    private fun HttpUrl.Builder.lang(source: String) { prefs.langFor(source)?.let { addQueryParameter("lang", it) } }
+        get(url("api", source, "chapter", comicSlug, chapterSlug))
 
     private fun url(vararg segments: String, params: HttpUrl.Builder.() -> Unit = {}): HttpUrl =
         base.newBuilder().apply {

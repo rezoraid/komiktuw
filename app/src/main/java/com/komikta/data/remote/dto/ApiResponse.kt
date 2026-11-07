@@ -87,13 +87,8 @@ data class ComicDetailDto(
     val ratingCount: Double? = null,
     val genres: List<String> = emptyList(),
     val totalChapters: Int? = null,
-    val chapters: List<ChapterSummaryDto> = emptyList(),
-    val language: String? = null,
-    val languages: List<LanguageDto> = emptyList()
+    val chapters: List<ChapterSummaryDto> = emptyList()
 )
-
-@Serializable
-data class LanguageDto(val code: String = "", val slug: String = "")
 
 @Serializable
 data class ChapterContentDto(

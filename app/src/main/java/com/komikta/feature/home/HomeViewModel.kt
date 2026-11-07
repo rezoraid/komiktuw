@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -52,13 +51,6 @@ class HomeViewModel @Inject constructor(
 
     init {
         loadHome()
-        viewModelScope.launch {
-            sourcePrefs.choice.drop(1).collect {
-                prefetched.clear()
-                _uiState.value = HomeUiState()
-                loadHome(refresh = true)
-            }
-        }
     }
 
     /**

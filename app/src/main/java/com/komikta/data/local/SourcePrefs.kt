@@ -1,55 +1,50 @@
 package com.komikta.data.local
 
-import android.content.Context
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class SourceChoice(val source: String, val lang: String)
-
 data class SourceOption(val id: String, val label: String)
 
-data class LangOption(val code: String, val label: String)
-
 /**
- * Semua sumber (Lumos, MANGA Plus, ...) digabung jadi satu daftar: [source] selalu [ALL].
- * Yang bisa dipilih pengguna hanya bahasa baca MANGA Plus, lewat halaman Detail.
+ * Semua sumber (Lumos, Manta, Shinigami) digabung jadi satu daftar: [source] selalu [ALL].
+ * Kemampuan tiap sumber di sini mengikuti `/api/sources` pada backend, supaya app tidak memanggil
+ * endpoint yang dijawab `501` (popular/genres) atau mengirim filter yang diabaikan sumber.
+ *
+ *  - lumos     : browse lengkap (type, status, sort, genre), popular, genres
+ *  - manta     : browse hanya `type` = manga | comic | novel, tanpa popular/genres
+ *  - shinigami : browse hanya `q` + `page`; jenis disaring di sisi app dari field `type`
  */
 @Singleton
-class SourcePrefs @Inject constructor(@ApplicationContext context: Context) {
-    private val sp = context.getSharedPreferences("source_prefs", Context.MODE_PRIVATE)
-    private val _choice = MutableStateFlow(
-        SourceChoice(
-            source = ALL,
-            lang = sp.getString("lang", null)?.takeIf { l -> LANGUAGES.any { it.code == l } } ?: DEFAULT_LANG
-        )
-    )
-    val choice: StateFlow<SourceChoice> = _choice.asStateFlow()
+class SourcePrefs @Inject constructor() {
     val source: String get() = ALL
-
-    fun langFor(source: String): String? = if (source == MANGAPLUS) _choice.value.lang else null
-
-    fun selectLang(lang: String) {
-        if (lang == _choice.value.lang || LANGUAGES.none { it.code == lang }) return
-        sp.edit().putString("lang", lang).apply()
-        _choice.value = SourceChoice(ALL, lang)
-    }
 
     companion object {
         /** Id gabungan: Home / Explore / pencarian mengambil dari semua sumber sekaligus. */
         const val ALL = "all"
-        const val MANGAPLUS = "mangaplus"
-        const val DEFAULT_LANG = "eng"
-        val SOURCES = listOf(SourceOption("lumos", "Lumos"), SourceOption(MANGAPLUS, "MANGA Plus"))
-        val LANGUAGES = listOf(
-            LangOption("eng", "English"), LangOption("ind", "Indonesia"), LangOption("esp", "Español"),
-            LangOption("ptb", "Português (BR)"), LangOption("fra", "Français"), LangOption("deu", "Deutsch"),
-            LangOption("rus", "Русский"), LangOption("tha", "ไทย"), LangOption("vie", "Tiếng Việt")
+        const val LUMOS = "lumos"
+        const val MANTA = "manta"
+        const val SHINIGAMI = "shinigami"
+
+        val SOURCES = listOf(
+            SourceOption(LUMOS, "Lumos"),
+            SourceOption(MANTA, "Manta"),
+            SourceOption(SHINIGAMI, "Shinigami")
         )
 
-        fun languageLabel(code: String): String = LANGUAGES.firstOrNull { it.code == code }?.label ?: code
+        /** Sumber yang punya endpoint `popular`. */
+        val POPULAR_SOURCES = listOf(LUMOS)
+
+        /** Sumber yang punya endpoint `genres` dan filter genre/status/urutan di browse. */
+        const val GENRE_SOURCE = LUMOS
+        val FULL_FILTER_SOURCES = setOf(LUMOS)
+
+        /** Jenis yang disaring langsung oleh server per sumber (sumber lain: disaring di app atau dilewati). */
+        val SERVER_TYPES: Map<String, Set<String>> = mapOf(
+            LUMOS to setOf("manga", "manhwa", "manhua"),
+            MANTA to setOf("manga")
+        )
+
+        /** Host gambar sampul yang perlu lewat image proxy backend (referer wajib). */
+        val PROXIED_IMAGE_HOSTS = listOf("shngm.id", "shngm.io", "shinigami.id", "shinigami.asia")
     }
 }

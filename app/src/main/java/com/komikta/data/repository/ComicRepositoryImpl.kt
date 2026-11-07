@@ -33,8 +33,7 @@ import javax.inject.Singleton
 @Singleton
 class ComicRepositoryImpl @Inject constructor(
     private val api: KomiktaApi,
-    private val cache: ResponseCache,
-    private val prefs: SourcePrefs
+    private val cache: ResponseCache
 ) : ComicRepository {
 
     private val comicList = ListSerializer(Comic.serializer())
@@ -105,20 +104,17 @@ class ComicRepositoryImpl @Inject constructor(
         return if (result is Result.Success && result.data.isEmpty()) Result.Empty else result
     }
 
-    // Kunci cache gabungan ikut bahasa MANGA Plus, supaya ganti bahasa tidak menampilkan daftar lama.
-    private fun tag(source: String) =
-        if (source == ALL) "$ALL.${prefs.langFor(SourcePrefs.MANGAPLUS)}" else prefs.langFor(source)?.let { "$source.$it" } ?: source
-    private fun latestKey(source: String, page: Int) = "latest|${tag(source)}|$page"
-    private fun popularKey(source: String) = "popular|${tag(source)}"
-    private fun genresKey(source: String) = "genres|${tag(source)}"
-    // Detail & chapter: slug MANGA Plus sudah unik per bahasa, jadi kunci cache tidak perlu memuat bahasa.
+    // Versi "v2": daftar gabungan sekarang berasal dari Lumos + Manta + Shinigami, jadi cache lama tidak dipakai lagi.
+    private fun latestKey(source: String, page: Int) = "latest2|$source|$page"
+    private fun popularKey(source: String) = "popular2|$source"
+    private fun genresKey(source: String) = "genres2|$source"
     private fun detailKey(source: String, slug: String) = "detail|$source|$slug"
     private fun chapterKey(source: String, comic: String, chapter: String) = "chapter|$source|$comic|$chapter"
-    private fun searchKey(p: SearchParams) = "search|${tag(p.source)}|${p.query.trim().lowercase()}|${p.page}"
-    private fun browseKey(p: BrowseParams) = "browse|${tag(p.source)}|${p.page}|${p.type}|${p.status}|${p.sort}|${p.genres}"
+    private fun searchKey(p: SearchParams) = "search2|${p.source}|${p.query.trim().lowercase()}|${p.page}"
+    private fun browseKey(p: BrowseParams) = "browse2|${p.source}|${p.page}|${p.type}|${p.status}|${p.sort}|${p.genres}"
 
     /**
-     * Ambil dari beberapa sumber paralel lalu selang-seling (Lumos, MANGA Plus, Lumos, ...).
+     * Ambil dari beberapa sumber paralel lalu selang-seling (Lumos, Manta, Shinigami, Lumos, ...).
      * Satu sumber gagal tidak menggagalkan yang lain; error baru dikembalikan kalau semuanya gagal.
      */
     private suspend fun fanOut(sources: List<String>, block: suspend (String) -> Result<List<Comic>>): Result<List<Comic>> {
@@ -144,22 +140,52 @@ class ComicRepositoryImpl @Inject constructor(
         else guarded { mapList(api.getLatest(source, page), source) }
 
     private suspend fun fetchPopular(source: String): Result<List<Comic>> =
-        if (source == ALL) fanOut(allSources) { fetchPopular(it) }
+        if (source == ALL) fanOut(SourcePrefs.POPULAR_SOURCES) { fetchPopular(it) }
+        else if (source !in SourcePrefs.POPULAR_SOURCES) Result.Success(emptyList()) // sumber tanpa popular -> server jawab 501
         else guarded { mapList(api.getPopular(source), source) }
 
     private suspend fun fetchBrowse(params: BrowseParams): Result<List<Comic>> {
-        if (params.source == ALL) {
-            // MANGA Plus hanya manga Jepang tanpa status/urutan: ikut hanya kalau filternya cocok.
-            val plus = (params.type == null || params.type == "manga") && params.status == null
-            val sources = allSources.filter { it != SourcePrefs.MANGAPLUS || plus }
-            return fanOut(sources) { fetchBrowse(params.copy(source = it)) }
+        if (params.source != ALL) return browseOne(params)
+        // Hanya Lumos yang bisa menyaring status / urutan / genre. Kalau salah satunya aktif, sumber lain
+        // dilewati supaya hasilnya tidak berisi komik yang tidak memenuhi filter.
+        val fullFilter = params.status != null || params.sort != null || params.genres != null
+        val sources = allSources.filter { s ->
+            when {
+                s in SourcePrefs.FULL_FILTER_SOURCES -> true
+                fullFilter -> false
+                params.type == null -> true
+                // Manta hanya punya "manga"; manhwa/manhua tidak bisa disaring di sana, jadi dilewati.
+                s in SourcePrefs.SERVER_TYPES -> params.type in SourcePrefs.SERVER_TYPES.getValue(s)
+                else -> true // Shinigami: disaring di app (lihat browseOne)
+            }
         }
-        return guarded {
+        return fanOut(sources) { browseOne(params.copy(source = it)) }
+    }
+
+    /** Browse satu sumber dengan hanya mengirim filter yang benar-benar dipahami sumber itu. */
+    private suspend fun browseOne(params: BrowseParams): Result<List<Comic>> {
+        val s = params.source
+        val serverTypes = SourcePrefs.SERVER_TYPES[s]
+        val type = params.type
+        if (type != null && serverTypes != null && type !in serverTypes) return Result.Success(emptyList())
+        val full = s in SourcePrefs.FULL_FILTER_SOURCES
+        val result = guarded {
             mapList(
-                api.browse(params.source, params.page, params.type, params.status, params.sort, params.genres),
-                params.source
+                api.browse(
+                    source = s,
+                    page = params.page,
+                    type = type?.takeIf { serverTypes != null },
+                    status = params.status.takeIf { full },
+                    sort = params.sort.takeIf { full },
+                    genres = params.genres.takeIf { full }
+                ),
+                s
             )
         }
+        // Sumber tanpa filter jenis di server (Shinigami): saring berdasarkan jenis yang sudah diseragamkan.
+        return if (type != null && serverTypes == null && result is Result.Success) {
+            Result.Success(result.data.filter { it.type == type })
+        } else result
     }
 
     private suspend fun fetchSearch(params: SearchParams): Result<List<Comic>> =
@@ -167,7 +193,7 @@ class ComicRepositoryImpl @Inject constructor(
         else guarded { mapList(api.search(params.source, params.query, params.page), params.source) }
 
     private suspend fun fetchGenres(requested: String): Result<List<String>> = guarded {
-        val source = if (requested == ALL) allSources.first() else requested // genre gabungan = genre sumber utama
+        val source = if (requested == ALL) SourcePrefs.GENRE_SOURCE else requested // genre gabungan = genre Lumos (satu-satunya yang punya)
         val response = api.getGenres(source)
         val data = response.data
         if (!response.ok || data == null) failure(response, "Failed to fetch genres") else Result.Success(data.items)

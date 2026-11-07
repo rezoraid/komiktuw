@@ -13,6 +13,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import android.Manifest
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import com.komikta.core.notify.UpdateNotifier
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -46,12 +55,30 @@ fun LibraryScreen(
 ) {
     val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
     val history by viewModel.history.collectAsStateWithLifecycle()
+    val notifyOn by viewModel.notificationsEnabled.collectAsStateWithLifecycle()
     var tab by remember { mutableIntStateOf(0) }
+    val context = LocalContext.current
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (!granted) Toast.makeText(context, "Izin notifikasi ditolak. Aktifkan lewat Pengaturan HP.", Toast.LENGTH_LONG).show()
+    }
 
     Column(Modifier.fillMaxSize().background(Ui.Bg)) {
-        Column(Modifier.padding(start = 14.dp, end = 14.dp, top = 18.dp, bottom = 14.dp)) {
-            Text("Library", fontSize = 27.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text("${bookmarks.size} bookmark · ${history.size} riwayat baca", fontSize = 14.sp, color = Ui.Text2, modifier = Modifier.padding(top = 2.dp))
+        Row(Modifier.padding(start = 14.dp, end = 8.dp, top = 18.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Library", fontSize = 27.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("${bookmarks.size} bookmark · ${history.size} riwayat baca", fontSize = 14.sp, color = Ui.Text2, modifier = Modifier.padding(top = 2.dp))
+            }
+            Box(
+                Modifier.size(44.dp).clip(CircleShape).clickable {
+                    val next = !notifyOn
+                    viewModel.setNotifications(next)
+                    if (next && Build.VERSION.SDK_INT >= 33 && !UpdateNotifier.canPost(context)) permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    Toast.makeText(context, if (next) "Notifikasi aktif (chapter baru & pengumuman)" else "Notifikasi dimatikan", Toast.LENGTH_SHORT).show()
+                },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(AppIcons.bell(notifyOn), "Notifikasi", tint = if (notifyOn) Ui.Accent else Ui.Text2, modifier = Modifier.size(24.dp))
+            }
         }
         SegmentedTabs(listOf("Bookmarks (${bookmarks.size})", "History (${history.size})"), tab, { tab = it }, Modifier.padding(horizontal = 14.dp))
         Spacer(Modifier.height(14.dp))

@@ -133,6 +133,27 @@ object AppIcons {
         }
     }
 
+    fun bell(filled: Boolean): ImageVector = if (filled) bellFilled else bellOutline
+
+    private val bellOutline: ImageVector by lazy { buildBell(false) }
+    private val bellFilled: ImageVector by lazy { buildBell(true) }
+
+    private fun buildBell(filled: Boolean) = navIcon("Bell", filled) {
+        moveTo(6f, 16.5f)
+        curveTo(6.8f, 15.6f, 7.2f, 14.6f, 7.2f, 12.5f)
+        lineTo(7.2f, 10f)
+        curveTo(7.2f, 7.4f, 9.2f, 5.4f, 12f, 5.4f)
+        curveTo(14.8f, 5.4f, 16.8f, 7.4f, 16.8f, 10f)
+        lineTo(16.8f, 12.5f)
+        curveTo(16.8f, 14.6f, 17.2f, 15.6f, 18f, 16.5f)
+        close()
+        moveTo(10.2f, 19.2f)
+        curveTo(10.5f, 20.2f, 11.2f, 20.6f, 12f, 20.6f)
+        curveTo(12.8f, 20.6f, 13.5f, 20.2f, 13.8f, 19.2f)
+        moveTo(12f, 3.4f)
+        lineTo(12f, 5.4f)
+    }
+
     fun bookmark(filled: Boolean): ImageVector = if (filled) bookmarkFilled else bookmarkOutline
 
     private val bookmarkOutline: ImageVector by lazy { buildBookmark(false) }

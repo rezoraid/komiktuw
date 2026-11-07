@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.komikta.core.cache.ComicPreviewCache
 import com.komikta.core.common.Result
 import com.komikta.data.local.ReaderPrefs
-import com.komikta.data.local.SourcePrefs
 import com.komikta.data.local.dao.BookmarkDao
 import com.komikta.data.local.dao.ReadChapterDao
 import com.komikta.data.local.entity.BookmarkEntity
@@ -53,7 +52,6 @@ class DetailViewModel @Inject constructor(
     readChapterDao: ReadChapterDao,
     private val prefs: ReaderPrefs,
     private val community: CommunityRepository,
-    private val sourcePrefs: SourcePrefs,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -94,9 +92,6 @@ class DetailViewModel @Inject constructor(
         loadDetail()
         loadLike()
     }
-
-    /** Bahasa yang dipilih di sini jadi bahasa utama daftar (Home/Explore) untuk judul MANGA Plus berikutnya. */
-    fun rememberLanguage(code: String) = sourcePrefs.selectLang(code)
 
     fun loadChapterComments() {
         if (slug.isBlank()) return

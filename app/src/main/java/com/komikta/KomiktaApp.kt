@@ -3,6 +3,9 @@ package com.komikta
 import android.app.Application
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import com.komikta.core.notify.NotificationPrefs
+import com.komikta.core.notify.UpdateNotifier
+import com.komikta.core.notify.UpdateScheduler
 import com.komikta.data.local.SourcePrefs
 import com.komikta.data.repository.CommunityRepository
 import com.komikta.domain.repository.ComicRepository
@@ -29,10 +32,15 @@ class KomiktaApp : Application(), ImageLoaderFactory {
     @Inject
     lateinit var sourcePrefs: SourcePrefs
 
+    @Inject
+    lateinit var notificationPrefs: NotificationPrefs
+
     private val warmupScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onCreate() {
         super.onCreate()
+        UpdateNotifier.ensureChannel(this)
+        UpdateScheduler.sync(this, notificationPrefs.enabled)
         warmupScope.launch { warmUp() }
     }
 

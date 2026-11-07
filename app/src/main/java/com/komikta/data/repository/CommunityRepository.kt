@@ -8,6 +8,8 @@ import com.komikta.data.local.SessionStore
 import com.komikta.data.remote.api.CommunityApi
 import com.komikta.data.remote.dto.ActivityPageDto
 import com.komikta.data.remote.dto.AdminCommentPageDto
+import com.komikta.data.remote.dto.BroadcastDto
+import com.komikta.data.remote.dto.BroadcastPageDto
 import com.komikta.data.remote.dto.AdminStatsDto
 import com.komikta.data.remote.dto.AdminUserPageDto
 import com.komikta.data.remote.dto.ApiResponse
@@ -235,6 +237,13 @@ class CommunityRepository @Inject constructor(
             }
         }
     }
+
+    // ---- Panel OWNER: pengumuman ke semua HP ----
+    suspend fun adminSendBroadcast(title: String, body: String): Result<BroadcastDto> = call { api.adminSendBroadcast(title, body) }.map { it.broadcast }
+
+    suspend fun adminBroadcasts(page: Int): Result<BroadcastPageDto> = call { api.adminBroadcasts(page) }
+
+    suspend fun adminDeleteBroadcast(id: String): Result<Unit> = call { api.adminDeleteBroadcast(id) }.map { }
 
     // ---- Panel OWNER ----
     suspend fun adminStats(): Result<AdminStatsDto> = call { api.adminStats() }

@@ -201,3 +201,24 @@ data class AdminCommentDto(
 
 @Serializable
 data class AdminCommentPageDto(val items: List<AdminCommentDto> = emptyList(), val hasMore: Boolean = false, val page: Int = 1, val total: Int = 0)
+
+// ---- Pengumuman OWNER -> notifikasi di semua HP ----
+@Serializable
+data class BroadcastDto(
+    val id: String = "",
+    val title: String = "",
+    val body: String = "",
+    /** Opsional: komik yang dibuka saat notifikasi diketuk (kosong = buka aplikasi saja). */
+    val source: String = "",
+    val slug: String = "",
+    val createdAt: Long = 0L
+)
+
+@Serializable
+data class BroadcastFeedDto(val latestId: String = "", val items: List<BroadcastDto> = emptyList())
+
+@Serializable
+data class BroadcastPageDto(val items: List<BroadcastDto> = emptyList(), val hasMore: Boolean = false, val page: Int = 1)
+
+@Serializable
+data class BroadcastResponse(val broadcast: BroadcastDto)

@@ -219,7 +219,7 @@ private fun Hero(comic: Comic, onClick: () -> Unit) {
         Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Color(0xFA181C21), 0.6f to Color(0xE6181C21), 1f to Color(0x4D181C21))))
         Column(Modifier.align(Alignment.CenterStart).fillMaxWidth(0.68f).padding(start = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(typeLabel(comic.type).uppercase(), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                typeLabel(comic.type)?.let { Text(it.uppercase(), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White) }
                 comic.rating?.takeIf { it > 0 }?.let { Rating(it, 13.sp) }
             }
             Text(comic.title, fontSize = 21.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -262,7 +262,7 @@ private fun WideCard(c: Comic, width: Dp, onClick: () -> Unit) {
     Column(Modifier.width(width).clickable(onClick = onClick)) {
         Box(Modifier.fillMaxWidth().height(width * 0.56f).clip(RoundedCornerShape(20.dp)).background(Ui.Card)) {
             CoverImage(c.coverUrl, c.title, Modifier.fillMaxSize(), 640, 360, Alignment.TopCenter)
-            TypeBadge(typeLabel(c.type), Modifier.align(Alignment.TopStart).padding(10.dp))
+            typeLabel(c.type)?.let { TypeBadge(it, Modifier.align(Alignment.TopStart).padding(10.dp)) }
         }
         Text(c.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
         Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -279,7 +279,7 @@ private fun UpdateRow(c: Comic, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = Pad, vertical = 7.dp)) {
         Box(Modifier.size(width = 60.dp, height = 90.dp).clip(RoundedCornerShape(10.dp)).background(Ui.Card)) {
             CoverImage(c.coverUrl, c.title, Modifier.fillMaxSize(), 174, 258)
-            TypeBadge(typeLabel(c.type), Modifier.align(Alignment.TopStart).padding(3.dp), small = true)
+            typeLabel(c.type)?.let { TypeBadge(it, Modifier.align(Alignment.TopStart).padding(3.dp), small = true) }
         }
         Column(Modifier.weight(1f).height(90.dp).padding(start = 12.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Text(c.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -302,7 +302,7 @@ private fun RankRow(rank: Int, c: Comic, onClick: () -> Unit) {
         Text("$rank", fontSize = 31.sp, fontWeight = FontWeight.Bold, color = if (rank <= 3) Ui.Accent else Ui.Rank, textAlign = TextAlign.Center, modifier = Modifier.width(40.dp))
         Box(Modifier.size(width = 50.dp, height = 74.dp).clip(RoundedCornerShape(8.dp)).background(Ui.Card)) {
             CoverImage(c.coverUrl, c.title, Modifier.fillMaxSize(), 140, 210)
-            TypeBadge(typeLabel(c.type), Modifier.align(Alignment.TopStart).padding(2.dp), small = true)
+            typeLabel(c.type)?.let { TypeBadge(it, Modifier.align(Alignment.TopStart).padding(2.dp), small = true) }
         }
         Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text(c.title, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)

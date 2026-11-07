@@ -6,6 +6,7 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.CachePolicy
 import com.komikta.core.network.ApiConfig
+import com.komikta.data.local.SourcePrefs
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -37,7 +38,8 @@ object ImageModule {
             .readTimeout(15, TimeUnit.SECONDS)
             .addInterceptor { chain ->
                 val original = chain.request()
-                val viaProxy = original.url.host.endsWith("tokyo-cdn.com")
+                val host = original.url.host
+                val viaProxy = SourcePrefs.PROXIED_IMAGE_HOSTS.any { host == it || host.endsWith(".$it") }
                 val request = original.newBuilder()
                     .apply {
                         if (viaProxy) url(ApiConfig.BASE_URL.toHttpUrl().newBuilder().addPathSegments("api/image").addQueryParameter("url", original.url.toString()).build())

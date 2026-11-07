@@ -9,6 +9,9 @@ import com.komikta.data.remote.dto.AdminCommentPageDto
 import com.komikta.data.remote.dto.AdminStatsDto
 import com.komikta.data.remote.dto.AdminUserPageDto
 import com.komikta.data.remote.dto.ApiResponse
+import com.komikta.data.remote.dto.BroadcastFeedDto
+import com.komikta.data.remote.dto.BroadcastPageDto
+import com.komikta.data.remote.dto.BroadcastResponse
 import com.komikta.data.remote.dto.LikeStateDto
 import com.komikta.data.remote.dto.ProfileResponseDto
 import com.komikta.data.remote.dto.AuthResponse
@@ -74,7 +77,19 @@ class CommunityApi @Inject constructor(
 
     suspend fun deleteAccount(): ApiResponse<OkDto> = call("DELETE", listOf("me"))
 
+    /** Publik (tanpa login). Tanpa [after]: hanya posisi terbaru (`latestId`); dengan [after]: pengumuman yang lebih baru. */
+    suspend fun broadcastFeed(after: String?): ApiResponse<BroadcastFeedDto> =
+        call("GET", listOf("broadcasts"), query = if (after.isNullOrBlank()) emptyMap() else mapOf("after" to after))
+
     // ---- Panel OWNER ----
+    suspend fun adminSendBroadcast(title: String, body: String): ApiResponse<BroadcastResponse> =
+        call("POST", listOf("admin", "broadcasts"), body = buildJsonObject { put("title", title); put("body", body) })
+
+    suspend fun adminBroadcasts(page: Int): ApiResponse<BroadcastPageDto> =
+        call("GET", listOf("admin", "broadcasts"), query = mapOf("page" to page.toString()))
+
+    suspend fun adminDeleteBroadcast(id: String): ApiResponse<OkDto> = call("DELETE", listOf("admin", "broadcasts", id))
+
     suspend fun adminStats(): ApiResponse<AdminStatsDto> = call("GET", listOf("admin", "stats"))
 
     suspend fun adminUsers(q: String, role: String, banned: Boolean, page: Int): ApiResponse<AdminUserPageDto> =

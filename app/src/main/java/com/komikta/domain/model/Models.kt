@@ -28,10 +28,6 @@ data class Comic(
     val chapters: List<Chapter> = emptyList()
 )
 
-/** Versi bahasa dari serial yang sama (MANGA Plus): tiap bahasa punya slug/ID dan chapter sendiri. */
-@Serializable
-data class LanguageVariant(val code: String, val slug: String)
-
 @Serializable
 data class ComicDetail(
     val title: String,
@@ -49,10 +45,7 @@ data class ComicDetail(
     val genres: List<String> = emptyList(),
     val totalChapters: Int? = null,
     val chapters: List<Chapter> = emptyList(),
-    val source: String,
-    /** Bahasa judul ini dan bahasa lain yang tersedia; kosong untuk sumber tanpa pilihan bahasa. */
-    val language: String? = null,
-    val languages: List<LanguageVariant> = emptyList()
+    val source: String
 )
 
 @Serializable
