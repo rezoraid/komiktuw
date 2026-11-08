@@ -138,6 +138,7 @@ fun MainNavGraph(
             composable(BottomNavItem.Library.route) {
                 LibraryScreen(
                     onComicClick = { s, slug -> navController.navigate("detail/$s/$slug") },
+                    onReadClick = { s, slug, chapter -> navController.navigate("reader/$s/$slug/$chapter") },
                     onExplore = { navController.goToTab(BottomNavItem.Explore.route) }
                 )
             }

@@ -342,7 +342,7 @@ private fun Capsule(text: String, onClick: (() -> Unit)? = null) {
     ) { Text(text, fontSize = 14.sp, color = Color.White, maxLines = 1) }
 }
 
-/** Kapsul role: langsung nama role. Role khusus bertema samurai, Member abu netral. */
+/** Kapsul role: langsung nama role. Role khusus berkilau dan bercahaya, Member abu netral. */
 @Composable
 private fun RoleCapsule(role: String) {
     val tint = roleTint(role)

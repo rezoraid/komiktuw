@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -50,6 +52,7 @@ import androidx.compose.runtime.getValue
 @Composable
 fun LibraryScreen(
     onComicClick: (source: String, slug: String) -> Unit,
+    onReadClick: (source: String, slug: String, chapter: String) -> Unit = { s, slug, _ -> onComicClick(s, slug) },
     onExplore: () -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
@@ -109,10 +112,47 @@ fun LibraryScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(list, key = { "${it.source}:${it.slug}" }, contentType = { "comic" }) { comic ->
-                    ComicCard(comic, { onComicClick(comic.source, comic.slug) })
+                if (tab == 0) {
+                    items(list, key = { "${it.source}:${it.slug}" }, contentType = { "comic" }) { comic ->
+                        ComicCard(comic, { onComicClick(comic.source, comic.slug) })
+                    }
+                } else {
+                    items(history, key = { "h:${it.source}:${it.comicSlug}" }, contentType = { "history" }) { h ->
+                        HistoryCard(
+                            h,
+                            onCover = { onComicClick(h.source, h.comicSlug) },
+                            onTitle = {
+                                val ch = h.lastChapterSlug
+                                if (ch.isNullOrBlank()) onComicClick(h.source, h.comicSlug) else onReadClick(h.source, h.comicSlug, ch)
+                            }
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+/** Kartu riwayat: tap cover → detail komik, tap judul → lanjut baca di chapter terakhir. */
+@Composable
+private fun HistoryCard(h: com.komikta.data.local.entity.ReadingHistoryEntity, onCover: () -> Unit, onTitle: () -> Unit) {
+    Column {
+        Box(
+            Modifier.fillMaxWidth().aspectRatio(0.667f).clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                .background(Ui.Card).clickable(onClick = onCover)
+        ) {
+            com.komikta.ui.components.CoverImage(url = h.coverUrl, contentDescription = h.comicTitle, modifier = Modifier.fillMaxSize())
+        }
+        Text(
+            h.comicTitle, fontSize = 13.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium, color = Color.White,
+            minLines = 2, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 8.dp).clickable(onClick = onTitle)
+        )
+        val ch = h.lastChapterNumber?.takeIf { it.isNotBlank() }
+        Text(
+            if (ch != null) "Lanjut Chapter $ch" else "Lanjut baca",
+            fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Ui.Accent, maxLines = 1,
+            modifier = Modifier.padding(top = 3.dp).clickable(onClick = onTitle)
+        )
     }
 }
