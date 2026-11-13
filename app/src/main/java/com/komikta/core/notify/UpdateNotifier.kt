@@ -13,6 +13,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
 import com.komikta.MainActivity
 import com.komikta.R
 import com.komikta.data.local.entity.BookmarkEntity
@@ -69,6 +70,14 @@ object UpdateNotifier {
             .setContentIntent(openIntent(context, bookmark))
             .build()
         NotificationManagerCompat.from(context).notify(bookmark.id.hashCode(), notification)
+    }
+
+    suspend fun loadCover(context: Context, loader: coil.ImageLoader, url: String?): Bitmap? {
+        if (url.isNullOrBlank()) return null
+        return kotlinx.coroutines.withTimeoutOrNull(6_000) {
+            val result = loader.execute(coil.request.ImageRequest.Builder(context).data(url).size(256, 256).allowHardware(false).build())
+            (result as? coil.request.SuccessResult)?.drawable?.toBitmap(256, 256)
+        }
     }
 
     /** Pengumuman dari OWNER. Diketuk: buka komik yang ditautkan, atau aplikasi saja kalau tidak ada tautan. */

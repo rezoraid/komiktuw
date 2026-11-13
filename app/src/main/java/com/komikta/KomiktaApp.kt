@@ -5,6 +5,7 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import com.komikta.core.notify.NotificationPrefs
 import com.komikta.core.notify.PushSync
+import com.komikta.core.notify.TopicSync
 import com.komikta.core.notify.UpdateNotifier
 import com.komikta.core.notify.UpdateScheduler
 import com.komikta.data.local.SourcePrefs
@@ -38,12 +39,16 @@ class KomiktaApp : Application(), ImageLoaderFactory {
     @Inject
     lateinit var notificationPrefs: NotificationPrefs
 
+    @Inject
+    lateinit var topicSync: TopicSync
+
     private val warmupScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onCreate() {
         super.onCreate()
         UpdateNotifier.ensureChannel(this)
         UpdateScheduler.sync(this, notificationPrefs.enabled)
+        topicSync.start(warmupScope)
         warmupScope.launch { warmUp() }
     }
 

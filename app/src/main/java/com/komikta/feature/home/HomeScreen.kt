@@ -69,7 +69,6 @@ import com.komikta.ui.components.latestLine
 import com.komikta.ui.components.historyChapterLabel
 import com.komikta.ui.components.isFresh
 import com.komikta.ui.components.relativeTime
-import com.komikta.ui.components.displayStatus
 import com.komikta.ui.components.displayType
 import com.komikta.domain.model.originOf
 import com.komikta.ui.theme.Ui
@@ -201,14 +200,14 @@ private fun HomeHeader(onSearch: () -> Unit) {
 
 @Composable
 private fun SectionHeader(title: String, subtitle: String?, action: String, onAction: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(start = Pad, end = Pad, top = 26.dp, bottom = 14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(start = Pad, end = Pad, top = 22.dp, bottom = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(width = 4.dp, height = 22.dp).clip(CircleShape).background(Ui.Accent))
+                Box(Modifier.size(width = 4.dp, height = 18.dp).clip(CircleShape).background(Ui.Accent))
                 Box(Modifier.width(10.dp))
-                Text(title, fontSize = 21.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1)
+                Text(title, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1)
             }
-            if (subtitle != null) Text(subtitle, fontSize = 14.sp, color = Ui.Text2, maxLines = 1, modifier = Modifier.padding(start = 14.dp))
+            if (subtitle != null) Text(subtitle, fontSize = 13.sp, color = Ui.Text2, maxLines = 1, modifier = Modifier.padding(start = 14.dp, top = 2.dp))
         }
         Row(Modifier.clip(CircleShape).clickable(onClick = onAction).padding(start = 8.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(action, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Ui.Accent)
@@ -219,17 +218,16 @@ private fun SectionHeader(title: String, subtitle: String?, action: String, onAc
 
 @Composable
 private fun Hero(comic: Comic, onClick: () -> Unit) {
-    Box(Modifier.fillMaxWidth().padding(horizontal = Pad).height(190.dp).clip(RoundedCornerShape(22.dp)).background(Ui.Card).clickable(onClick = onClick)) {
+    Box(Modifier.fillMaxWidth().padding(horizontal = Pad).height(184.dp).clip(RoundedCornerShape(20.dp)).background(Ui.Card).clickable(onClick = onClick)) {
         CoverImage(comic.coverUrl, comic.title, Modifier.fillMaxSize(), 720, 420, Alignment.TopCenter)
         Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Color(0xFA181C21), 0.6f to Color(0xE6181C21), 1f to Color(0x4D181C21))))
         Column(Modifier.align(Alignment.CenterStart).fillMaxWidth(0.68f).padding(start = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(displayType(comic).uppercase(), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White)
-                ComicStats(comic)
+                Text(displayType(comic).uppercase(), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Ui.Accent)
+                ComicStats(comic, compact = true)
             }
             Text(comic.title, fontSize = 21.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            val desc = listOf(genreText(comic, 3), displayStatus(comic.status, comic.chapters), latestChapterText(comic)).joinToString(" · ")
-            Text(desc, fontSize = 13.sp, lineHeight = 18.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(listOf(genreText(comic, 2), latestChapterText(comic)).joinToString(" · "), fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text("Read now", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ui.OnAccent, modifier = Modifier.padding(top = 4.dp).clip(CircleShape).background(Ui.Accent).padding(horizontal = 22.dp, vertical = 9.dp))
         }
     }
@@ -249,36 +247,36 @@ private fun ContinueCard(h: ReadingHistoryEntity, now: Long, onClick: () -> Unit
 @Composable
 private fun WideCard(c: Comic, width: Dp, onClick: () -> Unit) {
     Column(Modifier.width(width).clickable(onClick = onClick)) {
-        Box(Modifier.fillMaxWidth().height(width * 0.56f).clip(RoundedCornerShape(20.dp)).background(Ui.Card)) {
+        Box(Modifier.fillMaxWidth().height(width * 0.56f).clip(RoundedCornerShape(16.dp)).background(Ui.Card)) {
             CoverImage(c.coverUrl, c.title, Modifier.fillMaxSize(), 640, 360, Alignment.TopCenter)
             TypeBadge(displayType(c), Modifier.align(Alignment.TopStart).padding(10.dp))
             if (isFresh(c.chapters.firstOrNull()?.timeAgo)) NewBadge(Modifier.align(Alignment.TopEnd).padding(10.dp))
         }
-        Text(c.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
-        ComicStats(c, Modifier.padding(top = 3.dp))
-        Text(genreText(c, 3), fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
-        Text(latestLine(c), fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+        Text(c.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+        Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ComicStats(c, compact = true)
+            Text(genreText(c, 2), fontSize = 12.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        }
     }
 }
 
 @Composable
 private fun UpdateRow(c: Comic, onClick: () -> Unit) {
     val ch = c.chapters.firstOrNull()
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = Pad, vertical = 7.dp)) {
-        Box(Modifier.size(width = 70.dp, height = 105.dp).clip(RoundedCornerShape(10.dp)).background(Ui.Card)) {
-            CoverImage(c.coverUrl, c.title, Modifier.fillMaxSize(), 210, 315)
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = Pad, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(width = 60.dp, height = 88.dp).clip(RoundedCornerShape(8.dp)).background(Ui.Card)) {
+            CoverImage(c.coverUrl, c.title, Modifier.fillMaxSize(), 180, 264)
             TypeBadge(displayType(c), Modifier.align(Alignment.TopStart).padding(3.dp), small = true)
         }
-        Column(Modifier.weight(1f).height(105.dp).padding(start = 12.dp), verticalArrangement = Arrangement.SpaceBetween) {
+        Column(Modifier.weight(1f).height(88.dp).padding(start = 12.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Text(c.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ComicStats(c)
+                ComicStats(c, compact = true)
                 if (isFresh(ch?.timeAgo)) NewBadge(small = true)
             }
-            Text(genreText(c, 3), fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ui.Card).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Ui.Card).padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(latestChapterText(c), fontSize = 14.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                Text(latestAgoText(c), fontSize = 13.sp, color = Ui.Text2, maxLines = 1)
+                Text(latestAgoText(c), fontSize = 12.sp, color = Ui.Text2, maxLines = 1)
             }
         }
     }
@@ -292,11 +290,10 @@ private fun RankRow(rank: Int, c: Comic, onClick: () -> Unit) {
             CoverImage(c.coverUrl, c.title, Modifier.fillMaxSize(), 140, 210)
             TypeBadge(displayType(c), Modifier.align(Alignment.TopStart).padding(2.dp), small = true)
         }
-        Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(c.title, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            ComicStats(c)
-            Text(genreText(c, 3), fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(latestLine(c), fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            ComicStats(c, compact = true)
+            Text(latestLine(c), fontSize = 12.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

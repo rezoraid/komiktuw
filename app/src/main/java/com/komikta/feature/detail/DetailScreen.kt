@@ -76,6 +76,7 @@ import androidx.compose.runtime.getValue
 private val Soft = Color(0xFFC3CBCE)
 private val ReadColor = Color(0xFF6F7A80)
 private val IdLocale = Locale("id", "ID")
+private val SideInfo = setOf("Author", "Artist", "Rilis", "Update")
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -180,28 +181,34 @@ fun DetailScreen(
                                 asc.firstOrNull { it.slug !in readChapters } ?: asc.last()
                             }
                             val started = readChapters.isNotEmpty()
-                            Text(
-                                text = (if (started) "Lanjut baca · " else "Mulai baca · ") + chapterName(target),
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Ui.OnAccent,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 8.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Ui.AccentBrush)
-                                    .clickable { onChapterClick(detail.source, detail.slug, target.slug) }
-                                    .padding(horizontal = 14.dp, vertical = 13.dp)
-                            )
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = (if (started) "Lanjut baca · " else "Mulai baca · ") + chapterName(target),
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Ui.OnAccent,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(48.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Ui.AccentBrush)
+                                        .clickable { onChapterClick(detail.source, detail.slug, target.slug) }
+                                        .padding(horizontal = 14.dp, vertical = 14.dp)
+                                )
+                                Box(
+                                    Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)).background(Ui.Card).clickable { onCommentsClick(detail.source, detail.slug) },
+                                    contentAlignment = Alignment.Center
+                                ) { Icon(AppIcons.comment, "Komentar", tint = Ui.Accent, modifier = Modifier.size(22.dp)) }
+                            }
                         }
                     }
 
                     item(key = "meta", contentType = "meta") {
                         // Semua baris selalu ada, urutannya sama untuk setiap komik dan sumber.
-                        val rows = remember(detail) { detailInfoRows(detail) }
+                        val rows = remember(detail) { detailInfoRows(detail).filter { it.first in SideInfo } }
                         Column(
                             Modifier
                                 .fillMaxWidth()
@@ -209,7 +216,7 @@ fun DetailScreen(
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(Ui.Card)
                                 .padding(horizontal = 14.dp, vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             rows.forEach { (label, value) -> MetaLine(label, value) }
                         }
@@ -243,44 +250,13 @@ fun DetailScreen(
                         }
                     }
 
-                    run {
-                        item(key = "genres", contentType = "genres") {
-                            val genreList = remember(detail) { displayGenres(detail.genres, detail.type, detail.source) }
-                            FlowRow(
-                                Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                genreList.forEach { genre ->
-                                    Text(
-                                        text = genre,
-                                        fontSize = 13.sp,
-                                        color = Soft,
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(4.dp))
-                                            .background(Ui.Chip)
-                                            .padding(horizontal = 10.dp, vertical = 5.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    item(key = "comments", contentType = "comments") {
+                    item(key = "genres", contentType = "genres") {
+                        val genreList = remember(detail) { displayGenres(detail.genres, detail.type, detail.source) }
                         Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 8.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Ui.Card)
-                                .clickable { onCommentsClick(detail.source, detail.slug) }
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(AppIcons.comment, null, tint = Ui.Accent, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(10.dp))
-                            Text("Komentar", fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                            Icon(AppIcons.chevronRight, null, tint = Ui.Text2, modifier = Modifier.size(20.dp))
+                            genreList.forEach { genre -> Pill(genre, Ui.Chip, 13) }
                         }
                     }
 
@@ -355,29 +331,32 @@ private fun DetailHeader(detail: ComicDetail) {
                 .background(Ui.Card)
         )
         Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 text = detail.title,
                 style = MaterialTheme.typography.headlineMedium,
                 fontSize = 21.sp,
                 lineHeight = 27.sp,
-                maxLines = 4,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
-            // Judul lain; kalau tidak ada, nama sumber supaya baris ini tidak kosong.
             Text(
                 detail.alternativeTitles.firstOrNull { it.isNotBlank() } ?: "Sumber: ${sourceName(detail.source)}",
-                fontSize = 13.sp, color = Ui.Text2, maxLines = 2, overflow = TextOverflow.Ellipsis
+                fontSize = 13.sp, color = Ui.Text2, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
-            val line = listOf(
-                displayStatus(detail.status, detail.chapters),
-                displayType(detail.type, detail.source),
-                detail.year?.takeIf { it.isNotBlank() }
-            ).filterNotNull().joinToString(" · ")
-            Text(line, fontSize = 13.sp, color = Soft)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Pill(displayStatus(detail.status, detail.chapters), Ui.Chip, 12)
+                Pill(displayType(detail.type, detail.source), Ui.Chip, 12)
+                detail.year?.takeIf { it.isNotBlank() }?.let { Pill(it, Ui.Chip, 12) }
+            }
             ComicStatsRow(detail.rating, detail.viewCount, displayChapterCount(detail))
         }
     }
+}
+
+@Composable
+private fun Pill(text: String, background: Color, size: Int) {
+    Text(text, fontSize = size.sp, color = Soft, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(background).padding(horizontal = 9.dp, vertical = 4.dp))
 }
 
 @Composable
@@ -398,6 +377,7 @@ private fun MetaLine(label: String, value: String) {
 
 @Composable
 private fun ChapterRow(chapter: Chapter, isRead: Boolean, comments: Int, onClick: () -> Unit) {
+    Column {
     Row(
         Modifier
             .fillMaxWidth()
@@ -428,6 +408,8 @@ private fun ChapterRow(chapter: Chapter, isRead: Boolean, comments: Int, onClick
             Text("$comments", fontSize = 13.sp, color = Ui.Text2, modifier = Modifier.padding(start = 4.dp))
         }
         if (!isRead) Box(Modifier.padding(start = 10.dp).size(8.dp).background(Ui.Accent, CircleShape))
+    }
+    Box(Modifier.padding(horizontal = 14.dp).fillMaxWidth().height(1.dp).background(Ui.Line))
     }
 }
 

@@ -37,6 +37,10 @@ class NotificationPrefs @Inject constructor(@ApplicationContext private val cont
         }
     }
 
+    var topics: Set<String>
+        get() = sp.getStringSet(KEY_TOPICS, emptySet()).orEmpty().toSet()
+        set(v) = sp.edit().putStringSet(KEY_TOPICS, v).apply()
+
     var pushKey: String?
         get() = sp.getString(KEY_PUSH_KEY, null)
         set(v) = sp.edit().putString(KEY_PUSH_KEY, v).apply()
@@ -61,6 +65,7 @@ class NotificationPrefs @Inject constructor(@ApplicationContext private val cont
         const val KEY_ASKED = "permission_asked"
         const val KEY_CURSOR = "broadcast_cursor"
         const val KEY_SHOWN = "broadcast_shown"
+        const val KEY_TOPICS = "chapter_topics"
         const val KEY_PUSH_KEY = "push_key"
         const val KEY_PUSH_TOKEN = "push_token"
         const val KEY_PUSH_AT = "push_at"

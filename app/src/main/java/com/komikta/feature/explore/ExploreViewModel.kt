@@ -29,9 +29,8 @@ import javax.inject.Inject
 
 internal const val NO_COMICS_MESSAGE = "Tidak ada komik untuk filter ini"
 
-/** Explore hanya Manhwa, Manhua, Manga; Manhwa tampil lebih dulu. */
-internal const val DEFAULT_TYPE = "manhwa"
 internal const val ALL_TYPES = "all"
+internal const val DEFAULT_TYPE = ALL_TYPES
 internal val EXPLORE_TYPES = setOf(ALL_TYPES, "manhwa", "manhua", "manga")
 private val REAL_TYPES = EXPLORE_TYPES - ALL_TYPES
 

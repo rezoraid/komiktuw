@@ -1,12 +1,9 @@
 package com.komikta.core.notify
 
 import android.content.Context
-import androidx.core.graphics.drawable.toBitmap
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import coil.ImageLoader
-import coil.request.ImageRequest
-import coil.request.SuccessResult
 import com.komikta.data.local.dao.BookmarkDao
 import com.komikta.data.local.dao.ReadingHistoryDao
 import com.komikta.data.local.entity.BookmarkEntity
@@ -22,7 +19,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
-import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Mengecek bookmark ke backend. Chapter terbaru dibandingkan dengan yang terakhir dilihat;
@@ -102,7 +98,7 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
             if (fresh.isEmpty() || alreadyRead) null
             else {
                 val labels = fresh.mapNotNull { it.number?.replace(Regex("(?i)^\\s*(chapter|ch\\.?)\\s*"), "")?.trim()?.takeIf(String::isNotEmpty) }
-                UpdateNotifier.postUpdate(applicationContext, b, fresh.size, labels, cover(d.images(), b.coverUrl))
+                UpdateNotifier.postUpdate(applicationContext, b, fresh.size, labels, UpdateNotifier.loadCover(applicationContext, d.images(), b.coverUrl))
                 b.comicTitle
             }
         }
@@ -110,14 +106,6 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
         throw e
     } catch (_: Exception) {
         null
-    }
-
-    private suspend fun cover(loader: ImageLoader, url: String?): android.graphics.Bitmap? {
-        if (url.isNullOrBlank()) return null
-        return withTimeoutOrNull(8_000) {
-            val result = loader.execute(ImageRequest.Builder(applicationContext).data(url).size(256, 256).allowHardware(false).build())
-            (result as? SuccessResult)?.drawable?.toBitmap(256, 256)
-        }
     }
 
     private companion object {
