@@ -12,17 +12,22 @@ import java.util.concurrent.TimeUnit
 object UpdateScheduler {
     private const val NAME = "komikta-update-check"
 
-    /** Pengecekan berkala (WorkManager, paling cepat tiap 15 menit; di sini 30 menit, hemat baterai). */
+    /**
+     * Cadangan kalau FCM gagal/terlambat (OEM agresif).
+     * Push FCM = jalur utama → notifikasi datang detik setelah server kirim.
+     * WorkManager minimum period = 15 menit.
+     */
     fun sync(context: Context, enabled: Boolean) {
         val wm = WorkManager.getInstance(context)
         if (!enabled) {
             wm.cancelUniqueWork(NAME)
             return
         }
-        val request = PeriodicWorkRequestBuilder<UpdateCheckWorker>(30, TimeUnit.MINUTES)
+        val request = PeriodicWorkRequestBuilder<UpdateCheckWorker>(15, TimeUnit.MINUTES)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-            .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.MINUTES)
+            .setBackoffCriteria(BackoffPolicy.LINEAR, 5, TimeUnit.MINUTES)
             .build()
-        wm.enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP, request)
+        // UPDATE: ganti jadwal lama 30 menit jika sudah terpasang
+        wm.enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
     }
 }

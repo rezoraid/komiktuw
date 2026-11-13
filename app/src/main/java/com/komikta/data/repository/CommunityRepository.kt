@@ -107,12 +107,28 @@ class CommunityRepository @Inject constructor(
         }
     }
 
+    /**
+     * Hapus komentar dari cache memori + disk supaya setelah APK ditutup/dibuka lagi
+     * komentar yang sudah dihapus tidak muncul lagi dari cache lama.
+     * Juga invalidasi counts & replies terkait.
+     *
+     * Strategi: buang seluruh halaman komentar target ini (bukan hanya filter satu id),
+     * agar disk Room tidak sempat menyajikan data usang saat process di-restart.
+     */
     fun purgeCached(source: String, slug: String, chapter: String?, id: String) {
         listOf("top", "newest").forEach { sort ->
-            val page = cachedComments(source, slug, chapter, sort) ?: return@forEach
-            if (page.items.any { it.id == id }) storeComments(source, slug, chapter, sort, page.copy(items = page.items.filter { it.id != id }, total = (page.total - 1).coerceAtLeast(0)))
+            cache.clearPrefix(commentKey(source, slug, chapter, sort))
         }
         cache.clearPrefix("${scope()}replies|$id|")
+        cache.clearPrefix(countsKey(source, slug))
+    }
+
+    /** Paksa list komentar target ini di-fetch ulang (setelah hapus/post penting). */
+    fun invalidateComments(source: String, slug: String, chapter: String?) {
+        listOf("top", "newest").forEach { sort ->
+            cache.clearPrefix(commentKey(source, slug, chapter, sort))
+        }
+        cache.clearPrefix(countsKey(source, slug))
     }
 
     suspend fun unpin(source: String, slug: String, chapter: String?, id: String) {

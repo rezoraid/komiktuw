@@ -108,7 +108,9 @@ class CommentsViewModel @Inject constructor(
         val sort = _ui.value.sort
         if (_ui.value.items.isEmpty()) _ui.update { it.copy(loading = true, error = null) }
         loadJob = viewModelScope.launch {
+            // Pin hanya komentar yang masih hidup (bukan yang sudah dihapus)
             pinned = runCatching { repo.pinned(src, sl, ch) }.getOrDefault(emptyList())
+                .filter { !it.deleted && it.id !in removed }
             repo.observeComments(src, sl, ch, sort, refresh).collect { r ->
                 when (r) {
                     is Result.Success -> {
@@ -128,14 +130,26 @@ class CommentsViewModel @Inject constructor(
 
     private fun mergeServerPage(st: CommentsUiState, page: CommentPageDto): CommentsUiState {
         val current = st.items.associateBy { it.id }
-        val server = page.items.filter { it.id !in removed }.map { c ->
-            if (c.id in likeSyncing) current[c.id]?.let { c.copy(liked = it.liked, likeCount = it.likeCount) } ?: c else c
-        }
+        // Komentar yang dihapus & tidak punya balasan → hilang total.
+        // Root yang dihapus tapi masih punya balasan → tetap (placeholder "dihapus") agar thread tidak putus.
+        fun keep(c: CommentDto) = c.id !in removed && (!c.deleted || c.replyCount > 0)
+        val server = page.items
+            .filter(::keep)
+            .map { c ->
+                if (c.id in likeSyncing) current[c.id]?.let { c.copy(liked = it.liked, likeCount = it.likeCount) } ?: c else c
+            }
         val serverIds = server.mapTo(HashSet()) { it.id }
         val pending = st.items.filter { it.id.startsWith(TMP) }
-        val local = pinned.filter { it.parentId == null && it.id !in serverIds && it.id !in removed }.map { current[it.id] ?: it }
+        val local = pinned
+            .filter { it.parentId == null && it.id !in serverIds && keep(it) }
+            .map { current[it.id] ?: it }
+            .filter(::keep)
         val localIds = local.mapTo(HashSet()) { it.id }
-        val tail = if (st.page > 1) st.items.filter { !it.id.startsWith(TMP) && it.id !in serverIds && it.id !in localIds && it.id !in removed } else emptyList()
+        val tail = if (st.page > 1) {
+            st.items.filter {
+                !it.id.startsWith(TMP) && it.id !in serverIds && it.id !in localIds && keep(it)
+            }
+        } else emptyList()
         return st.copy(
             loading = false,
             error = null,
@@ -331,12 +345,24 @@ class CommentsViewModel @Inject constructor(
                     if (c.parentId == null) {
                         pinned = listOf(c) + pinned.filter { it.id != c.id }
                         repo.pin(src, sl, ch, c)
+                        // Tulis ke cache list supaya setelah close/open komentar sendiri tetap ada & counts benar
+                        val sort = _ui.value.sort
+                        repo.cachedComments(src, sl, ch, sort)?.let { page ->
+                            if (page.items.none { it.id == c.id }) {
+                                repo.storeComments(
+                                    src, sl, ch, sort,
+                                    page.copy(items = listOf(c) + page.items, total = page.total + 1)
+                                )
+                            }
+                        }
                     }
                     persist()
                     if (c.parentId != null) {
                         repo.invalidateReplies(c.parentId)
                         if ((_ui.value.replies[c.parentId]?.page ?: 0) == 0) loadReplies(c.parentId)
                     }
+                    // Level / XP / commentCount di profil & history langsung ikut terbaru
+                    if (r.data.xpGained > 0 || r.data.user != null) repo.refreshMe(force = true)
                 }
                 is Result.Error -> {
                     dropLocal(tmp.id, rootId)
@@ -430,16 +456,20 @@ class CommentsViewModel @Inject constructor(
         val sl = slug
         val ch = chapter
         removed += c.id
+        // Optimistic: langsung hilang dari UI
         _ui.update { removeLocal(it, c) }
         viewModelScope.launch {
             when (val r = repo.delete(c.id)) {
                 is Result.Success -> {
                     pinned = pinned.filter { it.id != c.id }
                     repo.unpin(src, sl, ch, c.id)
+                    // Bersihkan cache memori + disk agar reopen tidak memunculkan lagi
                     repo.purgeCached(src, sl, ch, c.id)
+                    repo.invalidateComments(src, sl, ch)
                     c.parentId?.let(repo::invalidateReplies)
                     persist()
                     notice("Komentar dihapus")
+                    // Segarkan profil (commentCount, XP, level) tanpa menunggu
                     repo.refreshMe(force = true)
                 }
                 is Result.Error -> {

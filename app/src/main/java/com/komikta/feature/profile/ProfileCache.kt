@@ -19,5 +19,8 @@ class ProfileCache @Inject constructor() {
 
     @Synchronized fun put(id: String, entry: Entry) { map[id] = entry }
 
+    /** Buang entri agar buka profil berikutnya mengambil statistik & aktivitas terbaru (setelah hapus/post komentar, XP, dll). */
+    @Synchronized fun invalidate(id: String) { map.remove(id) }
+
     private companion object { const val MAX_ENTRIES = 8 }
 }
