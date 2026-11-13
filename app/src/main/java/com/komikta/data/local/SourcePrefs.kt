@@ -44,7 +44,18 @@ class SourcePrefs @Inject constructor() {
             MANTA to setOf("manga")
         )
 
-        /** Host gambar sampul yang perlu lewat image proxy backend (referer wajib). */
-        val PROXIED_IMAGE_HOSTS = listOf("shngm.id", "shngm.io", "shinigami.id", "shinigami.asia")
+        /**
+         * Host gambar sampul yang perlu lewat image proxy backend (referer wajib).
+         * Lumos: CDN gambarnya (lms.imgsvr.my.id) dan semua mirror situsnya menolak permintaan tanpa referer,
+         * dan proxy backend punya cadangan otomatis (CDN <-> proxy situs <-> mirror lain).
+         */
+        val PROXIED_IMAGE_HOSTS = listOf(
+            "shngm.id", "shngm.io", "shinigami.id", "shinigami.asia",
+            "lms.imgsvr.my.id", "lumosgg.com", "lumoskomik.com"
+        )
+
+        /** True kalau [host] (atau subdomain-nya) harus diambil lewat image proxy backend. */
+        fun isProxiedImageHost(host: String): Boolean =
+            PROXIED_IMAGE_HOSTS.any { host == it || host.endsWith(".$it") }
     }
 }

@@ -39,7 +39,7 @@ object ImageModule {
             .addInterceptor { chain ->
                 val original = chain.request()
                 val host = original.url.host
-                val viaProxy = SourcePrefs.PROXIED_IMAGE_HOSTS.any { host == it || host.endsWith(".$it") }
+                val viaProxy = SourcePrefs.isProxiedImageHost(host)
                 val request = original.newBuilder()
                     .apply {
                         if (viaProxy) url(ApiConfig.BASE_URL.toHttpUrl().newBuilder().addPathSegments("api/image").addQueryParameter("url", original.url.toString()).build())
