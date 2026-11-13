@@ -126,6 +126,8 @@ class ReaderViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = false, errorMessage = "Invalid chapter") }
             return
         }
+        val opened = chapterSlug
+        viewModelScope.launch { markOpened(opened) }
         val ready = _uiState.value.upcoming?.takeIf { it.chapterSlug == chapterSlug }
         if (ready != null) { open(ready); return }
         val requestedChapter = chapterSlug
@@ -203,6 +205,22 @@ class ReaderViewModel @Inject constructor(
             _uiState.update { it.copy(chapterInfo = detail.chapters.associateBy { c -> c.slug }) }
             _uiState.value.content?.let { saveHistory(it) }
         }
+    }
+
+    private suspend fun markOpened(slug: String) {
+        val id = "${source}_$comicSlug"
+        val now = System.currentTimeMillis()
+        val old = historyDao.getById(id)
+        readChapterDao.markRead(ReadChapterEntity(comicId = id, chapterSlug = slug, readAt = now))
+        val number = _uiState.value.chapterInfo[slug]?.number ?: Regex("""\d+(?:[.-]\d+)?""").find(slug)?.value?.replace('-', '.') ?: old?.lastChapterNumber
+        historyDao.upsert(
+            ReadingHistoryEntity(
+                id = id, source = source, comicSlug = comicSlug,
+                comicTitle = comicTitle ?: old?.comicTitle ?: comicSlug,
+                coverUrl = comicCover ?: old?.coverUrl,
+                lastChapterSlug = slug, lastChapterNumber = number, lastReadAt = now
+            )
+        )
     }
 
     private suspend fun saveHistory(content: ChapterContent) {

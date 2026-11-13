@@ -107,6 +107,14 @@ class CommunityRepository @Inject constructor(
         }
     }
 
+    fun purgeCached(source: String, slug: String, chapter: String?, id: String) {
+        listOf("top", "newest").forEach { sort ->
+            val page = cachedComments(source, slug, chapter, sort) ?: return@forEach
+            if (page.items.any { it.id == id }) storeComments(source, slug, chapter, sort, page.copy(items = page.items.filter { it.id != id }, total = (page.total - 1).coerceAtLeast(0)))
+        }
+        cache.clearPrefix("${scope()}replies|$id|")
+    }
+
     suspend fun unpin(source: String, slug: String, chapter: String?, id: String) {
         pinLock.withLock {
             val key = pinKey(source, slug, chapter)

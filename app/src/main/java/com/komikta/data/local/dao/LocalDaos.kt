@@ -56,6 +56,9 @@ interface ReadChapterDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun markRead(entity: ReadChapterEntity)
+
+    @Query("DELETE FROM read_chapters WHERE comicId = :comicId")
+    suspend fun clear(comicId: String)
 }
 
 @Dao

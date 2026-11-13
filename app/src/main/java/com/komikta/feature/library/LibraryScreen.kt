@@ -121,6 +121,7 @@ fun LibraryScreen(
                         HistoryCard(
                             h,
                             onCover = { onComicClick(h.source, h.comicSlug) },
+                            onRemove = { viewModel.removeHistory(h) },
                             onTitle = {
                                 val ch = h.lastChapterSlug
                                 if (ch.isNullOrBlank()) onComicClick(h.source, h.comicSlug) else onReadClick(h.source, h.comicSlug, ch)
@@ -135,13 +136,17 @@ fun LibraryScreen(
 
 /** Kartu riwayat: tap cover → detail komik, tap judul → lanjut baca di chapter terakhir. */
 @Composable
-private fun HistoryCard(h: com.komikta.data.local.entity.ReadingHistoryEntity, onCover: () -> Unit, onTitle: () -> Unit) {
+private fun HistoryCard(h: com.komikta.data.local.entity.ReadingHistoryEntity, onCover: () -> Unit, onTitle: () -> Unit, onRemove: () -> Unit) {
     Column {
         Box(
             Modifier.fillMaxWidth().aspectRatio(0.667f).clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
                 .background(Ui.Card).clickable(onClick = onCover)
         ) {
             com.komikta.ui.components.CoverImage(url = h.coverUrl, contentDescription = h.comicTitle, modifier = Modifier.fillMaxSize())
+            Box(
+                Modifier.align(Alignment.TopEnd).padding(6.dp).size(26.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Ui.Badge).clickable(onClick = onRemove),
+                contentAlignment = Alignment.Center
+            ) { androidx.compose.material3.Icon(com.komikta.ui.components.AppIcons.close, "Hapus dari riwayat", tint = Color.White, modifier = Modifier.size(14.dp)) }
         }
         Text(
             h.comicTitle, fontSize = 13.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium, color = Color.White,

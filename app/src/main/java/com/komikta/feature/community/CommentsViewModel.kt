@@ -68,6 +68,7 @@ class CommentsViewModel @Inject constructor(
     private val likeWanted = HashMap<String, Boolean>()
     private val likeConfirmed = HashMap<String, Pair<Boolean, Int>>()
     private val likeSyncing = HashSet<String>()
+    private val removed = HashSet<String>()
 
     init {
         if (slug.isNotBlank()) {
@@ -88,6 +89,7 @@ class CommentsViewModel @Inject constructor(
         this.slug = slug
         this.chapter = chapter
         pinned = emptyList()
+        removed.clear()
         _ui.value = CommentsUiState()
         _draft.value = ""
         if (slug.isNotBlank()) primeFromCache()
@@ -126,14 +128,14 @@ class CommentsViewModel @Inject constructor(
 
     private fun mergeServerPage(st: CommentsUiState, page: CommentPageDto): CommentsUiState {
         val current = st.items.associateBy { it.id }
-        val server = page.items.map { c ->
+        val server = page.items.filter { it.id !in removed }.map { c ->
             if (c.id in likeSyncing) current[c.id]?.let { c.copy(liked = it.liked, likeCount = it.likeCount) } ?: c else c
         }
         val serverIds = server.mapTo(HashSet()) { it.id }
         val pending = st.items.filter { it.id.startsWith(TMP) }
-        val local = pinned.filter { it.parentId == null && it.id !in serverIds }.map { current[it.id] ?: it }
+        val local = pinned.filter { it.parentId == null && it.id !in serverIds && it.id !in removed }.map { current[it.id] ?: it }
         val localIds = local.mapTo(HashSet()) { it.id }
-        val tail = if (st.page > 1) st.items.filter { !it.id.startsWith(TMP) && it.id !in serverIds && it.id !in localIds } else emptyList()
+        val tail = if (st.page > 1) st.items.filter { !it.id.startsWith(TMP) && it.id !in serverIds && it.id !in localIds && it.id !in removed } else emptyList()
         return st.copy(
             loading = false,
             error = null,
@@ -173,7 +175,7 @@ class CommentsViewModel @Inject constructor(
                 is Result.Success -> _ui.update { st ->
                     if (st.sort != s.sort) st.copy(loadingMore = false) else {
                         val known = st.items.mapTo(HashSet()) { it.id }
-                        st.copy(loadingMore = false, items = st.items + r.data.items.filter { it.id !in known }.distinctBy { it.id }, page = s.page + 1, hasMore = r.data.hasMore, total = r.data.total)
+                        st.copy(loadingMore = false, items = st.items + r.data.items.filter { it.id !in known && it.id !in removed }.distinctBy { it.id }, page = s.page + 1, hasMore = r.data.hasMore, total = r.data.total)
                     }
                 }
                 is Result.Error -> _ui.update { it.copy(loadingMore = false, notice = r.message) }
@@ -202,12 +204,13 @@ class CommentsViewModel @Inject constructor(
             when (val r = repo.replies(rootId, cur.page + 1)) {
                 is Result.Success -> _ui.update { st ->
                     val prev = st.replies[rootId] ?: cur
-                    val serverIds = r.data.items.mapTo(HashSet()) { it.id }
+                    val fresh = r.data.items.filter { it.id !in removed }
+                    val serverIds = fresh.mapTo(HashSet()) { it.id }
                     val items = if (cur.page == 0) {
-                        r.data.items + prev.items.filter { it.id !in serverIds }
+                        fresh + prev.items.filter { it.id !in serverIds }
                     } else {
                         val known = prev.items.mapTo(HashSet()) { it.id }
-                        prev.items + r.data.items.filter { it.id !in known }
+                        prev.items + fresh.filter { it.id !in known }
                     }
                     st.copy(replies = st.replies + (rootId to prev.copy(items = items, page = cur.page + 1, hasMore = r.data.hasMore, loading = false)))
                 }
@@ -426,23 +429,29 @@ class CommentsViewModel @Inject constructor(
         val src = source
         val sl = slug
         val ch = chapter
+        removed += c.id
         _ui.update { removeLocal(it, c) }
         viewModelScope.launch {
             when (val r = repo.delete(c.id)) {
                 is Result.Success -> {
                     pinned = pinned.filter { it.id != c.id }
                     repo.unpin(src, sl, ch, c.id)
+                    repo.purgeCached(src, sl, ch, c.id)
                     c.parentId?.let(repo::invalidateReplies)
                     persist()
                     notice("Komentar dihapus")
                     repo.refreshMe(force = true)
                 }
                 is Result.Error -> {
+                    removed -= c.id
                     _ui.update { it.copy(items = before.items, replies = before.replies, total = before.total) }
                     notice(r.message)
                     if (ambiguous(r)) load(refresh = true)
                 }
-                else -> _ui.update { it.copy(items = before.items, replies = before.replies, total = before.total) }
+                else -> {
+                    removed -= c.id
+                    _ui.update { it.copy(items = before.items, replies = before.replies, total = before.total) }
+                }
             }
         }
     }
